@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Top 3 Noyob O'yin G'oyalari — Interaktiv Prototiplar</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Plus Jakarta Sans & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(23, 32, 53, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            overflow-x: hidden;
+            margin: 0;
+        }
+
+        h1, h2, h3, .font-display {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* Orqa fon animatsiyasi (Ambient Glowing Orbs) */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(110px);
+            z-index: -1;
+            opacity: 0.45;
+            animation: floatOrb 18s infinite alternate ease-in-out;
+        }
+
+        @keyframes floatOrb {
+            0% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(60px, -40px) scale(1.15); }
+            100% { transform: translate(-40px, 50px) scale(0.95); }
+        }
+
+        /* Kartochka 3D tilt va hover animatsiyasi */
+        .game-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: -100%;
+            width: 100%; height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.06), transparent);
+            transition: left 0.7s ease;
+        }
+
+        .game-card:hover::before {
+            left: 100%;
+        }
+
+        .game-card:hover {
+            transform: translateY(-10px);
+            border-color: rgba(255, 255, 255, 0.25);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6);
+        }
+
+        /* Tugma pulsatsiya va porlash effekti */
+        .btn-glow {
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-glow:hover {
+            transform: scale(1.03);
+        }
+        .btn-glow:active {
+            transform: scale(0.97);
+        }
+
+        /* Modal oyna animatsiyasi */
+        .modal-backdrop {
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.35s ease;
+        }
+        .modal-backdrop.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        .modal-box {
+            transform: scale(0.92) translateY(20px);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .modal-backdrop.active .modal-box {
+            transform: scale(1) translateY(0);
+        }
+
+        /* Eco-Builder animatsiyalari */
+        @keyframes popIn {
+            0% { transform: scale(0.3) rotate(-10deg); opacity: 0; }
+            70% { transform: scale(1.15) rotate(4deg); }
+            100% { transform: scale(1) rotate(0); opacity: 1; }
+        }
+        .tile-pop {
+            animation: popIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        @keyframes pulseSun {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 6px rgba(250, 204, 21, 0.6)); }
+            50% { transform: scale(1.12); filter: drop-shadow(0 0 14px rgba(250, 204, 21, 0.9)); }
+        }
+        .sun-anim {
+            animation: pulseSun 2.5s infinite ease-in-out;
+        }
+
+        @keyframes swayTree {
+            0%, 100% { transform: rotate(-3deg); }
+            50% { transform: rotate(3deg); }
+        }
+        .tree-anim {
+            display: inline-block;
+            transform-origin: bottom center;
+            animation: swayTree 3s infinite ease-in-out;
+        }
+
+        /* Xotiralar Sandig'i yaltirash effekti */
+        @keyframes shimmerGold {
+            0% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+            50% { box-shadow: 0 0 35px rgba(245, 158, 11, 0.8); }
+            100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.3); }
+        }
+        .artifact-revealed {
+            animation: shimmerGold 2.5s infinite ease-in-out;
+        }
+
+        /* Vaqt Me'mori muvaffaqiyat animatsiyasi */
+        @keyframes celebrate {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+            100% { transform: scale(1); }
+        }
+        .slot-valid {
+            animation: celebrate 0.4s ease;
+        }
+
+        /* Zarrachalar (Confetti/Stars) */
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 100;
+            animation: flyParticle 1s ease-out forwards;
+        }
+        @keyframes flyParticle {
+            0% { transform: translate(0, 0) scale(1); opacity: 1; }
+            100% { transform: translate(var(--tx), var(--ty)) scale(0); opacity: 0; }
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col justify-between selection:bg-emerald-500 selection:text-white">
+
+    <!-- Orqa fon yorug'lik sharlari -->
+    <div class="bg-orb w-96 h-96 bg-emerald-600/30 top-[-5%] left-[-5%]"></div>
+    <div class="bg-orb w-[500px] h-[500px] bg-amber-600/20 bottom-[5%] right-[-10%]" style="animation-delay: -6s;"></div>
+    <div class="bg-orb w-80 h-80 bg-indigo-600/30 top-[40%] left-[40%]" style="animation-delay: -12s;"></div>
+
+    <!-- Yuqori Header -->
+    <header class="pt-12 pb-8 px-4 sm:px-8 max-w-7xl mx-auto w-full text-center relative z-10">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs sm:text-sm font-medium text-emerald-300 mb-5 shadow-lg">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+            O'yin Sanoati Uchun Yangi Konsepsiyalar
+        </div>
+        <h1 class="text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent mb-4">
+            Hali Yaratilmagan Top 3 O'yin G'oyasi
+        </h1>
+        <p class="text-slate-400 max-w-2xl mx-auto text-base sm:text-lg leading-relaxed">
+            O'ziga xos mexanikaga ega uchta noyob o'yin konsepsiyasi. Har bir kartochkadagi tugmani bosing va o'yinning <span class="text-white font-semibold">jonli interaktiv prototipini</span> hoziroq o'ynab ko'ring!
+        </p>
+    </header>
+
+    <!-- Asosiy 3 ta O'yin Kartochkalari -->
+    <main class="px-4 sm:px-8 pb-16 max-w-7xl mx-auto w-full relative z-10">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+
+            <!-- 1-KARTOCHKA: Eco-Builder -->
+            <article class="game-card rounded-3xl p-7 flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 rounded-2xl bg-emerald-500/20 border border-emerald-400/30 flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform duration-300">
+                            🌱
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/15 text-emerald-300 border border-emerald-500/20">
+                            Strategiya & Boshqotirma
+                        </span>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-white mb-3 group-hover:text-emerald-300 transition-colors">
+                        1. Eco-Builder: Yashil Shahar
+                    </h2>
+
+                    <p class="text-slate-300 text-sm leading-relaxed mb-5">
+                        Ekologik halokat yoqasidagi shaharni qutqaring. Oddiy shahar qurish o'yinlaridan farqli o'laroq, bu yerda har bir bino tabiat muvozanati va qayta tiklanuvchi energiya bilan uyg'un bo'lishi shart.
+                    </p>
+
+                    <div class="space-y-2.5 mb-8 text-xs text-slate-400 bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                        <div class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Noyob mexanika:</strong> Daraxtlar va quyosh panellari zavodlarning zararini neytrallaydi.</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-emerald-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Maqsad:</strong> Ekologiya va energiya shkalasini 100% ga yetkazish.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="openGameModal('eco')" class="btn-glow w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-emerald-950/50 cursor-pointer">
+                    <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+                    O'yinni sinab ko'rish (Mini-o'yin)
+                </button>
+            </article>
+
+            <!-- 2-KARTOCHKA: Xotiralar Sandig'i -->
+            <article class="game-card rounded-3xl p-7 flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 rounded-2xl bg-amber-500/20 border border-amber-400/30 flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform duration-300">
+                            🕰️
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/20">
+                            Cozy & Interaktiv Hikoya
+                        </span>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-white mb-3 group-hover:text-amber-300 transition-colors">
+                        2. Xotiralar Sandig'i
+                    </h2>
+
+                    <p class="text-slate-300 text-sm leading-relaxed mb-5">
+                        Eski chordoqdagi chang bosgan buyumlarni tozalang va ularning ortida yashiringan o'tmish sirlarini kashf eting. Tinchlantiruvchi ASMR mexanikasi va chuqur syujet uyg'unligi.
+                    </p>
+
+                    <div class="space-y-2.5 mb-8 text-xs text-slate-400 bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                        <div class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Noyob mexanika:</strong> Barmoq yoki kursor bilan buyumdagi changni artib tozalash.</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-amber-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Maqsad:</strong> Qadimiy buyumlarni yaltiratib, yashirin xotiralarni ochish.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="openGameModal('memory')" class="btn-glow w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-slate-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-950/50 cursor-pointer">
+                    <i data-lucide="sparkles" class="w-4 h-4 fill-current"></i>
+                    O'yinni sinab ko'rish (Mini-o'yin)
+                </button>
+            </article>
+
+            <!-- 3-KARTOCHKA: Vaqt Me'mori -->
+            <article class="game-card rounded-3xl p-7 flex flex-col justify-between group">
+                <div>
+                    <div class="flex items-center justify-between mb-6">
+                        <div class="w-14 h-14 rounded-2xl bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-3xl shadow-inner group-hover:scale-110 transition-transform duration-300">
+                            ⏳
+                        </div>
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-500/15 text-indigo-300 border border-indigo-500/20">
+                            Mantiqiy Konstruktor
+                        </span>
+                    </div>
+
+                    <h2 class="text-2xl font-bold text-white mb-3 group-hover:text-indigo-300 transition-colors">
+                        3. Vaqt Me'mori: Uyqusiz Chizma
+                    </h2>
+
+                    <p class="text-slate-300 text-sm leading-relaxed mb-5">
+                        Zamonaviy akademiya uchun mukammal dars jadvalini tuzing. O'qituvchilar bandligi va maxsus xona talablarini hisobga olib, hech qanday to'qnashuvsiz tizim yarating.
+                    </p>
+
+                    <div class="space-y-2.5 mb-8 text-xs text-slate-400 bg-slate-900/50 p-4 rounded-2xl border border-white/5">
+                        <div class="flex items-start gap-2">
+                            <span class="text-indigo-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Noyob mexanika:</strong> Cheklangan vaqt va xona shartlari asosida darslarni joylashtirish.</span>
+                        </div>
+                        <div class="flex items-start gap-2">
+                            <span class="text-indigo-400 font-bold">✦</span>
+                            <span><strong class="text-slate-200">Maqsad:</strong> Barcha fanlarni to'qnashuvsiz joylashtirib, mukammal jadval tuzish.</span>
+                        </div>
+                    </div>
+                </div>
+
+                <button onclick="openGameModal('time')" class="btn-glow w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-400 hover:to-violet-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-950/50 cursor-pointer">
+                    <i data-lucide="cpu" class="w-4 h-4"></i>
+                    O'yinni sinab ko'rish (Mini-o'yin)
+                </button>
+            </article>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="py-6 text-center text-slate-500 text-xs border-t border-white/5 relative z-10">
+        Interaktiv o'yin prototiplari • Barcha mexanikalar brauzerda jonli ishlaydi
+    </footer>
+
+    <!-- ==========================================
+         INTERAKTIV MINI-O'YINLAR MODAL OYNASI
+    =========================================== -->
+    <div id="gameModal" class="modal-backdrop fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-6 overflow-y-auto">
+        <div class="modal-box bg-slate-900 border border-white/15 rounded-3xl w-full max-w-3xl shadow-2xl overflow-hidden my-auto">
+            
+            <!-- Modal Header -->
+            <div class="px-6 py-4 bg-slate-800/70 border-b border-white/10 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span id="modalIcon" class="text-2xl">🎮</span>
+                    <div>
+                        <h3 id="modalTitle" class="text-lg sm:text-xl font-bold text-white">Mini-O'yin</h3>
+                        <p id="modalSubtitle" class="text-xs text-slate-400">Interaktiv prototip</p>
+                    </div>
+                </div>
+                <button onclick="closeGameModal()" class="p-2 rounded-xl bg-white/5 hover:bg-rose-500/20 hover:text-rose-400 text-slate-400 transition-colors cursor-pointer" title="Yopish">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Modal Kontent (Har bir o'yin shu yerga yuklanadi) -->
+            <div id="modalContent" class="p-5 sm:p-7">
+                <!-- Dinamik kontent -->
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        // Lucide ikonkalarini ishga tushirish
+        lucide.createIcons();
+
+        // Zarrachalar (yulduzcha/barg) animatsiyasi funksiyasi
+        function spawnParticles(x, y, emojis = ['✨', '⭐', '🌟']) {
+            for (let i = 0; i < 14; i++) {
+                const el = document.createElement('div');
+                el.className = 'particle text-lg sm:text-xl select-none';
+                el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                const angle = Math.random() * Math.PI * 2;
+                const dist = 50 + Math.random() * 90;
+                el.style.setProperty('--tx', `${Math.cos(angle) * dist}px`);
+                el.style.setProperty('--ty', `${Math.sin(angle) * dist - 20}px`);
+                document.body.appendChild(el);
+                setTimeout(() => el.remove(), 1000);
+            }
+        }
+
+        const modal = document.getElementById('gameModal');
+        const modalContent = document.getElementById('modalContent');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalSubtitle = document.getElementById('modalSubtitle');
+        const modalIcon = document.getElementById('modalIcon');
+
+        function openGameModal(type) {
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+
+            if (type === 'eco') {
+                modalIcon.textContent = '🌱';
+                modalTitle.textContent = 'Eco-Builder: Yashil Shahar';
+                modalSubtitle.textContent = '4x4 maydonda ekologiya va energiya muvozanatini yarating';
+                renderEcoGame();
+            } else if (type === 'memory') {
+                modalIcon.textContent = '🕰️';
+                modalTitle.textContent = "Xotiralar Sandig'i";
+                modalSubtitle.textContent = "Buyum ustidagi changni artib tozalang va sirli hikoyani oching";
+                renderMemoryGame();
+            } else if (type === 'time') {
+                modalIcon.textContent = '⏳';
+                modalTitle.textContent = "Vaqt Me'mori: Uyqusiz Chizma";
+                modalSubtitle.textContent = "Fanlarni qoidalarga mos ravishda to'qnashuvsiz joylashtiring";
+                renderTimeGame();
+            }
+        }
+
+        function closeGameModal() {
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+
+        // Modal tashqarisini bosganda yopish
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) closeGameModal();
+        });
+
+        /* =========================================================
+           1. MINI-O'YIN: ECO-BUILDER (4x4 MAYDON)
+        ========================================================= */
+        let ecoGrid = Array(16).fill(null);
+        let selectedTool = 'tree';
+
+        const ecoItems = {
+            tree: { name: 'Daraxt', icon: '🌳', eco: +18, energy: 0, desc: '+18% Ekologiya', anim: 'tree-anim' },
+            solar: { name: 'Quyosh paneli', icon: '☀️', eco: +5, energy: +22, desc: '+22% Energiya, +5% Eko', anim: 'sun-anim' },
+            house: { name: 'Eko-Uy', icon: '🏡', eco: -5, energy: -12, desc: 'Aholi uyi (-12% Energiya)', anim: '' },
+            factory: { name: 'Zavod', icon: '🏭', eco: -25, energy: +35, desc: '+35% Energiya, -25% Eko', anim: '' },
+            clear: { name: 'Tozalash', icon: '🧹', eco: 0, energy: 0, desc: 'Katakni bo‘shatish', anim: '' }
+        };
+
+        function renderEcoGame() {
+            ecoGrid = Array(16).fill(null);
+            // Boshlang'ich ifloslangan holat (2 ta eski zavod)
+            ecoGrid[5] = 'factory';
+            ecoGrid[10] = 'factory';
+            selectedTool = 'tree';
+            updateEcoUI();
+        }
+
+        function calculateEcoStats() {
+            let eco = 50;
+            let energy = 20;
+            ecoGrid.forEach(cell => {
+                if (cell && ecoItems[cell]) {
+                    eco += ecoItems[cell].eco;
+                    energy += ecoItems[cell].energy;
+                }
+            });
+            return {
+                eco: Math.max(0, Math.min(100, eco)),
+                energy: Math.max(0, Math.min(100, energy))
+            };
+        }
+
+        function selectEcoTool(tool) {
+            selectedTool = tool;
+            updateEcoUI();
+        }
+
+        function clickEcoCell(index, event) {
+            if (selectedTool === 'clear') {
+                ecoGrid[index] = null;
+            } else {
+                ecoGrid[index] = selectedTool;
+                if (selectedTool === 'tree') {
+                    spawnParticles(event.clientX, event.clientY, ['🍃', '🌿', '🌱']);
+                } else if (selectedTool === 'solar') {
+                    spawnParticles(event.clientX, event.clientY, ['⚡', '☀️', '✨']);
+                }
+            }
+            updateEcoUI();
+
+            const stats = calculateEcoStats();
+            if (stats.eco >= 85 && stats.energy >= 80) {
+                spawnParticles(window.innerWidth / 2, window.innerHeight / 2, ['🎉', '🌍', '🌳', '⚡']);
+            }
+        }
+
+        function updateEcoUI() {
+            const stats = calculateEcoStats();
+            const isWin = stats.eco >= 85 && stats.energy >= 80;
+            const isDanger = stats.eco <= 20;
+
+            modalContent.innerHTML = `
+                <div class="space-y-5">
+                    <!-- Ko'rsatkichlar (Ekologiya va Energiya shkalasi) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-slate-950/60 p-4 rounded-2xl border border-white/10">
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                <span class="text-emerald-300 flex items-center gap-1">🌿 Ekologiya Balansi</span>
+                                <span class="text-white">${stats.eco}% (Maqsad: 85%+)</span>
+                            </div>
+                            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full transition-all duration-500 rounded-full ${stats.eco < 35 ? 'bg-rose-500' : 'bg-gradient-to-r from-emerald-500 to-green-400'}" style="width: ${stats.eco}%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-xs font-semibold mb-1.5">
+                                <span class="text-amber-300 flex items-center gap-1">⚡ Yashil Energiya</span>
+                                <span class="text-white">${stats.energy}% (Maqsad: 80%+)</span>
+                            </div>
+                            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full transition-all duration-500 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400" style="width: ${stats.energy}%"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Holat xabari -->
+                    ${isWin ? `
+                        <div class="p-3.5 rounded-2xl bg-emerald-500/20 border border-emerald-400/40 text-emerald-200 text-sm font-medium text-center animate-bounce">
+                            🎉 Tabriklaymiz! Siz ekologik toza va energiyaga boy "Yashil Shahar"ni barpo etdingiz!
+                        </div>
+                    ` : isDanger ? `
+                        <div class="p-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-200 text-xs text-center">
+                            ⚠️ Diqqat! Zavodlar havoni ifloslantirmoqda. Daraxtlar eking yoki eski zavodlarni tozalang!
+                        </div>
+                    ` : `
+                        <p class="text-xs text-slate-400 text-center">
+                            Pastdagi binolardan birini tanlang va 4x4 shahar maydoniga joylashtiring:
+                        </p>
+                    `}
+
+                    <!-- 4x4 Shahar Maydoni -->
+                    <div class="grid grid-cols-4 gap-2.5 sm:gap-3 max-w-sm mx-auto bg-emerald-950/30 p-3.5 rounded-3xl border border-emerald-500/20 shadow-inner">
+                        ${ecoGrid.map((cell, idx) => {
+                            const item = cell ? ecoItems[cell] : null;
+                            return `
+                                <button onclick="clickEcoCell(${idx}, event)" 
+                                    class="aspect-square rounded-2xl flex flex-col items-center justify-center transition-all duration-200 cursor-pointer border
+                                    ${item ? 'bg-slate-800/90 border-white/15 shadow-md' : 'bg-slate-900/60 border-dashed border-white/10 hover:border-emerald-400/50 hover:bg-emerald-900/20'}">
+                                    ${item ? `
+                                        <span class="text-2xl sm:text-3xl tile-pop ${item.anim}">${item.icon}</span>
+                                        <span class="text-[10px] text-slate-400 mt-1 hidden sm:block">${item.name}</span>
+                                    ` : `
+                                        <span class="text-slate-600 text-lg">+</span>
+                                    `}
+                                </button>
+                            `;
+                        }).join('')}
+                    </div>
+
+                    <!-- Qurilish Asboblari Paneli -->
+                    <div class="flex flex-wrap justify-center gap-2 pt-1">
+                        ${Object.entries(ecoItems).map(([key, info]) => `
+                            <button onclick="selectEcoTool('${key}')" 
+                                class="px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 border transition-all cursor-pointer
+                                ${selectedTool === key 
+                                    ? 'bg-emerald-500 text-slate-950 border-emerald-300 shadow-lg scale-105' 
+                                    : 'bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700'}">
+                                <span class="text-base">${info.icon}</span>
+                                <div class="text-left">
+                                    <div>${info.name}</div>
+                                    <div class="text-[10px] opacity-80">${info.desc}</div>
+                                </div>
+                            </button>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        /* =========================================================
+           2. MINI-O'YIN: XOTIRALAR SANDIG'I (CANVAS CHANG ARTISH)
+        ========================================================= */
+        const artifacts = [
+            {
+                id: 0,
+                name: "Qadimiy Cho'ntak Soati",
+                icon: "🕰️",
+                year: "1924-yil, Samarqand",
+                story: "Bu kumush soat bobomning otasiga tegishli bo'lgan. Uning ichidagi kichik yozuvda: «Vaqt o'tadi, lekin yaxshilik abadiy qoladi» deb o'yib yozilgan. Soat millari aynan poezd jo'nagan soat 07:15 da to'xtab qolgan..."
+            },
+            {
+                id: 1,
+                name: "Sarg'aygan Konvert va Xat",
+                icon: "✉️",
+                year: "1968-yil, Toshkent",
+                story: "Chiroyli husnixat bilan yozilgan maktub: «Aziz do'stim, biz ekkan chinor nihollari bugun katta bog'ga aylandi. Bir kun kelib nabiralarimiz uning soyasida kitob o'qishadi...»"
+            },
+            {
+                id: 2,
+                name: "Eski Oq-Qora Fotosurat",
+                icon: "🖼️",
+                year: "1952-yil, Buxoro",
+                story: "Suratda kulib turgan uch nafar yosh me'mor tasvirlangan. Ular qadimiy madrasa gumbazini qayta tiklashgan kunni nishonlashmoqda. Orqasida barchasining imzosi bor."
+            }
+        ];
+
+        let currentArtifactIdx = 0;
+        let isArtifactCleaned = false;
+
+        function renderMemoryGame(idx = 0) {
+            currentArtifactIdx = idx;
+            isArtifactCleaned = false;
+            const item = artifacts[idx];
+
+            modalContent.innerHTML = `
+                <div class="space-y-5">
+                    <!-- Buyumni tanlash tugmalari -->
+                    <div class="flex flex-wrap justify-center gap-2">
+                        ${artifacts.map((art, i) => `
+                            <button onclick="renderMemoryGame(${i})" 
+                                class="px-3.5 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer flex items-center gap-2
+                                ${i === idx ? 'bg-amber-500 text-slate-950 border-amber-300 shadow-md' : 'bg-slate-800 text-slate-300 border-white/10 hover:bg-slate-700'}">
+                                <span>${art.icon}</span>
+                                <span>${art.name}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-xs sm:text-sm text-amber-200/90 font-medium">
+                            ✨ Sichqoncha yoki barmog'ingiz bilan quyidagi quti ustidagi <span class="underline">chang qatlamini artib tozalang</span>:
+                        </p>
+                    </div>
+
+                    <!-- Tozalash Maydoni (Canvas + Yashirin Buyum) -->
+                    <div class="relative w-full max-w-md mx-auto h-64 rounded-3xl overflow-hidden border-2 border-amber-500/30 bg-gradient-to-br from-amber-950/60 via-slate-900 to-amber-900/40 shadow-2xl select-none" id="artifactBox">
+                        
+                        <!-- Ostki qatlam: Yaltiroq buyum va hikoya -->
+                        <div class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center">
+                            <div class="text-6xl mb-3 transition-transform duration-500 ${isArtifactCleaned ? 'scale-110' : ''}">${item.icon}</div>
+                            <span class="px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 text-[11px] font-semibold mb-1">${item.year}</span>
+                            <h4 class="text-lg font-bold text-white mb-2">${item.name}</h4>
+                            <p class="text-xs sm:text-sm text-amber-100/90 leading-relaxed">${item.story}</p>
+                        </div>
+
+                        <!-- Ustki qatlam: Chang Canvas -->
+                        <canvas id="dustCanvas" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing touch-none transition-opacity duration-700"></canvas>
+                    </div>
+
+                    <!-- Progress va Holat -->
+                    <div class="max-w-md mx-auto flex items-center justify-between text-xs text-slate-400">
+                        <span>Tozalash darajasi: <strong id="cleanPercent" class="text-amber-400">0%</strong></span>
+                        <button onclick="renderMemoryGame(${idx})" class="text-slate-400 hover:text-white underline cursor-pointer">Qayta changlatish</button>
+                    </div>
+                </div>
+            `;
+
+            initDustCanvas();
+        }
+
+        function initDustCanvas() {
+            const canvas = document.getElementById('dustCanvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            // Chang qatlamini chizish
+            ctx.fillStyle = '#475569';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Chang tekstura nuqtalari
+            for (let i = 0; i < 650; i++) {
+                ctx.fillStyle = Math.random() > 0.5 ? 'rgba(148, 163, 184, 0.35)' : 'rgba(30, 41, 59, 0.45)';
+                ctx.beginPath();
+                ctx.arc(Math.random() * canvas.width, Math.random() * canvas.height, Math.random() * 5 + 1, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // O'rgimchak to'ri chiziqlari va yozuv
+            ctx.strokeStyle = 'rgba(255,255,255,0.12)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(0, 0); ctx.lineTo(90, 70);
+            ctx.moveTo(canvas.width, 0); ctx.lineTo(canvas.width - 90, 70);
+            ctx.stroke();
+
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            ctx.font = 'bold 14px Inter, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('🧹 Changni artish uchun suring', canvas.width / 2, canvas.height / 2);
+
+            let isDrawing = false;
+
+            function scratch(x, y) {
+                if (isArtifactCleaned) return;
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.beginPath();
+                ctx.arc(x, y, 28, 0, Math.PI * 2);
+                ctx.fill();
+                checkCleanProgress();
+            }
+
+            function getPos(e) {
+                const r = canvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return { x: clientX - r.left, y: clientY - r.top };
+            }
+
+            canvas.addEventListener('mousedown', (e) => { isDrawing = true; const p = getPos(e); scratch(p.x, p.y); });
+            canvas.addEventListener('mousemove', (e) => { if (isDrawing) { const p = getPos(e); scratch(p.x, p.y); } });
+            window.addEventListener('mouseup', () => { isDrawing = false; });
+
+            canvas.addEventListener('touchstart', (e) => { isDrawing = true; const p = getPos(e); scratch(p.x, p.y); }, { passive: true });
+            canvas.addEventListener('touchmove', (e) => { if (isDrawing) { const p = getPos(e); scratch(p.x, p.y); } }, { passive: true });
+            canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+            let checkThrottle = 0;
+            function checkCleanProgress() {
+                checkThrottle++;
+                if (checkThrottle % 6 !== 0) return;
+
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
+                let transparentPixels = 0;
+                const totalPixels = imgData.length / 4;
+
+                for (let i = 3; i < imgData.length; i += 16) {
+                    if (imgData[i] === 0) transparentPixels++;
+                }
+
+                const percent = Math.min(100, Math.round((transparentPixels / (totalPixels / 4)) * 100));
+                const percentEl = document.getElementById('cleanPercent');
+                if (percentEl) percentEl.textContent = `${percent}%`;
+
+                if (percent >= 55 && !isArtifactCleaned) {
+                    isArtifactCleaned = true;
+                    if (percentEl) percentEl.textContent = '100%';
+                    canvas.style.opacity = '0';
+                    canvas.style.pointerEvents = 'none';
+                    const box = document.getElementById('artifactBox');
+                    if (box) {
+                        box.classList.add('artifact-revealed');
+                        const bRect = box.getBoundingClientRect();
+                        spawnParticles(bRect.left + bRect.width / 2, bRect.top + bRect.height / 2, ['✨', '🌟', '💛', '🕰️']);
+                    }
+                }
+            }
+        }
+
+        /* =========================================================
+           3. MINI-O'YIN: VAQT ME'MORI (DARS JADVALI KONSTRUKTORI)
+        ========================================================= */
+        const subjects = [
+            { id: 'robot', name: 'Robototexnika', teacher: 'Ustoz Karim', icon: '🤖', reqRoom: 'Lab', hint: 'Faqat Laboratoriyaga qo‘yiladi' },
+            { id: 'math', name: 'Oliy Matematika', teacher: 'Ustoz Malika', icon: '📐', reqRoom: 'Any', hint: 'Ustoz Malika 09:00 da band!' },
+            { id: 'astro', name: 'Astronomiya', teacher: 'Ustoz Karim', icon: '🔭', reqRoom: 'Any', hint: 'Ustoz Karim bir vaqtda 2 dars o‘ta olmaydi' }
+        ];
+
+        // 4 ta slot: [09:00 Ma'ruza, 09:00 Lab, 10:30 Ma'ruza, 10:30 Lab]
+        let timeSlots = [null, null, null, null];
+        let activeSubjectId = 'robot';
+
+        function renderTimeGame() {
+            timeSlots = [null, null, null, null];
+            activeSubjectId = 'robot';
+            updateTimeUI();
+        }
+
+        function selectSubject(id) {
+            activeSubjectId = id;
+            updateTimeUI();
+        }
+
+        function placeSubjectInSlot(slotIdx, event) {
+            // Agar slotda allaqachon shu fan bo'lsa, olib tashlaymiz
+            if (timeSlots[slotIdx] === activeSubjectId) {
+                timeSlots[slotIdx] = null;
+                updateTimeUI();
+                return;
+            }
+
+            // Boshqa slotda bu fan turgan bo'lsa, ko'chiramiz
+            const existingIdx = timeSlots.indexOf(activeSubjectId);
+            if (existingIdx !== -1) {
+                timeSlots[existingIdx] = null;
+            }
+
+            timeSlots[slotIdx] = activeSubjectId;
+            updateTimeUI();
+
+            const validation = validateSchedule();
+            if (validation.allPlaced && validation.errors.length === 0) {
+                spawnParticles(event.clientX, event.clientY, ['⭐', '🎓', '✨', '🏆']);
+            }
+        }
+
+        function validateSchedule() {
+            const errors = [];
+            const placedCount = timeSlots.filter(Boolean).length;
+
+            // 1-qoida: Robototexnika faqat Lab xonasida (index 1 yoki 3) bo'lishi kerak
+            const robotIdx = timeSlots.indexOf('robot');
+            if (robotIdx !== -1 && robotIdx !== 1 && robotIdx !== 3) {
+                errors.push("❌ Robototexnika darsi uchun maxsus Laboratoriya xonasi kerak!");
+            }
+
+            // 2-qoida: Ustoz Malika (Matematika) 09:00 da (index 0 yoki 1) band
+            const mathIdx = timeSlots.indexOf('math');
+            if (mathIdx !== -1 && (mathIdx === 0 || mathIdx === 1)) {
+                errors.push("❌ Ustoz Malika soat 09:00 da majlisda band! Uni 10:30 ga qo'ying.");
+            }
+
+            // 3-qoida: Ustoz Karim (Robototexnika va Astronomiya) bir vaqtda ikki xonada bo'la olmaydi
+            const astroIdx = timeSlots.indexOf('astro');
+            if (robotIdx !== -1 && astroIdx !== -1) {
+                const robotTime = robotIdx < 2 ? '09:00' : '10:30';
+                const astroTime = astroIdx < 2 ? '09:00' : '10:30';
+                if (robotTime === astroTime) {
+                    errors.push("❌ To'qnashuv! Ustoz Karim bir vaqtning o'zida ham Robototexnika, ham Astronomiya darsini o'ta olmaydi.");
+                }
+            }
+
+            return {
+                allPlaced: placedCount === 3,
+                errors
+            };
+        }
+
+        function updateTimeUI() {
+            const { allPlaced, errors } = validateSchedule();
+            const isPerfect = allPlaced && errors.length === 0;
+
+            const slotMeta = [
+                { time: '09:00', room: "Ma'ruza zali", type: 'Lecture' },
+                { time: '09:00', room: 'Laboratoriya 🧪', type: 'Lab' },
+                { time: '10:30', room: "Ma'ruza zali", type: 'Lecture' },
+                { time: '10:30', room: 'Laboratoriya 🧪', type: 'Lab' }
+            ];
+
+            modalContent.innerHTML = `
+                <div class="space-y-5">
+                    <!-- Shartlar paneli -->
+                    <div class="bg-indigo-950/50 border border-indigo-500/25 rounded-2xl p-3.5 text-xs text-indigo-200 space-y-1">
+                        <div class="font-bold text-white mb-1">📋 Me'mor Qoidalari:</div>
+                        <div>1. <strong>Robototexnika</strong> faqat <em>Laboratoriya</em> xonasida o'tiladi.</div>
+                        <div>2. <strong>Ustoz Malika</strong> (Matematika) soat 09:00 da band.</div>
+                        <div>3. <strong>Ustoz Karim</strong> (Robototexnika va Astronomiya) bir vaqtda 2 ta dars o'ta olmaydi.</div>
+                    </div>
+
+                    <!-- Tanlanadigan Fanlar -->
+                    <div>
+                        <div class="text-xs text-slate-400 mb-2 text-center">1-qadam: Joylashtirish uchun fanni tanlang:</div>
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                            ${subjects.map(sub => {
+                                const isPlaced = timeSlots.includes(sub.id);
+                                const isSelected = activeSubjectId === sub.id;
+                                return `
+                                    <button onclick="selectSubject('${sub.id}')" 
+                                        class="p-3 rounded-2xl border text-left transition-all cursor-pointer flex items-center gap-3
+                                        ${isSelected 
+                                            ? 'bg-indigo-600 border-indigo-300 text-white shadow-lg scale-[1.02]' 
+                                            : 'bg-slate-800/90 border-white/10 text-slate-300 hover:bg-slate-700'}">
+                                        <span class="text-2xl">${sub.icon}</span>
+                                        <div class="min-w-0 flex-1">
+                                            <div class="text-xs font-bold truncate flex items-center justify-between">
+                                                <span>${sub.name}</span>
+                                                ${isPlaced ? '<span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-1.5 rounded">✓</span>' : ''}
+                                            </div>
+                                            <div class="text-[11px] opacity-75">${sub.teacher}</div>
+                                        </div>
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Dars Jadvali Kataklari -->
+                    <div>
+                        <div class="text-xs text-slate-400 mb-2 text-center">2-qadam: Mos vaqt va xona katagini bosing:</div>
+                        <div class="grid grid-cols-2 gap-3">
+                            ${slotMeta.map((meta, idx) => {
+                                const subId = timeSlots[idx];
+                                const sub = subjects.find(s => s.id === subId);
+                                return `
+                                    <button onclick="placeSubjectInSlot(${idx}, event)" 
+                                        class="p-3.5 rounded-2xl border text-left transition-all cursor-pointer min-h-[86px] flex flex-col justify-between
+                                        ${sub 
+                                            ? (isPerfect ? 'bg-emerald-950/60 border-emerald-400 slot-valid' : 'bg-slate-800 border-indigo-400/50') 
+                                            : 'bg-slate-900/70 border-dashed border-white/15 hover:border-indigo-400/60'}">
+                                        <div class="flex items-center justify-between text-[11px] font-semibold">
+                                            <span class="px-2 py-0.5 rounded bg-white/10 text-indigo-300">⏰ ${meta.time}</span>
+                                            <span class="text-slate-400">${meta.room}</span>
+                                        </div>
+                                        ${sub ? `
+                                            <div class="mt-2 flex items-center gap-2">
+                                                <span class="text-xl">${sub.icon}</span>
+                                                <div>
+                                                    <div class="text-xs font-bold text-white">${sub.name}</div>
+                                                    <div class="text-[10px] text-slate-400">${sub.teacher}</div>
+                                                </div>
+                                            </div>
+                                        ` : `
+                                            <div class="mt-2 text-xs text-slate-500 italic">+ Bo'sh vaqt</div>
+                                        `}
+                                    </button>
+                                `;
+                            }).join('')}
+                        </div>
+                    </div>
+
+                    <!-- Natija va Xatoliklar -->
+                    ${errors.length > 0 ? `
+                        <div class="p-3 rounded-2xl bg-rose-500/15 border border-rose-500/40 text-rose-200 text-xs space-y-1">
+                            ${errors.map(err => `<div>${err}</div>`).join('')}
+                        </div>
+                    ` : isPerfect ? `
+                        <div class="p-4 rounded-2xl bg-emerald-500/20 border border-emerald-400/50 text-emerald-200 text-sm font-semibold text-center">
+                            🏆 Ajoyib! Siz hech qanday to'qnashuvsiz mukammal dars jadvalini tuzdingiz!
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

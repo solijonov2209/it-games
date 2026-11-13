@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X va O</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      font-family: Arial, sans-serif; color: #fff; user-select: none;
+      background: linear-gradient(135deg, #b14cf5, #ff5c9a);
+    }
+    h1 { margin: 0; }
+    .modes button, .again {
+      padding: 8px 16px; margin: 0 4px; font-size: 16px; border: 2px solid #fff; border-radius: 999px;
+      background: transparent; color: #fff; font-weight: bold; cursor: pointer;
+    }
+    .modes button.active { background: #fff; color: #b14cf5; }
+    .status { font-size: 22px; font-weight: bold; min-height: 28px; }
+    .board {
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+      width: min(340px, 80vw, 55vh);
+    }
+    .cell {
+      aspect-ratio: 1; border-radius: 16px; background: #ffffff33; cursor: pointer;
+      display: grid; place-items: center; font-size: clamp(40px, 12vw, 72px); font-weight: 900;
+      transition: background 0.2s, transform 0.1s;
+    }
+    .cell:hover { background: #ffffff55; }
+    .cell.x { color: #ffe14d; }
+    .cell.o { color: #7cf2ff; }
+    .cell.win { background: #ffffffaa; transform: scale(1.05); }
+    .score { display: flex; gap: 20px; font-size: 18px; }
+  </style>
+</head>
+<body>
+  <h1>❌ X va O ⭕</h1>
+  <div class="modes">
+    <button id="vsAi" class="active">🤖 Kompyuterga qarshi</button>
+    <button id="vsFriend">👫 Do'st bilan</button>
+  </div>
+  <div class="score"><span>X: <b id="sx">0</b></span><span>Durang: <b id="sd">0</b></span><span>O: <b id="so">0</b></span></div>
+  <div class="status" id="status"></div>
+  <div class="board" id="board"></div>
+  <button class="again" id="again">🔄 Yangi raund</button>
+
+  <script>
+    var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    var cells, turn, over, vsAi = true;
+    var score = { X: 0, O: 0, D: 0 };
+    var boardEl = document.getElementById("board");
+
+    function newRound() {
+      cells = ["", "", "", "", "", "", "", "", ""];
+      turn = "X";
+      over = false;
+      draw();
+    }
+
+    function draw() {
+      boardEl.innerHTML = "";
+      cells.forEach(function (v, i) {
+        var c = document.createElement("div");
+        c.className = "cell " + v.toLowerCase();
+        c.textContent = v;
+        c.onclick = function () { play(i); };
+        boardEl.appendChild(c);
+      });
+      if (!over) {
+        document.getElementById("status").textContent =
+          vsAi && turn === "O" ? "🤖 Kompyuter o'ylayapti..." : "Navbat: " + turn;
+      }
+    }
+
+    function winner(b) {
+      for (var i = 0; i < LINES.length; i++) {
+        var l = LINES[i];
+        if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return l;
+      }
+      return null;
+    }
+
+    function play(i) {
+      if (over || cells[i] || (vsAi && turn === "O")) return;
+      move(i);
+      if (vsAi && !over) setTimeout(aiMove, 400);
+    }
+
+    function move(i) {
+      cells[i] = turn;
+      var line = winner(cells);
+      if (line) {
+        over = true;
+        draw();
+        line.forEach(function (k) { boardEl.children[k].classList.add("win"); });
+        document.getElementById("status").textContent = "🎉 " + turn + " yutdi!";
+        score[turn]++;
+      } else if (cells.indexOf("") === -1) {
+        over = true;
+        draw();
+        document.getElementById("status").textContent = "🤝 Durang!";
+        score.D++;
+      } else {
+        turn = turn === "X" ? "O" : "X";
+        draw();
+      }
+      document.getElementById("sx").textContent = score.X;
+      document.getElementById("so").textContent = score.O;
+      document.getElementById("sd").textContent = score.D;
+    }
+
+    // Kompyuter: 1) yuta olsa — yutadi, 2) to'sishi kerak bo'lsa — to'sadi,
+    // 3) markaz, 4) burchak, 5) istalgan bo'sh katak
+    function aiMove() {
+      var empty = [];
+      cells.forEach(function (v, i) { if (!v) empty.push(i); });
+
+      function findWinning(mark) {
+        for (var k = 0; k < empty.length; k++) {
+          var test = cells.slice();
+          test[empty[k]] = mark;
+          if (winner(test)) return empty[k];
+        }
+        return -1;
+      }
+
+      var choice = findWinning("O");
+      if (choice === -1) choice = findWinning("X");
+      if (choice === -1 && !cells[4]) choice = 4;
+      if (choice === -1) {
+        var corners = [0, 2, 6, 8].filter(function (c) { return !cells[c]; });
+        if (corners.length && Math.random() < 0.7) choice = corners[Math.floor(Math.random() * corners.length)];
+      }
+      if (choice === -1) choice = empty[Math.floor(Math.random() * empty.length)];
+      move(choice);
+    }
+
+    function setMode(ai) {
+      vsAi = ai;
+      document.getElementById("vsAi").classList.toggle("active", ai);
+      document.getElementById("vsFriend").classList.toggle("active", !ai);
+      score = { X: 0, O: 0, D: 0 };
+      newRound();
+    }
+
+    document.getElementById("vsAi").onclick = function () { setMode(true); };
+    document.getElementById("vsFriend").onclick = function () { setMode(false); };
+    document.getElementById("again").onclick = newRound;
+    newRound();
+  </script>
+</body>
+</html>

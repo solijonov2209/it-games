@@ -1,0 +1,1448 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SUPER VELO - O'rmon Velopoygasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0b1911;
+            font-family: 'Inter', sans-serif;
+            color: #ffffff;
+        }
+        h1, h2, h3, .font-display {
+            font-family: 'Montserrat', sans-serif;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+        }
+        .glass-panel {
+            background: rgba(13, 33, 22, 0.82);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(74, 222, 128, 0.25);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .bike-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+            background: linear-gradient(145deg, rgba(22, 48, 33, 0.9), rgba(12, 28, 19, 0.95));
+            border: 2px solid rgba(255, 255, 255, 0.1);
+        }
+        .bike-card:hover {
+            transform: translateY(-4px);
+            border-color: rgba(74, 222, 128, 0.6);
+        }
+        .bike-card.selected {
+            border-color: #facc15;
+            background: linear-gradient(145deg, rgba(36, 74, 48, 0.95), rgba(18, 43, 28, 0.98));
+            box-shadow: 0 0 25px rgba(250, 204, 21, 0.35);
+            transform: scale(1.03);
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #22c55e 0%, #15803d 100%);
+            box-shadow: 0 6px 20px rgba(34, 197, 94, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(34, 197, 94, 0.65), inset 0 2px 0 rgba(255, 255, 255, 0.4);
+        }
+        .btn-primary:active {
+            transform: translateY(1px);
+        }
+        /* Custom scrollbar for small screens */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(74, 222, 128, 0.4);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="relative w-screen h-screen overflow-hidden">
+
+    <!-- Asosiy O'yin Kenvasi (O'rmon trassasi va poyga) -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Ovozni boshqarish tugmasi -->
+    <button id="muteBtn" title="Ovozni yoqish/o'chirish" class="fixed top-4 right-4 z-50 w-11 h-11 rounded-full glass-panel flex items-center justify-center text-white hover:bg-emerald-800/70 transition cursor-pointer">
+        <svg id="soundOnIcon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+        </svg>
+        <svg id="soundOffIcon" xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-400 hidden" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
+        </svg>
+    </button>
+
+    <!-- 1. VELOSIPED TANLASH EKRANI (Start Menu) -->
+    <div id="selectionScreen" class="fixed inset-0 z-40 flex flex-col items-center justify-center p-3 sm:p-6 bg-black/55 backdrop-blur-sm overflow-y-auto">
+        <div class="glass-panel w-full max-w-5xl rounded-3xl p-4 sm:p-7 flex flex-col max-h-[95vh]">
+            <!-- Sarlavha -->
+            <div class="text-center mb-4 sm:mb-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 border border-emerald-400/30 text-emerald-300 text-xs sm:text-sm font-semibold mb-2">
+                    <span>🌲 O'RMON POYGASI • 1 DAQIQA • 20 TEZLIK</span>
+                </div>
+                <h1 class="font-display text-3xl sm:text-5xl font-black tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 via-emerald-300 to-green-400 drop-shadow">
+                    SUPER VELO
+                </h1>
+                <p class="text-emerald-100/80 text-sm sm:text-base mt-1">
+                    Poyga uchun 6 ta velosiped va haydovchidan birini tanlang!
+                </p>
+            </div>
+
+            <!-- 6 ta velosiped ro'yxati -->
+            <div id="bikeGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto pr-1 pb-2">
+                <!-- JS orqali 6 ta velosiped kartochkasi yaratiladi -->
+            </div>
+
+            <!-- Pastki boshqaruv va Boshlash tugmasi -->
+            <div class="mt-4 sm:mt-6 pt-4 border-t border-white/10 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-xs sm:text-sm text-emerald-200/90 flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                    <span class="bg-white/10 px-2.5 py-1 rounded-lg">⬅️ ➡️ Chap / O'ng</span>
+                    <span class="bg-white/10 px-2.5 py-1 rounded-lg">⬆️ Gaz (20+ Tezlik)</span>
+                    <span class="bg-white/10 px-2.5 py-1 rounded-lg">⚡ Yashil chiziq: Tezlashish</span>
+                </div>
+                <button id="startRaceBtn" class="btn-primary w-full sm:w-auto px-8 py-3.5 rounded-2xl font-display font-extrabold text-lg sm:text-xl text-white tracking-wide flex items-center justify-center gap-2 cursor-pointer">
+                    <span>POYGANI BOSHLASH</span>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. POYGA JARAYONI HUD (Vaqt, Tezlik, O'rin, Mini-xarita) -->
+    <div id="hudScreen" class="fixed inset-0 z-30 pointer-events-none hidden flex-col justify-between p-3 sm:p-5">
+        <!-- Yuqori panel -->
+        <div class="flex flex-wrap items-start justify-between gap-2 pr-12">
+            <!-- Vaqt va O'rin -->
+            <div class="flex items-center gap-2 sm:gap-3">
+                <!-- 1 daqiqalik taymer -->
+                <div class="glass-panel px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl flex items-center gap-2.5">
+                    <span class="text-xl sm:text-2xl">⏱️</span>
+                    <div>
+                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-emerald-300 font-bold">Qolgan Vaqt</div>
+                        <div id="timerDisplay" class="font-display text-xl sm:text-3xl font-black text-white leading-none">01:00</div>
+                    </div>
+                </div>
+
+                <!-- Hozirgi o'rin -->
+                <div class="glass-panel px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl flex items-center gap-2.5">
+                    <span class="text-xl sm:text-2xl">🏆</span>
+                    <div>
+                        <div class="text-[10px] sm:text-xs uppercase tracking-wider text-yellow-300 font-bold">O'rin</div>
+                        <div class="font-display text-xl sm:text-3xl font-black text-yellow-400 leading-none">
+                            <span id="rankDisplay">1</span><span class="text-sm sm:text-lg text-white/70">/6</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tezlik o'lchagich (20 tezlik tizimi) -->
+            <div class="glass-panel px-4 py-2 sm:px-6 sm:py-2.5 rounded-2xl flex items-center gap-3">
+                <div class="text-right">
+                    <div class="text-[10px] sm:text-xs uppercase tracking-wider text-cyan-300 font-bold">Tezlik</div>
+                    <div class="font-display text-2xl sm:text-3xl font-black text-cyan-300 leading-none">
+                        <span id="speedDisplay">20</span> <span class="text-xs sm:text-sm font-semibold text-white/80">tezlik</span>
+                    </div>
+                </div>
+                <!-- Tezlik shkalasi -->
+                <div class="w-3 h-10 sm:h-12 bg-black/50 rounded-full overflow-hidden flex flex-col justify-end p-0.5 border border-white/15">
+                    <div id="speedBarFill" class="w-full bg-gradient-to-t from-emerald-400 via-yellow-400 to-red-500 rounded-full transition-all duration-100" style="height: 80%;"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Poyga progress chizig'i (6 ta velosipedchi holati) -->
+        <div class="w-full max-w-2xl mx-auto mt-2">
+            <div class="glass-panel px-4 py-2 rounded-full relative">
+                <div class="flex justify-between text-[10px] text-emerald-200/80 font-bold mb-1 px-1">
+                    <span>START 🌲</span>
+                    <span>O'RMON YO'LI (1 DAQIQA)</span>
+                    <span>🏁 FINISH</span>
+                </div>
+                <div class="w-full h-2.5 bg-black/50 rounded-full relative overflow-visible">
+                    <div id="raceProgressFill" class="h-full bg-gradient-to-r from-emerald-500 to-yellow-400 rounded-full" style="width: 0%;"></div>
+                    <!-- 6 ta poygachi nuqtalari shu yerga qo'shiladi -->
+                    <div id="minimapDots" class="absolute inset-0"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start sanog'i (3, 2, 1, OLG'A!) -->
+        <div id="countdownOverlay" class="fixed inset-0 flex items-center justify-center pointer-events-none hidden">
+            <div id="countdownText" class="font-display text-7xl sm:text-9xl font-black text-yellow-300 drop-shadow-[0_10px_25px_rgba(0,0,0,0.85)] animate-bounce">
+                3
+            </div>
+        </div>
+
+        <!-- Mobil / Sensorli ekran boshqaruv tugmalari -->
+        <div class="mt-auto flex items-end justify-between pointer-events-auto sm:opacity-80 hover:opacity-100 transition">
+            <!-- Chap va O'ng tugmalar -->
+            <div class="flex gap-3">
+                <button id="btnLeft" class="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl glass-panel active:bg-emerald-500/50 flex items-center justify-center text-2xl sm:text-3xl shadow-lg">
+                    ⬅️
+                </button>
+                <button id="btnRight" class="w-16 h-16 sm:w-18 sm:h-18 rounded-2xl glass-panel active:bg-emerald-500/50 flex items-center justify-center text-2xl sm:text-3xl shadow-lg">
+                    ➡️
+                </button>
+            </div>
+
+            <!-- Qo'ng'iroq va Gaz tugmalari -->
+            <div class="flex gap-3">
+                <button id="btnBell" class="w-14 h-16 rounded-2xl glass-panel active:bg-yellow-500/50 flex items-center justify-center text-2xl shadow-lg" title="Qo'ng'iroq chalish">
+                    🔔
+                </button>
+                <button id="btnBoost" class="px-5 h-16 rounded-2xl bg-gradient-to-t from-emerald-600 to-green-400 border border-white/30 active:scale-95 flex flex-col items-center justify-center shadow-lg">
+                    <span class="text-xl leading-none">⚡</span>
+                    <span class="font-display font-extrabold text-xs tracking-wider">GAZ</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. POYGA NATIJALARI EKRANI (Finish / Podium) -->
+    <div id="resultScreen" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-black/70 backdrop-blur-md">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-5 sm:p-8 text-center">
+            <div class="text-4xl sm:text-5xl mb-2">🏁🏆🏁</div>
+            <h2 class="font-display text-2xl sm:text-4xl font-black text-yellow-300">POYGA YAKUNLANDI!</h2>
+            <p id="resultSubtitle" class="text-emerald-200 text-sm sm:text-base mt-1 mb-5">
+                1 daqiqalik SUPER VELO o'rmon poygasi natijalari
+            </p>
+
+            <!-- 6 ta poygachi reytingi -->
+            <div id="leaderboardList" class="space-y-2 mb-6 text-left max-h-[48vh] overflow-y-auto pr-1">
+                <!-- JS orqali to'ldiriladi -->
+            </div>
+
+            <!-- Qayta o'ynash tugmalari -->
+            <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <button id="playAgainBtn" class="btn-primary px-7 py-3.5 rounded-2xl font-display font-extrabold text-base sm:text-lg text-white cursor-pointer">
+                    🔄 YANA POYGA O'YNASH
+                </button>
+                <button id="changeBikeBtn" class="px-7 py-3.5 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/20 font-display font-bold text-base sm:text-lg text-white transition cursor-pointer">
+                    🚲 VELOSIPEDNI O'ZGARTIRISH
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * SUPER VELO - 6 ta velosiped va haydovchi ishtirokidagi 1 daqiqalik o'rmon poygasi
+         * Tezlik tizimi: 20 tezlik (bazaviy) + tezlashish imkoniyati
+         */
+
+        // --- WEB AUDIO API OVOZ EFFEKTLARI ---
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtx) this.ctx = new AudioCtx();
+                }
+                if (this.ctx && this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+            toggleMute() {
+                this.muted = !this.muted;
+                return this.muted;
+            }
+            playTone(freq, type, duration, vol = 0.15, slideTo = null) {
+                if (this.muted || !this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    if (slideTo) {
+                        osc.frequency.exponentialRampToValueAtTime(slideTo, this.ctx.currentTime + duration);
+                    }
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            }
+            playBell() {
+                this.init();
+                this.playTone(1320, 'sine', 0.35, 0.2);
+                setTimeout(() => this.playTone(1760, 'sine', 0.45, 0.18), 90);
+            }
+            playCountdown(isGo = false) {
+                this.init();
+                if (isGo) {
+                    this.playTone(880, 'triangle', 0.45, 0.25, 1174);
+                } else {
+                    this.playTone(440, 'sine', 0.2, 0.2);
+                }
+            }
+            playBoost() {
+                this.init();
+                this.playTone(300, 'sawtooth', 0.35, 0.15, 780);
+            }
+            playBump() {
+                this.init();
+                this.playTone(140, 'square', 0.25, 0.2, 55);
+            }
+            playFinish() {
+                this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50];
+                notes.forEach((n, i) => {
+                    setTimeout(() => this.playTone(n, 'triangle', 0.35, 0.22), i * 110);
+                });
+            }
+        }
+        const sound = new SoundEngine();
+
+        // --- 6 TA VELOSIPED VA HAYDOVCHI MA'LUMOTLARI ---
+        const BIKES_DATA = [
+            {
+                id: 0,
+                name: "Tog' Burguti",
+                riderName: "Jasur",
+                frameColor: "#ef4444",    // Qizil
+                accentColor: "#fca5a5",
+                jerseyColor: "#dc2626",
+                helmetColor: "#ffffff",
+                skinColor: "#f1c27d",
+                speedStat: 20,
+                handlingStat: 92,
+                tag: "Muvozanatli"
+            },
+            {
+                id: 1,
+                name: "Yashin Velo",
+                riderName: "Sardor",
+                frameColor: "#facc15",    // Sariq
+                accentColor: "#fef08a",
+                jerseyColor: "#eab308",
+                helmetColor: "#1e293b",
+                skinColor: "#e0ac69",
+                speedStat: 21,
+                handlingStat: 88,
+                tag: "Tezkor"
+            },
+            {
+                id: 2,
+                name: "O'rmon Ruhi",
+                riderName: "Aziza",
+                frameColor: "#10b981",    // Zumrad yashil
+                accentColor: "#6ee7b7",
+                jerseyColor: "#059669",
+                helmetColor: "#ecfdf5",
+                skinColor: "#ffdbac",
+                speedStat: 20,
+                handlingStat: 96,
+                tag: "Chaqqon"
+            },
+            {
+                id: 3,
+                name: "Ko'k To'lqin",
+                riderName: "Bekzod",
+                frameColor: "#3b82f6",    // Moviy
+                accentColor: "#93c5fd",
+                jerseyColor: "#2563eb",
+                helmetColor: "#f8fafc",
+                skinColor: "#d2996c",
+                speedStat: 20,
+                handlingStat: 90,
+                tag: "Barqaror"
+            },
+            {
+                id: 4,
+                name: "Binafsha Shiddat",
+                riderName: "Madina",
+                frameColor: "#a855f7",    // Binafsha
+                accentColor: "#d8b4fe",
+                jerseyColor: "#9333ea",
+                helmetColor: "#fae8ff",
+                skinColor: "#f1c27d",
+                speedStat: 21,
+                handlingStat: 87,
+                tag: "Shiddatli"
+            },
+            {
+                id: 5,
+                name: "Oltin Qoplon",
+                riderName: "Otabek",
+                frameColor: "#f97316",    // To'q sariq
+                accentColor: "#fdba74",
+                jerseyColor: "#ea580c",
+                helmetColor: "#111827",
+                skinColor: "#c68642",
+                speedStat: 20,
+                handlingStat: 94,
+                tag: "Usta"
+            }
+        ];
+
+        // --- O'YIN HOLATI VA SOZLAMALARI ---
+        const RACE_DURATION = 60.0; // 1 minut (60 soniya)
+        const BASE_TARGET_SPEED = 20.0; // Foydalanuvchi so'ragan 20 tezlik
+
+        let selectedBikeId = 0;
+        let gameState = 'SELECT'; // 'SELECT', 'COUNTDOWN', 'RACING', 'FINISHED'
+        let raceTimeLeft = RACE_DURATION;
+        let lastTimestamp = 0;
+
+        // Yo'l va kamera ko'rsatkichlari
+        const ROAD_WIDTH = 1600; // Virtual trassa kengligi
+        const FINISH_DISTANCE = 20 * 60 * 55; // 60 soniyada 20 tezlik bilan bosiladigan masofa
+
+        // O'yinchilar (6 ta velosiped va odam)
+        let racers = [];
+        // O'rmon muhiti obyektlari
+        let trees = [];
+        let trackItems = []; // Tezlashish chiziqlari va to'siqlar (tosh, ko'lmak)
+        let particles = [];
+
+        // Boshqaruv tugmalari holati
+        const keys = {
+            left: false,
+            right: false,
+            up: false
+        };
+
+        // --- DOM ELEMENTLAR ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const selectionScreen = document.getElementById('selectionScreen');
+        const bikeGrid = document.getElementById('bikeGrid');
+        const startRaceBtn = document.getElementById('startRaceBtn');
+        const hudScreen = document.getElementById('hudScreen');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const rankDisplay = document.getElementById('rankDisplay');
+        const speedDisplay = document.getElementById('speedDisplay');
+        const speedBarFill = document.getElementById('speedBarFill');
+        const raceProgressFill = document.getElementById('raceProgressFill');
+        const minimapDots = document.getElementById('minimapDots');
+        const countdownOverlay = document.getElementById('countdownOverlay');
+        const countdownText = document.getElementById('countdownText');
+        const resultScreen = document.getElementById('resultScreen');
+        const leaderboardList = document.getElementById('leaderboardList');
+        const playAgainBtn = document.getElementById('playAgainBtn');
+        const changeBikeBtn = document.getElementById('changeBikeBtn');
+        const muteBtn = document.getElementById('muteBtn');
+
+        // --- CANVAS O'LCHAMINI MOSLASHTIRISH ---
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // --- ODAM MINIB OLGAN VELOSIPEDNI CHIZISH FUNKSIYASI ---
+        // Bu funksiya ham tanlov menyusida, ham poyga maydonida ishlatiladi
+        function drawCyclistOnBike(targetCtx, bike, x, y, scale, pedalPhase, leanAngle = 0, isPlayer = false, speed = 20) {
+            targetCtx.save();
+            targetCtx.translate(x, y);
+            targetCtx.scale(scale, scale);
+
+            // Soyasi (yerda)
+            targetCtx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            targetCtx.beginPath();
+            targetCtx.ellipse(0, 38, 16, 42, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // O'yinchi belgisi (yuqorida yulduzcha / "SIZ")
+            if (isPlayer) {
+                targetCtx.save();
+                targetCtx.fillStyle = '#facc15';
+                targetCtx.beginPath();
+                targetCtx.moveTo(0, -68);
+                targetCtx.lineTo(-8, -80);
+                targetCtx.lineTo(8, -80);
+                targetCtx.closePath();
+                targetCtx.fill();
+
+                targetCtx.font = 'bold 11px Montserrat, sans-serif';
+                targetCtx.textAlign = 'center';
+                targetCtx.fillStyle = '#fef08a';
+                targetCtx.fillText('SIZ', 0, -84);
+                targetCtx.restore();
+            }
+
+            // Burilish burchagi (lean)
+            targetCtx.rotate(leanAngle * 0.25);
+
+            // Orqa g'ildirak (3D orqadan ko'rinish)
+            const wheelWobble = Math.sin(pedalPhase * 2) * 0.8;
+            targetCtx.fillStyle = '#18181b';
+            targetCtx.strokeStyle = '#3f3f46';
+            targetCtx.lineWidth = 2;
+            targetCtx.beginPath();
+            targetCtx.roundRect(-6 + wheelWobble, 10, 12, 32, 6);
+            targetCtx.fill();
+            targetCtx.stroke();
+
+            // G'ildirak protektori (aylanish effekti)
+            const treadOffset = (pedalPhase * 12) % 10;
+            targetCtx.fillStyle = '#52525b';
+            for (let ty = 12 + treadOffset; ty < 38; ty += 10) {
+                targetCtx.fillRect(-4 + wheelWobble, ty, 8, 3);
+            }
+
+            // Orqa vilka va velosiped ramasi
+            targetCtx.strokeStyle = bike.frameColor;
+            targetCtx.lineWidth = 4.5;
+            targetCtx.lineCap = 'round';
+            targetCtx.beginPath();
+            targetCtx.moveTo(-4, 24);
+            targetCtx.lineTo(0, 2);
+            targetCtx.lineTo(4, 24);
+            targetCtx.stroke();
+
+            // Odamning oyoqlari (pedal aylantirishi)
+            const leftPedalY = Math.sin(pedalPhase) * 9;
+            const rightPedalY = Math.sin(pedalPhase + Math.PI) * 9;
+
+            // Chap oyoq
+            targetCtx.strokeStyle = '#1e293b'; // Sport shortik
+            targetCtx.lineWidth = 6.5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(-7, -4);
+            targetCtx.lineTo(-10, 10 + leftPedalY * 0.5);
+            targetCtx.stroke();
+
+            targetCtx.strokeStyle = bike.skinColor; // Boldir
+            targetCtx.lineWidth = 5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(-10, 10 + leftPedalY * 0.5);
+            targetCtx.lineTo(-9, 21 + leftPedalY);
+            targetCtx.stroke();
+
+            // Chap krossovka
+            targetCtx.fillStyle = bike.accentColor;
+            targetCtx.beginPath();
+            targetCtx.roundRect(-13, 19 + leftPedalY, 8, 6, 3);
+            targetCtx.fill();
+
+            // O'ng oyoq
+            targetCtx.strokeStyle = '#1e293b';
+            targetCtx.lineWidth = 6.5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(7, -4);
+            targetCtx.lineTo(10, 10 + rightPedalY * 0.5);
+            targetCtx.stroke();
+
+            targetCtx.strokeStyle = bike.skinColor;
+            targetCtx.lineWidth = 5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(10, 10 + rightPedalY * 0.5);
+            targetCtx.lineTo(9, 21 + rightPedalY);
+            targetCtx.stroke();
+
+            // O'ng krossovka
+            targetCtx.fillStyle = bike.accentColor;
+            targetCtx.beginPath();
+            targetCtx.roundRect(5, 19 + rightPedalY, 8, 6, 3);
+            targetCtx.fill();
+
+            // Velosiped o'rindig'i (egari)
+            targetCtx.fillStyle = '#09090b';
+            targetCtx.beginPath();
+            targetCtx.ellipse(0, 0, 7, 10, 0, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // Rul (velosiped ruli oldinda)
+            targetCtx.strokeStyle = '#cbd5e1';
+            targetCtx.lineWidth = 3.5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(-18, -22);
+            targetCtx.quadraticCurveTo(0, -26, 18, -22);
+            targetCtx.stroke();
+
+            // Rul tutqichlari
+            targetCtx.fillStyle = bike.frameColor;
+            targetCtx.fillRect(-21, -24, 6, 4);
+            targetCtx.fillRect(15, -24, 6, 4);
+
+            // Odamning tanasi (sport futbolkasi / jersey)
+            const bodySway = Math.cos(pedalPhase) * 1.5;
+            targetCtx.fillStyle = bike.jerseyColor;
+            targetCtx.beginPath();
+            targetCtx.moveTo(-11, -3);
+            targetCtx.lineTo(-14 + bodySway, -24);
+            targetCtx.quadraticCurveTo(0 + bodySway, -30, 14 + bodySway, -24);
+            targetCtx.lineTo(11, -3);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Futbolkadagi oq sport chizig'i
+            targetCtx.fillStyle = 'rgba(255,255,255,0.85)';
+            targetCtx.fillRect(-3 + bodySway * 0.6, -24, 6, 18);
+
+            // Odamning qo'llari (rulni ushlab turibdi)
+            targetCtx.strokeStyle = bike.skinColor;
+            targetCtx.lineWidth = 4.5;
+            targetCtx.beginPath();
+            targetCtx.moveTo(-13 + bodySway, -23);
+            targetCtx.lineTo(-18, -22);
+            targetCtx.moveTo(13 + bodySway, -23);
+            targetCtx.lineTo(18, -22);
+            targetCtx.stroke();
+
+            // Odamning boshi va shlemi (dubulg'a)
+            targetCtx.fillStyle = bike.skinColor;
+            targetCtx.beginPath();
+            targetCtx.arc(bodySway, -34, 8.5, 0, Math.PI * 2);
+            targetCtx.fill();
+
+            // Sport shlemi (veloshlem)
+            targetCtx.fillStyle = bike.helmetColor;
+            targetCtx.beginPath();
+            targetCtx.arc(bodySway, -36, 9.5, Math.PI * 0.9, Math.PI * 2.1);
+            targetCtx.lineTo(bodySway + 8, -32);
+            targetCtx.lineTo(bodySway - 8, -32);
+            targetCtx.closePath();
+            targetCtx.fill();
+
+            // Shlem havo teshiklari
+            targetCtx.fillStyle = bike.frameColor;
+            targetCtx.fillRect(bodySway - 4, -43, 2.5, 6);
+            targetCtx.fillRect(bodySway + 1.5, -43, 2.5, 6);
+
+            // Tezlik effekti (20+ tezlikda shamol chiziqlari)
+            if (speed >= 20 && gameState === 'RACING') {
+                targetCtx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+                targetCtx.lineWidth = 1.5;
+                targetCtx.beginPath();
+                targetCtx.moveTo(-22, -10);
+                targetCtx.lineTo(-24, 25);
+                targetCtx.moveTo(22, -10);
+                targetCtx.lineTo(24, 25);
+                targetCtx.stroke();
+            }
+
+            targetCtx.restore();
+        }
+
+        // --- 1. VELOSIPED TANLASH MENYUSINI YARATISH ---
+        function renderBikeSelectionCards() {
+            bikeGrid.innerHTML = '';
+            BIKES_DATA.forEach((bike) => {
+                const isSelected = bike.id === selectedBikeId;
+                const card = document.createElement('div');
+                card.className = `bike-card rounded-2xl p-3 sm:p-4 cursor-pointer flex flex-col items-center relative ${isSelected ? 'selected' : ''}`;
+                card.onclick = () => {
+                    selectedBikeId = bike.id;
+                    sound.playBell();
+                    renderBikeSelectionCards();
+                };
+
+                card.innerHTML = `
+                    <div class="w-full flex justify-between items-center mb-1">
+                        <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-white/10 text-emerald-300">
+                            ${bike.tag}
+                        </span>
+                        <span class="text-xs font-extrabold text-yellow-300">⚡ ${bike.speedStat} Tezlik</span>
+                    </div>
+                    <canvas id="previewCanvas_${bike.id}" width="120" height="125" class="my-1"></canvas>
+                    <h3 class="font-display font-extrabold text-base sm:text-lg text-white text-center leading-tight">
+                        ${bike.name}
+                    </h3>
+                    <p class="text-xs text-emerald-200/80 mb-2">Haydovchi: <strong class="text-white">${bike.riderName}</strong></p>
+                    <div class="w-full bg-black/40 rounded-full h-1.5 overflow-hidden">
+                        <div class="h-full rounded-full" style="width: ${bike.handlingStat}%; background-color: ${bike.frameColor};"></div>
+                    </div>
+                    <div class="w-full flex justify-between text-[10px] text-white/60 mt-1">
+                        <span>Boshqaruv</span>
+                        <span>${bike.handlingStat}%</span>
+                    </div>
+                `;
+                bikeGrid.appendChild(card);
+
+                // Kartochka ichidagi kichik canvasga velosiped va odamni chizish
+                const pCanvas = document.getElementById(`previewCanvas_${bike.id}`);
+                const pCtx = pCanvas.getContext('2d');
+                // Kichik o'rmon foni doirasi
+                pCtx.fillStyle = 'rgba(16, 185, 129, 0.14)';
+                pCtx.beginPath();
+                pCtx.arc(60, 68, 46, 0, Math.PI * 2);
+                pCtx.fill();
+
+                drawCyclistOnBike(pCtx, bike, 60, 74, 1.05, bike.id * 1.1, 0, false, 0);
+            });
+        }
+
+        // --- O'RMON DARAXTLARI VA TRASSA ELEMENTLARINI YARATISH ---
+        function initForestEnvironment() {
+            trees = [];
+            for (let i = 0; i < 90; i++) {
+                const isLeft = i % 2 === 0;
+                const offsetFromRoad = 140 + Math.random() * 950;
+                trees.push({
+                    x: isLeft ? -(ROAD_WIDTH / 2 + offsetFromRoad) : (ROAD_WIDTH / 2 + offsetFromRoad),
+                    z: Math.random() * 4500,
+                    scale: 0.75 + Math.random() * 0.85,
+                    type: Math.random() > 0.35 ? 'pine' : 'oak',
+                    hueShift: Math.floor(Math.random() * 20) - 10
+                });
+            }
+
+            // Yo'ldagi tezlashish chiziqlari va kichik to'siqlar
+            trackItems = [];
+            for (let z = 900; z < FINISH_DISTANCE + 2000; z += 550) {
+                const laneX = (Math.random() - 0.5) * (ROAD_WIDTH - 280);
+                const isBoost = Math.random() > 0.42; // 58% tezlashish, 42% kichik tosh/ko'lmak
+                trackItems.push({
+                    x: laneX,
+                    z: z,
+                    type: isBoost ? 'boost' : (Math.random() > 0.5 ? 'puddle' : 'rock'),
+                    triggeredBy: new Set()
+                });
+            }
+        }
+
+        // --- POYGANI TAYYORLASH (6 TA POYGACHI) ---
+        function setupRace() {
+            initForestEnvironment();
+            particles = [];
+            raceTimeLeft = RACE_DURATION;
+
+            // 6 ta velosipedchini start chizig'iga joylashtirish
+            const startLanes = [-520, -310, -105, 105, 310, 520];
+            // Tanlangan velosipedni o'rta yo'laklardan biriga qo'yamiz
+            const playerLaneIdx = 2;
+            const otherBikes = BIKES_DATA.filter(b => b.id !== selectedBikeId);
+
+            racers = [];
+            let aiIdx = 0;
+
+            for (let i = 0; i < 6; i++) {
+                const isPlayer = (i === playerLaneIdx);
+                const bikeInfo = isPlayer ? BIKES_DATA[selectedBikeId] : otherBikes[aiIdx++];
+
+                racers.push({
+                    bike: bikeInfo,
+                    isPlayer: isPlayer,
+                    x: startLanes[i],
+                    z: 0, // Bosib o'tilgan masofa
+                    speed: 0,
+                    targetBaseSpeed: isPlayer ? BASE_TARGET_SPEED : (19.0 + Math.random() * 2.1),
+                    boostTimer: 0,
+                    slowTimer: 0,
+                    pedalPhase: Math.random() * Math.PI * 2,
+                    lean: 0,
+                    aiTargetX: startLanes[i],
+                    aiDecisionTimer: 0.5 + Math.random() * 1.5
+                });
+            }
+
+            // Minimap nuqtalarini yaratish
+            minimapDots.innerHTML = '';
+            racers.forEach((r, idx) => {
+                const dot = document.createElement('div');
+                dot.id = `minimapDot_${idx}`;
+                dot.className = `absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full transition-all duration-100 ${
+                    r.isPlayer ? 'w-4 h-4 ring-2 ring-white z-20' : 'w-2.5 h-2.5 opacity-85 z-10'
+                }`;
+                dot.style.backgroundColor = r.bike.frameColor;
+                dot.style.left = '0%';
+                minimapDots.appendChild(dot);
+            });
+
+            // Ekranlarni almashtirish
+            selectionScreen.classList.add('hidden');
+            resultScreen.classList.add('hidden');
+            resultScreen.classList.remove('flex');
+            hudScreen.classList.remove('hidden');
+            hudScreen.classList.add('flex');
+
+            startCountdown();
+        }
+
+        // --- 3, 2, 1, OLG'A SANOG'I ---
+        function startCountdown() {
+            gameState = 'COUNTDOWN';
+            countdownOverlay.classList.remove('hidden');
+            let count = 3;
+            countdownText.textContent = count;
+            countdownText.style.color = '#facc15';
+            sound.playCountdown(false);
+
+            const interval = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    countdownText.textContent = count;
+                    sound.playCountdown(false);
+                } else if (count === 0) {
+                    countdownText.textContent = "OLG'A!";
+                    countdownText.style.color = '#4ade80';
+                    sound.playCountdown(true);
+                    gameState = 'RACING';
+                    // Barcha velosipedlar 20 tezlikka shiddat bilan chiqadi
+                    racers.forEach(r => {
+                        r.speed = 16;
+                    });
+                } else {
+                    clearInterval(interval);
+                    countdownOverlay.classList.add('hidden');
+                }
+            }, 850);
+        }
+
+        // --- POYGA FIZIKASI VA MANTIQI (UPDATE) ---
+        function updateGame(dt) {
+            if (gameState !== 'RACING') return;
+
+            // 1 daqiqalik taymerni kamaytirish
+            raceTimeLeft -= dt;
+            if (raceTimeLeft <= 0) {
+                raceTimeLeft = 0;
+                finishRace();
+                return;
+            }
+
+            // Har bir velosipedchini yangilash
+            racers.forEach((r) => {
+                // Boost va sekinlashish taymerlari
+                if (r.boostTimer > 0) r.boostTimer -= dt;
+                if (r.slowTimer > 0) r.slowTimer -= dt;
+
+                // Tezlikni hisoblash (20 tezlik tizimi)
+                let desiredSpeed = r.targetBaseSpeed;
+
+                if (r.isPlayer) {
+                    // O'yinchi gaz tugmasini bossa tezlik 20 dan 23 gacha ko'tariladi
+                    desiredSpeed = keys.up ? 22.5 : 20.0;
+
+                    // Chap / O'ng boshqaruv
+                    const steerSpeed = 680 * (r.bike.handlingStat / 90);
+                    if (keys.left) {
+                        r.x -= steerSpeed * dt;
+                        r.lean = Math.max(-1, r.lean - dt * 6);
+                    } else if (keys.right) {
+                        r.x += steerSpeed * dt;
+                        r.lean = Math.min(1, r.lean + dt * 6);
+                    } else {
+                        r.lean *= Math.pow(0.05, dt);
+                    }
+                } else {
+                    // AI (Raqib odamlar) harakati
+                    r.aiDecisionTimer -= dt;
+                    if (r.aiDecisionTimer <= 0) {
+                        r.aiDecisionTimer = 0.8 + Math.random() * 1.4;
+                        // Yaqin atrofdagi tezlashish chizig'ini izlash yoki to'siqdan qochish
+                        let targetX = r.x + (Math.random() - 0.5) * 420;
+                        for (let item of trackItems) {
+                            const distZ = item.z - r.z;
+                            if (distZ > 120 && distZ < 750) {
+                                if (item.type === 'boost') {
+                                    targetX = item.x;
+                                    break;
+                                } else if (Math.abs(item.x - r.x) < 130) {
+                                    targetX = item.x > 0 ? item.x - 240 : item.x + 240;
+                                    break;
+                                }
+                            }
+                        }
+                        r.aiTargetX = Math.max(-ROAD_WIDTH / 2 + 120, Math.min(ROAD_WIDTH / 2 - 120, targetX));
+                        // AI tezligi o'yinchiga yaqin va qiziqarli bo'lishi uchun dinamik moslashadi
+                        const player = racers.find(p => p.isPlayer);
+                        const diff = player.z - r.z;
+                        r.targetBaseSpeed = 19.6 + Math.max(-1.2, Math.min(1.8, diff * 0.0025)) + (Math.random() - 0.5) * 0.8;
+                    }
+
+                    const dx = r.aiTargetX - r.x;
+                    if (Math.abs(dx) > 10) {
+                        const move = Math.sign(dx) * Math.min(Math.abs(dx), 430 * dt);
+                        r.x += move;
+                        r.lean = Math.max(-0.8, Math.min(0.8, dx * 0.004));
+                    } else {
+                        r.lean *= 0.85;
+                    }
+                }
+
+                // Effektlar ta'siri
+                if (r.boostTimer > 0) desiredSpeed += 4.5;
+                if (r.slowTimer > 0) desiredSpeed -= 5.5;
+
+                // Silliq tezlanish
+                r.speed += (desiredSpeed - r.speed) * Math.min(1, dt * 4.5);
+
+                // Yo'l chetidan chiqib ketmaslik (o'rmon cheti)
+                const maxRoadX = ROAD_WIDTH / 2 - 80;
+                if (r.x < -maxRoadX) {
+                    r.x = -maxRoadX;
+                    r.speed *= 0.97;
+                } else if (r.x > maxRoadX) {
+                    r.x = maxRoadX;
+                    r.speed *= 0.97;
+                }
+
+                // Masofani oshirish (20 tezlik = 1100 virtual birlik/soniya)
+                const worldVelocity = r.speed * 55;
+                r.z += worldVelocity * dt;
+
+                // Pedal aylanish tezligi
+                r.pedalPhase += r.speed * 0.65 * dt;
+
+                // Chang zarralari (tuproq yo'ldan)
+                if (Math.random() < 0.45) {
+                    particles.push({
+                        x: r.x + (Math.random() - 0.5) * 18,
+                        z: r.z - 25,
+                        y: 0,
+                        vx: (Math.random() - 0.5) * 40,
+                        vy: 20 + Math.random() * 35,
+                        life: 0.45,
+                        color: r.boostTimer > 0 ? '#fde047' : 'rgba(180, 145, 100, 0.55)'
+                    });
+                }
+
+                // Yo'ldagi obyektlar bilan to'qnashuv (Boost / To'siq)
+                for (let item of trackItems) {
+                    if (Math.abs(item.z - r.z) < 48 && Math.abs(item.x - r.x) < 75) {
+                        if (!item.triggeredBy.has(r.bike.id)) {
+                            item.triggeredBy.add(r.bike.id);
+                            if (item.type === 'boost') {
+                                r.boostTimer = 1.8;
+                                if (r.isPlayer) sound.playBoost();
+                            } else {
+                                r.slowTimer = 1.1;
+                                if (r.isPlayer) sound.playBump();
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Zarralarni yangilash
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx * dt;
+                p.y += p.vy * dt;
+                p.life -= dt;
+                if (p.life <= 0) particles.splice(i, 1);
+            }
+
+            // O'rmon daraxtlarini cheksiz aylantirish
+            const player = racers.find(r => r.isPlayer);
+            trees.forEach(tree => {
+                if (tree.z < player.z - 350) {
+                    tree.z += 4500;
+                }
+            });
+
+            updateHUD();
+        }
+
+        // --- HUD (VAQT, TEZLIK, O'RIN) NI YANGILASH ---
+        function updateHUD() {
+            // Vaqt formati: 00:59
+            const secs = Math.ceil(raceTimeLeft);
+            const mins = Math.floor(secs / 60);
+            const remSecs = secs % 60;
+            timerDisplay.textContent = `${String(mins).padStart(2, '0')}:${String(remSecs).padStart(2, '0')}`;
+            if (secs <= 10) {
+                timerDisplay.classList.add('text-red-400');
+            } else {
+                timerDisplay.classList.remove('text-red-400');
+            }
+
+            // Poygachilarni masofa bo'yicha saralash
+            const sorted = [...racers].sort((a, b) => b.z - a.z);
+            const player = racers.find(r => r.isPlayer);
+            const playerRank = sorted.findIndex(r => r.isPlayer) + 1;
+
+            rankDisplay.textContent = playerRank;
+
+            // Tezlik ko'rsatkichi (20 tezlik atrofida)
+            const shownSpeed = Math.round(player.speed);
+            speedDisplay.textContent = shownSpeed;
+            const pct = Math.min(100, Math.max(10, (player.speed / 26) * 100));
+            speedBarFill.style.height = `${pct}%`;
+
+            // Progress bar va minimap nuqtalari
+            const elapsedRatio = Math.min(1, Math.max(0, (RACE_DURATION - raceTimeLeft) / RACE_DURATION));
+            raceProgressFill.style.width = `${elapsedRatio * 100}%`;
+
+            racers.forEach((r, idx) => {
+                const dot = document.getElementById(`minimapDot_${idx}`);
+                if (dot) {
+                    const progressPct = Math.min(100, Math.max(0, (r.z / FINISH_DISTANCE) * 100));
+                    dot.style.left = `${progressPct}%`;
+                }
+            });
+        }
+
+        // --- POYGA YAKUNI VA NATIJALAR ---
+        function finishRace() {
+            gameState = 'FINISHED';
+            sound.playFinish();
+
+            hudScreen.classList.add('hidden');
+            hudScreen.classList.remove('flex');
+            resultScreen.classList.remove('hidden');
+            resultScreen.classList.add('flex');
+
+            const sorted = [...racers].sort((a, b) => b.z - a.z);
+            const playerRank = sorted.findIndex(r => r.isPlayer) + 1;
+
+            const resultSubtitle = document.getElementById('resultSubtitle');
+            if (playerRank === 1) {
+                resultSubtitle.innerHTML = `<span class="text-yellow-300 font-bold">Tabriklaymiz! Siz 1-o'rinni egallab, o'rmon chempioni bo'ldingiz!</span>`;
+            } else {
+                resultSubtitle.innerHTML = `Siz 1 daqiqalik poygada <strong class="text-yellow-300">${playerRank}-o'rinni</strong> egalladingiz!`;
+            }
+
+            leaderboardList.innerHTML = '';
+            sorted.forEach((r, index) => {
+                const rank = index + 1;
+                const medal = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `${rank}.`;
+                const distMeters = Math.round(r.z / 55); // Metr hisobida
+
+                const row = document.createElement('div');
+                row.className = `flex items-center justify-between p-3 rounded-2xl border ${
+                    r.isPlayer
+                        ? 'bg-emerald-500/25 border-yellow-400 shadow-md'
+                        : 'bg-white/5 border-white/10'
+                }`;
+
+                row.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="font-display font-black text-lg sm:text-xl w-8 text-center">${medal}</span>
+                        <span class="w-4 h-4 rounded-full border border-white/40" style="background-color: ${r.bike.frameColor};"></span>
+                        <div>
+                            <div class="font-display font-bold text-sm sm:text-base text-white flex items-center gap-2">
+                                <span>${r.bike.name}</span>
+                                ${r.isPlayer ? '<span class="text-[10px] bg-yellow-400 text-black font-black px-2 py-0.5 rounded-full">SIZ</span>' : ''}
+                            </div>
+                            <div class="text-xs text-emerald-200/75">Haydovchi: ${r.bike.riderName}</div>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <div class="font-display font-extrabold text-sm sm:text-base text-cyan-300">${distMeters} m</div>
+                        <div class="text-[11px] text-white/60">O'rtacha 20 tezlik</div>
+                    </div>
+                `;
+                leaderboardList.appendChild(row);
+            });
+        }
+
+        // --- 2.5D / PSEUDO-3D O'RMON GRAFIKASINI CHIZISH (RENDER) ---
+        function project3D(worldX, worldZ, cameraX, cameraZ, horizonY, screenW, screenH) {
+            const relZ = worldZ - cameraZ;
+            if (relZ <= 10) return null;
+            const focalLength = 420;
+            const scale = focalLength / relZ;
+            const screenX = screenW / 2 + (worldX - cameraX) * scale;
+            const screenY = horizonY + (260 * scale);
+            return { x: screenX, y: screenY, scale: scale };
+        }
+
+        function drawPineTree(x, y, scale, hueShift) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+
+            // Daraxt soyasi
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 45, 12, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Tanasi
+            ctx.fillStyle = '#4a2e1b';
+            ctx.fillRect(-10, -55, 20, 55);
+
+            // Qarag'ay shoxlari (3 qavat)
+            const greens = [`hsl(${142 + hueShift}, 55%, 24%)`, `hsl(${144 + hueShift}, 60%, 30%)`, `hsl(${146 + hueShift}, 65%, 36%)`];
+            for (let layer = 0; layer < 3; layer++) {
+                const topY = -210 + layer * 42;
+                const botY = -115 + layer * 42;
+                const width = 42 + layer * 16;
+
+                ctx.fillStyle = greens[layer];
+                ctx.beginPath();
+                ctx.moveTo(0, topY);
+                ctx.lineTo(-width, botY);
+                ctx.lineTo(width, botY);
+                ctx.closePath();
+                ctx.fill();
+            }
+            ctx.restore();
+        }
+
+        function drawOakTree(x, y, scale, hueShift) {
+            ctx.save();
+            ctx.translate(x, y);
+            ctx.scale(scale, scale);
+
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.28)';
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 52, 14, 0, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#5c3a21';
+            ctx.fillRect(-12, -70, 24, 70);
+
+            ctx.fillStyle = `hsl(${130 + hueShift}, 52%, 28%)`;
+            ctx.beginPath();
+            ctx.arc(-25, -105, 42, 0, Math.PI * 2);
+            ctx.arc(25, -105, 42, 0, Math.PI * 2);
+            ctx.arc(0, -135, 50, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = `hsl(${132 + hueShift}, 58%, 35%)`;
+            ctx.beginPath();
+            ctx.arc(-8, -125, 36, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        function renderScene() {
+            const W = canvas.width;
+            const H = canvas.height;
+            const horizonY = H * 0.34;
+
+            // Kamera o'yinchini kuzatadi (agar poyga boshlanmagan bo'lsa, demo kamera harakatlanadi)
+            let cameraX = 0;
+            let cameraZ = -260;
+
+            if (racers.length > 0 && (gameState === 'RACING' || gameState === 'COUNTDOWN' || gameState === 'FINISHED')) {
+                const player = racers.find(r => r.isPlayer) || racers[0];
+                cameraX = player.x * 0.65;
+                cameraZ = player.z - 270;
+            } else {
+                // Start ekranida orqa fonda jonli o'rmon manzarasi
+                cameraZ = (performance.now() * 0.35) % 3000;
+            }
+
+            // 1. OSMon VA O'RMON QUYOSH NURLARI
+            const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
+            skyGrad.addColorStop(0, '#064e3b');
+            skyGrad.addColorStop(0.55, '#10b981');
+            skyGrad.addColorStop(1, '#fef08a');
+            ctx.fillStyle = skyGrad;
+            ctx.fillRect(0, 0, W, horizonY);
+
+            // Quyosh nuri (ufqda)
+            const sunX = W * 0.5 - cameraX * 0.08;
+            const sunGrad = ctx.createRadialGradient(sunX, horizonY - 25, 10, sunX, horizonY - 25, 220);
+            sunGrad.addColorStop(0, 'rgba(254, 249, 195, 0.95)');
+            sunGrad.addColorStop(0.3, 'rgba(253, 224, 71, 0.35)');
+            sunGrad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+            ctx.fillStyle = sunGrad;
+            ctx.fillRect(0, 0, W, horizonY + 50);
+
+            // Uzoqdagi o'rmon tepaliklari silueti
+            ctx.fillStyle = '#065f46';
+            ctx.beginPath();
+            ctx.moveTo(0, horizonY);
+            for (let sx = 0; sx <= W + 60; sx += 60) {
+                const hillH = 22 + Math.sin((sx + cameraX * 0.1) * 0.012) * 14;
+                ctx.lineTo(sx, horizonY - hillH);
+            }
+            ctx.lineTo(W, horizonY);
+            ctx.closePath();
+            ctx.fill();
+
+            // 2. O'RMON YERI VA TUPROQ POYGA YO'LI (Striped Pseudo-3D)
+            const stripCount = 65;
+            const maxViewZ = 3600;
+            const stripDepth = maxViewZ / stripCount;
+            const baseIndex = Math.floor(cameraZ / stripDepth);
+
+            for (let i = stripCount; i >= 1; i--) {
+                const idx = baseIndex + i;
+                const zNear = idx * stripDepth;
+                const zFar = (idx + 1) * stripDepth;
+
+                const pNear = project3D(0, zNear, cameraX, cameraZ, horizonY, W, H);
+                const pFar = project3D(0, zFar, cameraX, cameraZ, horizonY, W, H);
+                if (!pNear || !pFar) continue;
+
+                const isAlt = idx % 2 === 0;
+
+                // O'rmon maysazori (chap va o'ng tomon)
+                ctx.fillStyle = isAlt ? '#14532d' : '#166534';
+                ctx.fillRect(0, pFar.y, W, pNear.y - pFar.y + 1.5);
+
+                // O'rmon tuproq yo'li (trassa)
+                const roadHalfNear = (ROAD_WIDTH / 2) * pNear.scale;
+                const roadHalfFar = (ROAD_WIDTH / 2) * pFar.scale;
+
+                ctx.fillStyle = isAlt ? '#784b2a' : '#855532';
+                ctx.beginPath();
+                ctx.moveTo(pFar.x - roadHalfFar, pFar.y);
+                ctx.lineTo(pFar.x + roadHalfFar, pFar.y);
+                ctx.lineTo(pNear.x + roadHalfNear, pNear.y + 1);
+                ctx.lineTo(pNear.x - roadHalfNear, pNear.y + 1);
+                ctx.closePath();
+                ctx.fill();
+
+                // Yo'l chetidagi yashil-sariq chegara chizig'i
+                ctx.fillStyle = isAlt ? '#eab308' : '#fef08a';
+                const edgeNear = 18 * pNear.scale;
+                const edgeFar = 18 * pFar.scale;
+                // Chap chegara
+                ctx.beginPath();
+                ctx.moveTo(pFar.x - roadHalfFar, pFar.y);
+                ctx.lineTo(pFar.x - roadHalfFar + edgeFar, pFar.y);
+                ctx.lineTo(pNear.x - roadHalfNear + edgeNear, pNear.y + 1);
+                ctx.lineTo(pNear.x - roadHalfNear, pNear.y + 1);
+                ctx.fill();
+                // O'ng chegara
+                ctx.beginPath();
+                ctx.moveTo(pFar.x + roadHalfFar - edgeFar, pFar.y);
+                ctx.lineTo(pFar.x + roadHalfFar, pFar.y);
+                ctx.lineTo(pNear.x + roadHalfNear, pNear.y + 1);
+                ctx.lineTo(pNear.x + roadHalfNear - edgeNear, pNear.y + 1);
+                ctx.fill();
+
+                // Yo'l o'rtasidagi uzuq-uzuq yo'lak chiziqlari
+                if (isAlt) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.25)';
+                    const dashW_Near = 12 * pNear.scale;
+                    const dashW_Far = 12 * pFar.scale;
+                    ctx.beginPath();
+                    ctx.moveTo(pFar.x - dashW_Far, pFar.y);
+                    ctx.lineTo(pFar.x + dashW_Far, pFar.y);
+                    ctx.lineTo(pNear.x + dashW_Near, pNear.y + 1);
+                    ctx.lineTo(pNear.x - dashW_Near, pNear.y + 1);
+                    ctx.fill();
+                }
+
+                // Finish chizig'i (shaxmat naqshli)
+                if (Math.abs(zNear - FINISH_DISTANCE) < stripDepth * 2) {
+                    ctx.fillStyle = '#ffffff';
+                    ctx.fillRect(pNear.x - roadHalfNear, pNear.y - 6 * pNear.scale, roadHalfNear * 2, 12 * pNear.scale);
+                }
+            }
+
+            // 3. BARCHA OBYEKTLARNI Z-CHUQURLIK BO'YICHA TARTIBLASH (Uzoqdan yaqinga)
+            const renderables = [];
+
+            // Daraxtlar
+            trees.forEach(tree => {
+                let tz = tree.z;
+                if (gameState === 'SELECT') {
+                    while (tz < cameraZ + 20) tz += 3000;
+                }
+                const proj = project3D(tree.x, tz, cameraX, cameraZ, horizonY, W, H);
+                if (proj && proj.y > horizonY - 20 && proj.y < H + 150) {
+                    renderables.push({
+                        z: tz,
+                        draw: () => {
+                            if (tree.type === 'pine') {
+                                drawPineTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift);
+                            } else {
+                                drawOakTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift);
+                            }
+                        }
+                    });
+                }
+            });
+
+            // Yo'ldagi Boost va To'siqlar
+            if (gameState !== 'SELECT') {
+                trackItems.forEach(item => {
+                    const proj = project3D(item.x, item.z, cameraX, cameraZ, horizonY, W, H);
+                    if (proj && proj.y > horizonY && proj.y < H + 80) {
+                        renderables.push({
+                            z: item.z,
+                            draw: () => {
+                                ctx.save();
+                                ctx.translate(proj.x, proj.y);
+                                ctx.scale(proj.scale * 1.3, proj.scale * 1.3);
+                                if (item.type === 'boost') {
+                                    // Yashil-sariq tezlashish chizig'i
+                                    ctx.fillStyle = 'rgba(74, 222, 128, 0.85)';
+                                    ctx.beginPath();
+                                    ctx.roundRect(-45, -18, 90, 36, 10);
+                                    ctx.fill();
+                                    ctx.strokeStyle = '#fef08a';
+                                    ctx.lineWidth = 3;
+                                    ctx.stroke();
+
+                                    // Strelkalar (>>)
+                                    ctx.strokeStyle = '#064e3b';
+                                    ctx.lineWidth = 5;
+                                    ctx.beginPath();
+                                    ctx.moveTo(-16, 8);
+                                    ctx.lineTo(0, -8);
+                                    ctx.lineTo(16, 8);
+                                    ctx.stroke();
+                                } else if (item.type === 'puddle') {
+                                    // Suv ko'lmagi
+                                    ctx.fillStyle = 'rgba(56, 189, 248, 0.75)';
+                                    ctx.beginPath();
+                                    ctx.ellipse(0, 0, 46, 20, 0, 0, Math.PI * 2);
+                                    ctx.fill();
+                                } else {
+                                    // O'rmon toshi / to'nka
+                                    ctx.fillStyle = '#57534e';
+                                    ctx.beginPath();
+                                    ctx.arc(0, -6, 26, Math.PI, 0);
+                                    ctx.lineTo(28, 8);
+                                    ctx.lineTo(-28, 8);
+                                    ctx.closePath();
+                                    ctx.fill();
+                                }
+                                ctx.restore();
+                            }
+                        });
+                    }
+                });
+
+                // 6 ta velosiped va haydovchilar
+                racers.forEach(r => {
+                    const proj = project3D(r.x, r.z, cameraX, cameraZ, horizonY, W, H);
+                    if (proj && proj.y > horizonY - 10) {
+                        renderables.push({
+                            z: r.z,
+                            draw: () => {
+                                drawCyclistOnBike(
+                                    ctx,
+                                    r.bike,
+                                    proj.x,
+                                    proj.y - 25 * proj.scale,
+                                    proj.scale * 1.48,
+                                    r.pedalPhase,
+                                    r.lean,
+                                    r.isPlayer,
+                                    r.speed
+                                );
+                            }
+                        });
+                    }
+                });
+
+                // Chang zarralari
+                particles.forEach(p => {
+                    const proj = project3D(p.x, p.z, cameraX, cameraZ, horizonY, W, H);
+                    if (proj) {
+                        renderables.push({
+                            z: p.z,
+                            draw: () => {
+                                ctx.fillStyle = p.color;
+                                ctx.beginPath();
+                                ctx.arc(proj.x, proj.y - p.y * proj.scale, 6 * proj.scale, 0, Math.PI * 2);
+                                ctx.fill();
+                            }
+                        });
+                    }
+                });
+            }
+
+            // Uzoqdagilarni birinchi, yaqindagilarni keyin chizish
+            renderables.sort((a, b) => b.z - a.z);
+            renderables.forEach(obj => obj.draw());
+        }
+
+        // --- ASOSIY ANIMATSIYA SIKLI ---
+        function gameLoop(timestamp) {
+            if (!lastTimestamp) lastTimestamp = timestamp;
+            const dt = Math.min(0.05, (timestamp - lastTimestamp) / 1000);
+            lastTimestamp = timestamp;
+
+            updateGame(dt);
+            renderScene();
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        // --- KLAVIATURA VA SENSORLI BOSHQARUV ---
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = true;
+            if (e.key === 'b' || e.key === 'B') sound.playBell();
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+        });
+
+        // Mobil / Sensorli tugmalar uchun helper
+        function bindTouchButton(btnId, keyName) {
+            const btn = document.getElementById(btnId);
+            if (!btn) return;
+            const press = (e) => {
+                e.preventDefault();
+                keys[keyName] = true;
+            };
+            const release = (e) => {
+                e.preventDefault();
+                keys[keyName] = false;
+            };
+            btn.addEventListener('mousedown', press);
+            btn.addEventListener('mouseup', release);
+            btn.addEventListener('mouseleave', release);
+            btn.addEventListener('touchstart', press, { passive: false });
+            btn.addEventListener('touchend', release, { passive: false });
+        }
+
+        bindTouchButton('btnLeft', 'left');
+        bindTouchButton('btnRight', 'right');
+        bindTouchButton('btnBoost', 'up');
+
+        document.getElementById('btnBell').addEventListener('click', () => sound.playBell());
+
+        // Boshlash va Qayta o'ynash tugmalari
+        startRaceBtn.addEventListener('click', () => {
+            sound.init();
+            sound.playBell();
+            setupRace();
+        });
+
+        playAgainBtn.addEventListener('click', () => {
+            sound.playBell();
+            setupRace();
+        });
+
+        changeBikeBtn.addEventListener('click', () => {
+            gameState = 'SELECT';
+            resultScreen.classList.add('hidden');
+            resultScreen.classList.remove('flex');
+            selectionScreen.classList.remove('hidden');
+            renderBikeSelectionCards();
+        });
+
+        muteBtn.addEventListener('click', () => {
+            const isMuted = sound.toggleMute();
+            document.getElementById('soundOnIcon').classList.toggle('hidden', isMuted);
+            document.getElementById('soundOffIcon').classList.toggle('hidden', !isMuted);
+        });
+
+        // O'yinni ishga tushirish
+        window.onload = () => {
+            initForestEnvironment();
+            renderBikeSelectionCards();
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

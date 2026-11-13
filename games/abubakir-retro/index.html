@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Retro Arcade Poyga</title>
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+    <div class="game-wrapper">
+        <div class="hud">
+            <div>OCHKO: <span id="scoreDisplay">0</span></div>
+            <div>REKORD: <span id="highScoreDisplay">0</span></div>
+        </div>
+
+        <canvas id="gameCanvas" width="360" height="600"></canvas>
+
+        <!-- Boshlash oynasi -->
+        <div id="startScreen" class="overlay">
+            <h1>RETRO<br>POYGA</h1>
+            <p>Chap/O'ng tugmalar yoki<br>A / D orqali boshqaring.<br><br>Yashil <b style="color:#00ff66">[N]</b> nitro<br>qo'shimcha ochko beradi!</p>
+            <button class="btn" id="startBtn">BOSHLASH</button>
+        </div>
+
+        <!-- Yutqazish oynasi -->
+        <div id="gameOverScreen" class="overlay hidden">
+            <h1>O'YIN<br>TUGADI!</h1>
+            <p>Sizning ochko: <span id="finalScore" style="color:#ffea00">0</span></p>
+            <button class="btn" id="restartBtn">QAYTA O'YNASH</button>
+        </div>
+    </div>
+
+    <!-- Telefon va planshetlar uchun tugmalar -->
+    <div class="controls">
+        <button class="touch-btn" id="leftBtn"><</button>
+        <button class="touch-btn" id="rightBtn">></button>
+    </div>
+
+    <script src="main.js"></script>
+</body>
+</html>

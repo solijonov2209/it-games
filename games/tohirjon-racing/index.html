@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Uzbekistan 3D Racing</title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+  <main id="app">
+    <section id="menu" class="screen">
+      <div class="hero">
+        <div class="eyebrow">3D ARCADE RACING</div>
+        <h1>UZBEKISTAN<br><span>3D RACING</span></h1>
+        <p>O‘zbekiston shaharlari bo‘ylab poyga qil!</p>
+      </div>
+      <div class="garage-panel">
+        <div class="section-title">XARITANI TANLA</div>
+        <div id="mapGrid" class="map-grid"></div>
+        <div class="section-title car-title">MASHINANI TANLA</div>
+        <div id="carGrid" class="car-grid"></div>
+        <button id="startBtn" class="main-btn">POYGANI BOSHLASH <span>➜</span></button>
+        <p class="hint">Kompyuter: ← → yoki A / D · Nitro: SPACE · Telefon: ekrandagi tugmalar</p>
+      </div>
+    </section>
+
+    <section id="gameScreen" class="hidden">
+      <div id="hud">
+        <div class="hud-pill"><small>MASOFA</small><strong id="distance">0 m</strong></div>
+        <div class="hud-pill"><small>HISOB</small><strong id="score">0</strong></div>
+        <div class="hud-pill"><small>COIN</small><strong id="coins">0</strong></div>
+        <div class="hud-pill"><small>TEZLIK</small><strong id="speed">0 km/h</strong></div>
+      </div>
+      <div id="cityLabel">TOSHKENT</div>
+      <div id="message" class="message hidden"></div>
+      <div id="mobileControls">
+        <button id="leftBtn" aria-label="Chapga">◀</button>
+        <button id="nitroBtn" aria-label="Nitro">⚡</button>
+        <button id="rightBtn" aria-label="O‘ngga">▶</button>
+      </div>
+      <button id="pauseBtn" class="pause-btn">Ⅱ</button>
+    </section>
+
+    <section id="pauseScreen" class="overlay hidden">
+      <div class="dialog">
+        <h2>PAUZA</h2>
+        <button id="resumeBtn" class="main-btn">DAVOM ETISH</button>
+        <button id="restartBtn" class="secondary-btn">QAYTA BOSHLASH</button>
+        <button id="menuBtn" class="secondary-btn">MENYU</button>
+      </div>
+    </section>
+
+    <section id="resultScreen" class="overlay hidden">
+      <div class="dialog">
+        <div class="trophy">🏆</div>
+        <h2>POYGA TUGADI</h2>
+        <p>Hisob: <b id="finalScore">0</b></p>
+        <p>Yig‘ilgan coin: <b id="finalCoins">0</b></p>
+        <button id="againBtn" class="main-btn">YANA O‘YNASH</button>
+        <button id="resultMenuBtn" class="secondary-btn">MENYU</button>
+      </div>
+    </section>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>

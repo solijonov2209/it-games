@@ -1,0 +1,617 @@
+const canvas = document.getElementById('game-canvas');
+const ctx = canvas.getContext('2d');
+
+const levelEl = document.getElementById('level-display');
+const speedEl = document.getElementById('speed-display');
+const timerEl = document.getElementById('timer-display');
+const distanceEl = document.getElementById('distance-display');
+const moneyEl = document.getElementById('money-display');
+const shopMoneyEl = document.getElementById('shop-money-display');
+
+const overlay = document.getElementById('overlay');
+const overlayTitle = document.getElementById('overlay-title');
+const overlayDesc = document.getElementById('overlay-desc');
+const statusBadge = document.getElementById('status-badge');
+const startBtn = document.getElementById('start-btn');
+const soundToggle = document.getElementById('sound-toggle');
+
+const shopModal = document.getElementById('shop-modal');
+const shopBtn = document.getElementById('shop-btn');
+const overlayShopBtn = document.getElementById('overlay-shop-btn');
+const closeShopBtn = document.getElementById('close-shop-btn');
+const carsGrid = document.getElementById('cars-grid');
+
+const TOTAL_LANES = 5;
+const MAX_LEVEL = 1000;
+const TARGET_KM = 20;
+const PIXELS_PER_KM = 900;
+
+// 50 ta afsonaviy mashina (shu jumladan Tesla Roadster uchadigan rejim va boshqalar)
+const CARS = [
+  { id: 'car_1', name: 'Tesla Roadster', price: 0, speedBonus: 3.5, bodyColor: '#ff2a6d', accentColor: '#ffffff', isFlying: true },
+  { id: 'car_2', name: 'DeLorean DMC', price: 2000, speedBonus: 2.0, bodyColor: '#8892b0', accentColor: '#fee440', isFlying: false },
+  { id: 'car_3', name: 'Nissan Skyline', price: 4500, speedBonus: 4.0, bodyColor: '#00bbf9', accentColor: '#00f5d4', isFlying: false },
+  { id: 'car_4', name: 'Bugatti Chiron', price: 8000, speedBonus: 6.5, bodyColor: '#141829', accentColor: '#ff2a6d', isFlying: false },
+  { id: 'car_5', name: 'Cyber Truck', price: 12000, speedBonus: 5.0, bodyColor: '#c0c5ce', accentColor: '#00f5d4', isFlying: false },
+  { id: 'car_6', name: 'Batmobile Legend', price: 15000, speedBonus: 8.0, bodyColor: '#05070c', accentColor: '#fee440', isFlying: true }
+];
+
+// Qolgan mashinalarni 50 tagacha to'ldiramiz
+const baseColors = ['#ffffff', '#00bbf9', '#fee440', '#ff2a6d', '#9b5de5', '#00f5d4', '#f15bb5', '#90be6d'];
+for (let i = 7; i <= 50; i++) {
+  CARS.push({
+    id: `car_${i}`,
+    name: `Legend Hyper #${i}`,
+    price: 15000 + (i - 6) * 400,
+    speedBonus: 4.0 + (i * 0.08),
+    bodyColor: baseColors[(i - 1) % baseColors.length],
+    accentColor: '#ffffff',
+    isFlying: i % 5 === 0
+  });
+}
+
+// Boshlang'ich byudjet $15,000
+let money = Number(localStorage.getItem('legendCarMoney')) || 15000;
+let ownedCars = JSON.parse(localStorage.getItem('legendOwnedCars')) || ['car_1'];
+let selectedCarId = localStorage.getItem('legendSelectedCar') || 'car_1';
+
+function saveProgress() {
+  localStorage.setItem('legendCarMoney', money);
+  localStorage.setItem('legendOwnedCars', JSON.stringify(ownedCars));
+  localStorage.setItem('legendSelectedCar', selectedCarId);
+  updateMoneyUI();
+}
+
+function updateMoneyUI() {
+  moneyEl.textContent = `$${money}`;
+  shopMoneyEl.textContent = `$${money}`;
+}
+updateMoneyUI();
+
+function getSelectedCar() {
+  return CARS.find(c => c.id === selectedCarId) || CARS[0];
+}
+
+let gameState = 'menu';
+let previousStateBeforeShop = 'menu';
+let level = 1;
+let soundEnabled = true;
+
+let levelDistancePx = 0;
+const targetDistancePx = TARGET_KM * PIXELS_PER_KM;
+let finishLine = { active: false, y: -100 };
+
+let gameTimeSeconds = 0;
+let timerInterval = null;
+
+let players = [];
+
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+function playTone(freq, type = 'sine', duration = 0.12) {
+  if (!soundEnabled) return;
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain);
+  gain.connect(audioCtx.destination);
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration);
+}
+
+function playWinFanfare() {
+  if (!soundEnabled) return;
+  [523.25, 659.25, 783.99, 1046.5].forEach((freq, idx) => {
+    setTimeout(() => playTone(freq, 'triangle', 0.25), idx * 110);
+  });
+}
+
+soundToggle.addEventListener('click', () => {
+  soundEnabled = !soundEnabled;
+  soundToggle.textContent = soundEnabled ? '🔊' : '🔇';
+});
+
+function renderShop() {
+  updateMoneyUI();
+  carsGrid.innerHTML = '';
+  CARS.forEach(car => {
+    const isOwned = ownedCars.includes(car.id);
+    const isSelected = selectedCarId === car.id;
+    const item = document.createElement('div');
+    item.className = `car-item ${isSelected ? 'selected' : ''}`;
+
+    let btnHtml = '';
+    if (isSelected) {
+      btnHtml = `<button class="car-btn btn-equipped" disabled>TANLANGAN ✓</button>`;
+    } else if (isOwned) {
+      btnHtml = `<button class="car-btn btn-select" data-action="select" data-id="${car.id}">TANLASH</button>`;
+    } else {
+      const canAfford = money >= car.price;
+      btnHtml = `<button class="car-btn btn-buy" data-action="buy" data-id="${car.id}" ${canAfford ? '' : 'disabled'}>SOTIB OLISH ($${car.price})</button>`;
+    }
+
+    item.innerHTML = `
+      <div class="car-preview" style="background:${car.bodyColor}; box-shadow: 0 0 12px ${car.bodyColor}; border: 2px solid ${car.accentColor};"></div>
+      <h3>${car.name}</h3>
+      <div class="car-stats">${car.isFlying ? '✨ Uchadigan' : '🏎️ Yer usti'} | +${car.speedBonus.toFixed(1)}</div>
+      ${btnHtml}
+    `;
+    carsGrid.appendChild(item);
+  });
+}
+
+carsGrid.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const carId = btn.dataset.id;
+  const action = btn.dataset.action;
+  const car = CARS.find(c => c.id === carId);
+  if (!car) return;
+
+  if (action === 'buy' && money >= car.price && !ownedCars.includes(car.id)) {
+    money -= car.price;
+    ownedCars.push(car.id);
+    selectedCarId = car.id;
+    saveProgress();
+    playTone(880, 'triangle', 0.25);
+    renderShop();
+  } else if (action === 'select' && ownedCars.includes(car.id)) {
+    selectedCarId = car.id;
+    saveProgress();
+    playTone(620, 'sine', 0.12);
+    renderShop();
+  }
+});
+
+function openShop() {
+  if (gameState === 'paused_shop') return;
+  previousStateBeforeShop = gameState;
+  gameState = 'paused_shop';
+  renderShop();
+  shopModal.classList.remove('hidden');
+}
+
+function closeShop() {
+  shopModal.classList.add('hidden');
+  gameState = previousStateBeforeShop;
+}
+
+shopBtn.addEventListener('click', openShop);
+overlayShopBtn.addEventListener('click', openShop);
+closeShopBtn.addEventListener('click', closeShop);
+
+let roadWidth = 540;
+let roadLeft = 0;
+let laneWidth = 0;
+let laneCenters = [];
+
+function resize() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  roadWidth = Math.min(580, canvas.width * 0.92);
+  roadLeft = (canvas.width - roadWidth) / 2;
+  laneWidth = roadWidth / TOTAL_LANES;
+  laneCenters = [];
+  for (let i = 0; i < TOTAL_LANES; i++) {
+    laneCenters.push(roadLeft + laneWidth * i + laneWidth / 2);
+  }
+}
+window.addEventListener('resize', resize);
+resize();
+
+function initPlayers() {
+  players = [];
+  const colors = ['#00f5d4', '#ff2a6d', '#fee440', '#9b5de5', '#00bbf9'];
+  const activeCar = getSelectedCar();
+
+  for (let i = 0; i < 5; i++) {
+    const isPlayer = i === 0;
+    players.push({
+      id: i,
+      isPlayer: isPlayer,
+      lane: i,
+      x: laneCenters[i],
+      y: canvas.height - 140 + (isPlayer ? 0 : Math.random() * 30),
+      width: 40,
+      height: 66,
+      speed: 6,
+      color: isPlayer ? activeCar.bodyColor : colors[i],
+      accent: isPlayer ? activeCar.accentColor : '#ffffff',
+      isFlying: isPlayer ? activeCar.isFlying : false,
+      laneChangeTimer: 0
+    });
+  }
+}
+
+const keys = { w: false, s: false };
+let entities = [];
+let particles = [];
+let roadOffset = 0;
+let spawnTimer = 0;
+
+function spawnParticles(x, y, color, count = 20) {
+  for (let i = 0; i < count; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const speed = Math.random() * 7 + 2;
+    particles.push({
+      x, y,
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed,
+      size: Math.random() * 5 + 2,
+      color,
+      alpha: 1
+    });
+  }
+}
+
+function startLevel(targetLvl) {
+  level = Math.min(MAX_LEVEL, targetLvl);
+  gameState = 'playing';
+  finishLine.active = false;
+  finishLine.y = -100;
+
+  levelDistancePx = 0;
+  gameTimeSeconds = 0;
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = setInterval(() => {
+    if (gameState === 'playing') gameTimeSeconds++;
+    const m = String(Math.floor(gameTimeSeconds / 60)).padStart(2, '0');
+    const s = String(gameTimeSeconds % 60).padStart(2, '0');
+    timerEl.textContent = `${m}:${s}`;
+  }, 1000);
+
+  initPlayers();
+
+  entities = [];
+  particles = [];
+  spawnTimer = 0;
+
+  levelEl.textContent = `${level} / ${MAX_LEVEL}`;
+  distanceEl.textContent = `0.00 / ${TARGET_KM} km`;
+  statusBadge.classList.add('hidden');
+  overlay.classList.add('hidden');
+  shopModal.classList.add('hidden');
+  playTone(520, 'triangle', 0.18);
+}
+
+function completeLevel() {
+  gameState = 'level_complete';
+  if (timerInterval) clearInterval(timerInterval);
+  playWinFanfare();
+
+  const reward = 2500;
+  money += reward;
+  saveProgress();
+
+  const colors = ['#00f5d4', '#fee440', '#00bbf9', '#ff2a6d', '#9b5de5'];
+  for (let i = 0; i < 6; i++) {
+    spawnParticles(roadLeft + Math.random() * roadWidth, players[0].y - 40, colors[i % colors.length], 18);
+  }
+
+  const finishedLevel = level;
+  const nextLevel = Math.min(MAX_LEVEL, level + 1);
+
+  statusBadge.className = 'status-badge';
+  statusBadge.textContent = `🏁 20 KM FINISH! +$${reward} MUKOFOT!`;
+  statusBadge.classList.remove('hidden');
+
+  if (finishedLevel >= MAX_LEVEL) {
+    overlayTitle.textContent = 'TABRIKLAYMIZ!';
+    overlayDesc.innerHTML = `Siz barcha <strong>1000-level</strong>dan o'tdingiz! Vaqt: ${timerEl.textContent}. Balans: <strong>$${money}</strong>`;
+    startBtn.innerHTML = 'BOSHIDAN BOSHLASH (<kbd>ENTER</kbd>)';
+  } else {
+    overlayTitle.textContent = `SIZ ${finishedLevel}-LEVELDAN O‘TDINGIZ!`;
+    overlayDesc.innerHTML = `20 km masofa ${timerEl.textContent} da zabt etildi! Keyingi bosqich — <strong>${nextLevel}-level</strong>ga o'tishga tayyormisiz?`;
+    startBtn.innerHTML = `${nextLevel}-LEVELGA O‘TISH (<kbd>ENTER</kbd>)`;
+  }
+
+  overlay.classList.remove('hidden');
+}
+
+function spawnWave() {
+  if (finishLine.active) return;
+
+  // To'siqlar olib tashlandi, faqat tangalar ($) chiqadi
+  const availableLanes = [0, 1, 2, 3, 4];
+  if (Math.randomStr < 0.8 && availableLanes.length > 0) {
+    const coinLane = availableLanes[Math.floor(Math.random() * availableLanes.length)];
+    entities.push({
+      lane: coinLane,
+      x: laneCenters[coinLane],
+      y: -60,
+      width: 32,
+      height: 32,
+      type: 'money'
+    });
+  }
+}
+
+function update() {
+  for (let i = particles.length - 1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.alpha -= 0.022;
+    if (p.alpha <= 0) particles.splice(i, 1);
+  }
+
+  if (gameState !== 'playing') return;
+
+  const activeCar = getSelectedCar();
+  const baseSpeed = Math.min(26, 8 + (level - 1) * 0.35 + activeCar.speedBonus);
+
+  const playerCar = players[0];
+  playerCar.color = activeCar.bodyColor;
+  playerCar.accent = activeCar.accentColor;
+  playerCar.isFlying = activeCar.isFlying;
+
+  const minY = canvas.height * 0.35;
+  const maxY = canvas.height - 85;
+
+  if (keys.w) {
+    playerCar.speed = baseSpeed * 1.9;
+    playerCar.y = Math.max(minY, playerCar.y - 5);
+  } else if (keys.s) {
+    playerCar.speed = baseSpeed * 0.5;
+    playerCar.y = Math.min(maxY, playerCar.y + 5);
+  } else {
+    playerCar.speed = baseSpeed;
+    const defaultY = canvas.height - 140;
+    playerCar.y += (defaultY - playerCar.y) * 0.08;
+  }
+
+  const currentSpeedKmh = Math.round(playerCar.speed * 12.5);
+  speedEl.textContent = `${currentSpeedKmh} km/h`;
+
+  const targetX = laneCenters[playerCar.lane];
+  playerCar.x += (targetX - playerCar.x) * 0.25;
+
+  for (let i = 1; i < players.length; i++) {
+    const bot = players[i];
+    bot.speed = baseSpeed * (0.88 + i * 0.03);
+    const botTargetX = laneCenters[bot.lane];
+    bot.x += (botTargetX - bot.x) * 0.2;
+
+    bot.laneChangeTimer++;
+    if (bot.laneChangeTimer > 110) {
+      bot.laneChangeTimer = 0;
+      if (Math.random() < 0.5 && bot.lane > 0) bot.lane--;
+      else if (Math.random() < 0.5 && bot.lane < TOTAL_LANES - 1) bot.lane++;
+    }
+  }
+
+  roadOffset = (roadOffset + playerCar.speed) % 60;
+
+  levelDistancePx += playerCar.speed;
+  const currentKm = Math.min(TARGET_KM, levelDistancePx / PIXELS_PER_KM).toFixed(2);
+  distanceEl.textContent = `${currentKm} / ${TARGET_KM} km`;
+
+  if (levelDistancePx >= targetDistancePx && !finishLine.active) {
+    finishLine.active = true;
+    finishLine.y = -60;
+  }
+
+  if (finishLine.active) {
+    finishLine.y += playerCar.speed;
+    if (finishLine.y >= playerCar.y - playerCar.height / 2) {
+      completeLevel();
+      return;
+    }
+  } else {
+    spawnTimer += playerCar.speed;
+    if (spawnTimer > 180) {
+      spawnWave();
+      spawnTimer = 0;
+    }
+  }
+
+  // Tangalarni yig'ish (to'siqlar yo'q)
+  for (let i = entities.length - 1; i >= 0; i--) {
+    const ent = entities[i];
+    ent.x = laneCenters[ent.lane];
+    ent.y += playerCar.speed;
+
+    const hitX = Math.abs(playerCar.x - ent.x) < (playerCar.width + ent.width) * 0.4;
+    const hitY = Math.abs(playerCar.y - ent.y) < (playerCar.height + ent.height) * 0.4;
+
+    if (hitX && hitY) {
+      if (ent.type === 'money') {
+        money += 500;
+        saveProgress();
+        playTone(760, 'sine', 0.12);
+        spawnParticles(ent.x, ent.y, '#fee440', 14);
+        entities.splice(i, 1);
+        continue;
+      }
+    }
+
+    if (ent.y > canvas.height + 60) {
+      entities.splice(i, 1);
+    }
+  }
+}
+
+function drawFinishLine() {
+  if (!finishLine.active) return;
+  const rows = 3;
+  const cols = 15;
+  const cellW = roadWidth / cols;
+  const cellH = 14;
+
+  ctx.save();
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = '#00f5d4';
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      ctx.fillStyle = (r + c) % 2 === 0 ? '#ffffff' : '#111322';
+      ctx.fillRect(roadLeft + c * cellW, finishLine.y + r * cellH, cellW, cellH);
+    }
+  }
+
+  ctx.fillStyle = '#00f5d4';
+  ctx.font = 'bold 18px "Segoe UI", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(`🏁 20 KM FINISH — LEVEL ${level} 🏁`, roadLeft + roadWidth / 2, finishLine.y - 10);
+  ctx.restore();
+}
+
+function draw() {
+  ctx.fillStyle = '#06060e';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#0d0f1d';
+  ctx.fillRect(roadLeft, 0, roadWidth, canvas.height);
+
+  ctx.strokeStyle = '#00bbf9';
+  ctx.lineWidth = 4;
+  ctx.shadowBlur = 15;
+  ctx.shadowColor = '#00bbf9';
+  ctx.beginPath();
+  ctx.moveTo(roadLeft, 0);
+  ctx.lineTo(roadLeft, canvas.height);
+  ctx.moveTo(roadLeft + roadWidth, 0);
+  ctx.lineTo(roadLeft + roadWidth, canvas.height);
+  ctx.stroke();
+
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.lineWidth = 3;
+  ctx.shadowBlur = 0;
+  ctx.setLineDash([28, 28]);
+  ctx.lineDashOffset = -roadOffset;
+
+  for (let i = 1; i < TOTAL_LANES; i++) {
+    const lineX = roadLeft + laneWidth * i;
+    ctx.beginPath();
+    ctx.moveTo(lineX, 0);
+    ctx.lineTo(lineX, canvas.height);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  drawFinishLine();
+
+  entities.forEach(ent => {
+    ctx.save();
+    ctx.fillStyle = '#fee440';
+    ctx.shadowBlur = 16;
+    ctx.shadowColor = '#fee440';
+    ctx.beginPath();
+    ctx.arc(ent.x, ent.y, ent.width / 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#070710';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('$', ent.x, ent.y + 1);
+    ctx.restore();
+  });
+
+  // 5 ta o'yinchi mashinasi (Tesla Roadster uchish rejimida ko'tarilib turadi)
+  players.forEach((p, index) => {
+    ctx.save();
+    const isFly = p.isFlying;
+    const renderY = isFly ? p.y - 14 : p.y; // Uchadigan mashina biroz balandda ko'rinadi
+
+    if (isFly) {
+      // Uchish effekti (ostidagi nuri)
+      ctx.shadowBlur = 30;
+      ctx.shadowColor = '#00f5d4';
+      ctx.fillStyle = 'rgba(0, 245, 212, 0.35)';
+      ctx.beginPath();
+      ctx.ellipse(p.x, renderY + 20, p.width * 0.7, p.height * 0.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.fillStyle = p.color;
+    ctx.shadowBlur = isFly ? 35 : 18;
+    ctx.shadowColor = p.accent;
+    ctx.beginPath();
+    ctx.roundRect(p.x - p.width / 2, renderY - p.height / 2, p.width, p.height, 10);
+    ctx.fill();
+
+    ctx.fillStyle = p.accent;
+    ctx.fillRect(p.x - p.width / 2 + 6, renderY - p.height / 2 + 8, p.width - 12, 9);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 10px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(p.isPlayer ? (isFly ? '🚀 UCHAYOTGAN TESLA' : 'SIZ') : `P${index+1}`, p.x, renderY - p.height / 2 - 8);
+    ctx.restore();
+  });
+
+  particles.forEach(p => {
+    ctx.save();
+    ctx.globalAlpha = p.alpha;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  });
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+function handleActionButton() {
+  if (gameState === 'level_complete') {
+    const nextLvl = level >= MAX_LEVEL ? 1 : level + 1;
+    startLevel(nextLvl);
+  } else {
+    startLevel(1);
+  }
+}
+
+document.addEventListener('keydown', (e) => {
+  const key = e.key.toLowerCase();
+
+  if (e.key === 'Escape' && gameState === 'paused_shop') {
+    closeShop();
+    return;
+  }
+
+  if (e.key === 'Enter' && (gameState === 'menu' || gameState === 'level_complete')) {
+    handleActionButton();
+    return;
+  }
+
+  if (gameState !== 'playing') return;
+  const playerCar = players[0];
+
+  if (key === 'a' || e.key === 'ArrowLeft') {
+    if (playerCar.lane > 0) {
+      playerCar.lane -= 1;
+      playTone(420, 'sine', 0.06);
+      spawnParticles(playerCar.x, playerCar.y, '#00bbf9', 6);
+    }
+  }
+
+  if (key === 'd' || e.key === 'ArrowRight') {
+    if (playerCar.lane < TOTAL_LANES - 1) {
+      playerCar.lane += 1;
+      playTone(460, 'sine', 0.06);
+      spawnParticles(playerCar.x, playerCar.y, '#00bbf9', 6);
+    }
+  }
+
+  if (key === 'w' || e.key === 'ArrowUp') keys.w = true;
+  if (key === 's' || e.key === 'ArrowDown') keys.s = true;
+});
+
+document.addEventListener('keyup', (e) => {
+  const key = e.key.toLowerCase();
+  if (key === 'w' || e.key === 'ArrowUp') keys.w = false;
+  if (key === 's' || e.key === 'ArrowDown') keys.s = false;
+});
+
+startBtn.addEventListener('click', handleActionButton);

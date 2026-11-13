@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Tosh, Qaychi, Qog'oz - Zamonaviy O'yin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: radial-gradient(circle at top, #1e1b4b 0%, #09090b 100%);
+            color: #ffffff;
+            user-select: none;
+            overflow-x: hidden;
+        }
+
+        /* Qo'l silkinish animatsiyasi (Tosh... Qaychi... Qog'oz!) */
+        @keyframes shakeLeft {
+            0%, 100% { transform: translateY(0) rotate(0deg); }
+            25% { transform: translateY(-25px) rotate(-15deg); }
+            50% { transform: translateY(5px) rotate(5deg); }
+            75% { transform: translateY(-25px) rotate(-15deg); }
+        }
+
+        @keyframes shakeRight {
+            0%, 100% { transform: translateY(0) rotate(0deg) scaleX(-1); }
+            25% { transform: translateY(-25px) rotate(15deg) scaleX(-1); }
+            50% { transform: translateY(5px) rotate(-5deg) scaleX(-1); }
+            75% { transform: translateY(-25px) rotate(15deg) scaleX(-1); }
+        }
+
+        .animate-shake-left {
+            animation: shakeLeft 0.45s ease-in-out infinite;
+        }
+
+        .animate-shake-right {
+            animation: shakeRight 0.45s ease-in-out infinite;
+        }
+
+        .flip-horizontal {
+            transform: scaleX(-1);
+        }
+
+        /* Kartochka porlashi va hover effektlari */
+        .choice-card {
+            transition: all 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .choice-card:hover:not(:disabled) {
+            transform: translateY(-8px) scale(1.04);
+        }
+        .choice-card:active:not(:disabled) {
+            transform: scale(0.95);
+        }
+
+        .glow-win {
+            box-shadow: 0 0 35px rgba(34, 197, 94, 0.5), inset 0 0 20px rgba(34, 197, 94, 0.2);
+            border-color: #22c55e !important;
+        }
+        .glow-lose {
+            box-shadow: 0 0 35px rgba(239, 68, 68, 0.5), inset 0 0 20px rgba(239, 68, 68, 0.2);
+            border-color: #ef4444 !important;
+        }
+        .glow-draw {
+            box-shadow: 0 0 35px rgba(234, 179, 8, 0.5), inset 0 0 20px rgba(234, 179, 8, 0.2);
+            border-color: #eab308 !important;
+        }
+
+        /* Konfetti kanvasi */
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        /* Maxsus skrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(99, 102, 241, 0.5);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col items-center justify-between p-3 sm:p-6">
+
+    <!-- Konfetti animatsiyasi uchun Canvas -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- Yuqori panel: Sarlavha, Rejimlar va Tugmalar -->
+    <header class="w-full max-w-4xl flex flex-wrap items-center justify-between gap-3 bg-zinc-900/70 backdrop-blur-md border border-zinc-800/80 p-3 sm:p-4 rounded-2xl shadow-xl z-10">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-lg shadow-indigo-500/30 font-black text-xl">
+                ✊
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-black tracking-wide bg-gradient-to-r from-white via-indigo-200 to-purple-300 bg-clip-text text-transparent">
+                    TOSH • QAYCHI • QOG'OZ
+                </h1>
+                <p class="text-[11px] text-zinc-400">Klassik o'yinning zamonaviy talqini</p>
+            </div>
+        </div>
+
+        <!-- O'yin rejimi va Qiyinlik darajasi -->
+        <div class="flex items-center flex-wrap gap-2">
+            <select id="modeSelect" class="bg-zinc-800/90 border border-zinc-700 text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="endless">♾️ Cheksiz rejim</option>
+                <option value="3">🏆 3 g'alabagacha</option>
+                <option value="5">👑 5 g'alabagacha</option>
+            </select>
+
+            <select id="difficultySelect" class="bg-zinc-800/90 border border-zinc-700 text-xs sm:text-sm font-semibold rounded-xl px-3 py-2 text-zinc-200 focus:outline-none focus:border-indigo-500 cursor-pointer">
+                <option value="normal">🎲 Oddiy (Tasodifiy)</option>
+                <option value="smart">🧠 Aqlli AI</option>
+            </select>
+
+            <!-- Ovoz tugmasi -->
+            <button id="soundToggle" title="Ovozni yoqish/o'chirish" class="p-2.5 bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-zinc-200 transition active:scale-95">
+                <svg id="soundOnIcon" class="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                </svg>
+                <svg id="soundOffIcon" class="w-5 h-5 text-rose-400 hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                </svg>
+            </button>
+
+            <!-- Qoidalar tugmasi -->
+            <button id="rulesBtn" title="O'yin qoidalari" class="p-2.5 bg-zinc-800/90 hover:bg-zinc-700 border border-zinc-700 rounded-xl text-zinc-200 transition active:scale-95">
+                <svg class="w-5 h-5 text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+            </button>
+
+            <!-- Qayta boshlash tugmasi -->
+            <button id="resetBtn" title="Hisobni nolga tushirish" class="p-2.5 bg-zinc-800/90 hover:bg-rose-900/50 border border-zinc-700 hover:border-rose-500/50 rounded-xl text-zinc-200 transition active:scale-95">
+                <svg class="w-5 h-5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- Asosiy o'yin maydoni -->
+    <main class="w-full max-w-4xl flex-1 flex flex-col items-center justify-center my-4 gap-5 z-10">
+
+        <!-- Hisoblar paneli (Scoreboard) -->
+        <div class="w-full grid grid-cols-3 gap-3 sm:gap-5">
+            <!-- O'yinchi (Siz) -->
+            <div class="bg-zinc-900/80 backdrop-blur border border-indigo-500/30 rounded-2xl p-3 sm:p-4 flex flex-col items-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-blue-500"></div>
+                <span class="text-xs sm:text-sm font-bold text-indigo-300 uppercase tracking-wider">SIZ</span>
+                <span id="playerScore" class="text-3xl sm:text-4xl font-black text-white mt-1">0</span>
+                <div id="streakBadge" class="mt-1 px-2 py-0.5 bg-amber-500/20 border border-amber-500/40 rounded-full text-[10px] font-bold text-amber-300 hidden">
+                    🔥 <span id="streakCount">0</span> ketma-ket
+                </div>
+            </div>
+
+            <!-- Durang -->
+            <div class="bg-zinc-900/80 backdrop-blur border border-zinc-700/60 rounded-2xl p-3 sm:p-4 flex flex-col items-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-zinc-600"></div>
+                <span class="text-xs sm:text-sm font-bold text-zinc-400 uppercase tracking-wider">DURANG</span>
+                <span id="drawScore" class="text-3xl sm:text-4xl font-black text-zinc-300 mt-1">0</span>
+                <span id="modeIndicator" class="mt-1 text-[10px] font-semibold text-zinc-500">Cheksiz o'yin</span>
+            </div>
+
+            <!-- Kompyuter -->
+            <div class="bg-zinc-900/80 backdrop-blur border border-rose-500/30 rounded-2xl p-3 sm:p-4 flex flex-col items-center relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-500 to-pink-500"></div>
+                <span class="text-xs sm:text-sm font-bold text-rose-300 uppercase tracking-wider">KOMPYUTER</span>
+                <span id="computerScore" class="text-3xl sm:text-4xl font-black text-white mt-1">0</span>
+                <span id="aiLevelTag" class="mt-1 text-[10px] font-semibold text-zinc-500">Oddiy rejim</span>
+            </div>
+        </div>
+
+        <!-- Jang maydoni (Arena) -->
+        <div class="w-full bg-zinc-900/60 backdrop-blur-md border border-zinc-800/90 rounded-3xl p-5 sm:p-8 flex flex-col items-center justify-between min-h-[260px] sm:min-h-[300px] shadow-2xl relative">
+            
+            <!-- Natija xabari -->
+            <div id="statusBanner" class="text-center mb-4">
+                <h2 id="resultText" class="text-2xl sm:text-3xl font-black tracking-wide text-white transition-all duration-300">
+                    O'zingizga mos belgini tanlang!
+                </h2>
+                <p id="subResultText" class="text-xs sm:text-sm text-zinc-400 mt-1">
+                    Quyidagi tugmalardan birini bosing
+                </p>
+            </div>
+
+            <!-- Ikkala tomon qo'llari ko'rinadigan joy -->
+            <div class="w-full flex items-center justify-around my-2">
+                <!-- O'yinchi qo'li -->
+                <div class="flex flex-col items-center">
+                    <div id="playerHandBox" class="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300">
+                        <div id="playerHandVisual" class="w-20 h-20 sm:w-24 sm:h-24 text-indigo-400">
+                            <!-- Default: Tosh SVG -->
+                        </div>
+                    </div>
+                    <span id="playerChoiceLabel" class="mt-2 text-xs sm:text-sm font-bold text-indigo-300">Sizning tanlovingiz</span>
+                </div>
+
+                <!-- VS belgisi -->
+                <div class="flex flex-col items-center px-2">
+                    <span class="text-xl sm:text-3xl font-black italic bg-gradient-to-b from-amber-300 to-orange-600 bg-clip-text text-transparent">VS</span>
+                </div>
+
+                <!-- Kompyuter qo'li -->
+                <div class="flex flex-col items-center">
+                    <div id="computerHandBox" class="w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300">
+                        <div id="computerHandVisual" class="w-20 h-20 sm:w-24 sm:h-24 text-rose-400 flip-horizontal">
+                            <!-- Default: Tosh SVG -->
+                        </div>
+                    </div>
+                    <span id="computerChoiceLabel" class="mt-2 text-xs sm:text-sm font-bold text-rose-300">Kompyuter tanlovi</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tanlov tugmalari (Tosh, Qaychi, Qog'oz) -->
+        <div class="w-full grid grid-cols-3 gap-3 sm:gap-6">
+            <!-- TOSH -->
+            <button data-choice="rock" class="choice-card group bg-gradient-to-b from-zinc-800/90 to-zinc-900/90 hover:from-indigo-900/50 hover:to-zinc-900 border-2 border-zinc-700/80 hover:border-indigo-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="w-14 h-14 sm:w-20 sm:h-20 text-indigo-400 group-hover:text-indigo-300 transition-transform group-hover:scale-110 mb-2 sm:mb-3" id="btnIconRock"></div>
+                <span class="text-base sm:text-xl font-black tracking-wide text-white">TOSH</span>
+                <span class="text-[10px] sm:text-xs text-zinc-400 mt-0.5 hidden sm:inline">Qaychini sindiradi</span>
+            </button>
+
+            <!-- QAYCHI -->
+            <button data-choice="scissors" class="choice-card group bg-gradient-to-b from-zinc-800/90 to-zinc-900/90 hover:from-purple-900/50 hover:to-zinc-900 border-2 border-zinc-700/80 hover:border-purple-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="w-14 h-14 sm:w-20 sm:h-20 text-purple-400 group-hover:text-purple-300 transition-transform group-hover:scale-110 mb-2 sm:mb-3" id="btnIconScissors"></div>
+                <span class="text-base sm:text-xl font-black tracking-wide text-white">QAYCHI</span>
+                <span class="text-[10px] sm:text-xs text-zinc-400 mt-0.5 hidden sm:inline">Qog'ozni kesadi</span>
+            </button>
+
+            <!-- QOG'OZ -->
+            <button data-choice="paper" class="choice-card group bg-gradient-to-b from-zinc-800/90 to-zinc-900/90 hover:from-emerald-900/50 hover:to-zinc-900 border-2 border-zinc-700/80 hover:border-emerald-500 rounded-2xl sm:rounded-3xl p-4 sm:p-6 flex flex-col items-center justify-center shadow-lg cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed">
+                <div class="w-14 h-14 sm:w-20 sm:h-20 text-emerald-400 group-hover:text-emerald-300 transition-transform group-hover:scale-110 mb-2 sm:mb-3" id="btnIconPaper"></div>
+                <span class="text-base sm:text-xl font-black tracking-wide text-white">QOG'OZ</span>
+                <span class="text-[10px] sm:text-xs text-zinc-400 mt-0.5 hidden sm:inline">Toshni o'raydi</span>
+            </button>
+        </div>
+
+        <!-- O'yin tarixi (Match History) -->
+        <div class="w-full bg-zinc-900/60 backdrop-blur border border-zinc-800/80 rounded-2xl p-3 sm:p-4">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs font-bold text-zinc-400 uppercase tracking-wider">So'nggi natijalar tarixi</span>
+                <span id="totalGamesText" class="text-xs text-zinc-500">Jami o'yinlar: 0</span>
+            </div>
+            <div id="historyList" class="flex items-center gap-2 overflow-x-auto pb-1 min-h-[36px]">
+                <span class="text-xs text-zinc-500 italic">Hali o'yin o'ynalmadi...</span>
+            </div>
+        </div>
+    </main>
+
+    <!-- Qoidalar Modali -->
+    <div id="rulesModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm hidden items-center justify-center p-4 z-50">
+        <div class="bg-zinc-900 border border-zinc-700 rounded-3xl max-w-md w-full p-6 shadow-2xl transform transition-all">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-black text-white">📜 O'yin qoidalari</h3>
+                <button id="closeRulesBtn" class="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white">
+                    ✕
+                </button>
+            </div>
+            <div class="space-y-3 text-sm text-zinc-300">
+                <p><strong>"Tosh, Qaychi, Qog'oz"</strong> — ikki ishtirokchi o'rtasidagi tezkor mantiqiy o'yin:</p>
+                <div class="bg-zinc-800/70 p-3.5 rounded-2xl space-y-2 border border-zinc-700/50">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">✊</span>
+                        <span><strong class="text-indigo-400">Tosh</strong> — Qaychini sindirib yengadi.</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">✌️</span>
+                        <span><strong class="text-purple-400">Qaychi</strong> — Qog'ozni kesib yengadi.</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xl">✋</span>
+                        <span><strong class="text-emerald-400">Qog'oz</strong> — Toshni o'rab yengadi.</span>
+                    </div>
+                </div>
+                <p class="text-xs text-zinc-400">
+                    💡 <strong>Aqlli AI rejimi:</strong> Kompyuter sizning oldingi yurishlaringizni tahlil qilib, keyingi harakatingizni oldindan topishga harakat qiladi!
+                </p>
+            </div>
+            <button id="gotItBtn" class="w-full mt-5 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl transition">
+                Tushunarli!
+            </button>
+        </div>
+    </div>
+
+    <!-- Match G'olibi Modali (Best-of-3 / Best-of-5 uchun) -->
+    <div id="matchEndModal" class="fixed inset-0 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4 z-50">
+        <div class="bg-zinc-900 border-2 border-indigo-500/50 rounded-3xl max-w-sm w-full p-7 text-center shadow-2xl">
+            <div id="matchEndEmoji" class="text-6xl mb-3">🏆</div>
+            <h3 id="matchEndTitle" class="text-2xl font-black text-white mb-1">TABRIKLAYMIZ!</h3>
+            <p id="matchEndSubtitle" class="text-sm text-zinc-400 mb-5">Siz ushbu musobaqada g'olib bo'ldingiz!</p>
+            <div class="bg-zinc-950/70 rounded-2xl p-4 mb-6 border border-zinc-800 flex justify-around">
+                <div>
+                    <div class="text-xs text-zinc-400">SIZ</div>
+                    <div id="finalPlayerScore" class="text-2xl font-black text-indigo-400">3</div>
+                </div>
+                <div class="text-zinc-600 font-black self-center">:</div>
+                <div>
+                    <div class="text-xs text-zinc-400">KOMPYUTER</div>
+                    <div id="finalComputerScore" class="text-2xl font-black text-rose-400">1</div>
+                </div>
+            </div>
+            <button id="playAgainBtn" class="w-full py-3.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-black rounded-xl shadow-lg transition transform active:scale-95">
+                YANA O'YNASH
+            </button>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * Maxsus SVG illyustratsiyalar (Tosh, Qaychi, Qog'oz)
+         */
+        const ICONS = {
+            rock: `
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M28 54C24 54 20 50 20 45V38C20 33 24 29 29 29C31 29 33 30 34 31V26C34 21 38 17 43 17C46 17 49 19 50 21C51 19 54 17 57 17C62 17 66 21 66 26V28C67 27 69 26 71 26C76 26 80 30 80 35V56C80 72 68 84 51 84H45C32 84 23 75 21 63L19 53C18 49 21 45 25 45C28 45 31 47 32 50L34 56" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M34 31V44M50 21V44M66 28V45" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+                    <path d="M33 57C37 52 46 51 53 55" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+                </svg>
+            `,
+            scissors: `
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M36 52L24 22C22 17 25 12 30 10C35 8 40 11 42 16L52 46" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M52 46L64 16C66 11 71 8 76 10C81 12 84 17 82 22L68 54" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M26 52C22 52 19 55 19 59V64C19 76 29 86 42 86H58C71 86 81 76 81 63V52C81 47 77 43 72 43C68 43 65 46 64 49" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M34 56C40 53 48 54 53 59" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/>
+                </svg>
+            `,
+            paper: `
+                <svg viewBox="0 0 100 100" class="w-full h-full drop-shadow-lg" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M25 54V28C25 24 28 21 32 21C36 21 39 24 39 28V48M39 24V18C39 14 42 11 46 11C50 11 53 14 53 18V47M53 20V16C53 12 56 9 60 9C64 9 67 12 67 16V48M67 26V23C67 19 70 16 74 16C78 16 81 19 81 23V58C81 75 68 88 51 88H45C31 88 21 78 19 64L16 49C15 45 18 41 22 41C25 41 28 43 29 46L32 56" fill="currentColor" fill-opacity="0.2" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            `
+        };
+
+        const LABELS_UZ = {
+            rock: 'Tosh',
+            scissors: 'Qaychi',
+            paper: "Qog'oz"
+        };
+
+        // O'yin holati (State)
+        let state = {
+            playerScore: 0,
+            computerScore: 0,
+            drawScore: 0,
+            streak: 0,
+            isAnimating: false,
+            soundEnabled: true,
+            mode: 'endless', // 'endless', '3', '5'
+            difficulty: 'normal', // 'normal', 'smart'
+            history: [],
+            playerMoveCounts: { rock: 0, scissors: 0, paper: 0 }
+        };
+
+        // DOM elementlar
+        const playerScoreEl = document.getElementById('playerScore');
+        const computerScoreEl = document.getElementById('computerScore');
+        const drawScoreEl = document.getElementById('drawScore');
+        const streakBadge = document.getElementById('streakBadge');
+        const streakCount = document.getElementById('streakCount');
+        const resultText = document.getElementById('resultText');
+        const subResultText = document.getElementById('subResultText');
+        const playerHandBox = document.getElementById('playerHandBox');
+        const computerHandBox = document.getElementById('computerHandBox');
+        const playerHandVisual = document.getElementById('playerHandVisual');
+        const computerHandVisual = document.getElementById('computerHandVisual');
+        const playerChoiceLabel = document.getElementById('playerChoiceLabel');
+        const computerChoiceLabel = document.getElementById('computerChoiceLabel');
+        const choiceButtons = document.querySelectorAll('.choice-card');
+        const historyList = document.getElementById('historyList');
+        const totalGamesText = document.getElementById('totalGamesText');
+        const modeSelect = document.getElementById('modeSelect');
+        const difficultySelect = document.getElementById('difficultySelect');
+        const modeIndicator = document.getElementById('modeIndicator');
+        const aiLevelTag = document.getElementById('aiLevelTag');
+
+        // Tugmalarga boshlang'ich ikonalarni joylash
+        document.getElementById('btnIconRock').innerHTML = ICONS.rock;
+        document.getElementById('btnIconScissors').innerHTML = ICONS.scissors;
+        document.getElementById('btnIconPaper').innerHTML = ICONS.paper;
+        playerHandVisual.innerHTML = ICONS.rock;
+        computerHandVisual.innerHTML = ICONS.rock;
+
+        /**
+         * Web Audio API yordamida sintezlangan ovoz effektlari
+         */
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                }
+            },
+            playTone(freq, type, duration, vol = 0.15) {
+                if (!state.soundEnabled) return;
+                try {
+                    this.init();
+                    if (this.ctx.state === 'suspended') this.ctx.resume();
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = type;
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                    gain.gain.setValueAtTime(vol, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + duration);
+                } catch (e) {}
+            },
+            click() {
+                this.playTone(520, 'sine', 0.08, 0.12);
+            },
+            tick() {
+                this.playTone(300, 'triangle', 0.09, 0.1);
+            },
+            win() {
+                this.playTone(523.25, 'sine', 0.12, 0.15);
+                setTimeout(() => this.playTone(659.25, 'sine', 0.12, 0.15), 100);
+                setTimeout(() => this.playTone(783.99, 'sine', 0.25, 0.18), 200);
+            },
+            lose() {
+                this.playTone(349.23, 'sawtooth', 0.15, 0.12);
+                setTimeout(() => this.playTone(277.18, 'sawtooth', 0.28, 0.12), 140);
+            },
+            draw() {
+                this.playTone(440, 'triangle', 0.12, 0.12);
+                setTimeout(() => this.playTone(440, 'triangle', 0.15, 0.12), 130);
+            }
+        };
+
+        /**
+         * Konfetti zarrachalari effekti
+         */
+        const Confetti = {
+            canvas: document.getElementById('confettiCanvas'),
+            ctx: document.getElementById('confettiCanvas').getContext('2d'),
+            particles: [],
+            animId: null,
+            resize() {
+                this.canvas.width = window.innerWidth;
+                this.canvas.height = window.innerHeight;
+            },
+            burst(count = 60) {
+                this.resize();
+                const colors = ['#6366f1', '#22c55e', '#eab308', '#ec4899', '#38bdf8'];
+                for (let i = 0; i < count; i++) {
+                    this.particles.push({
+                        x: window.innerWidth / 2,
+                        y: window.innerHeight / 2,
+                        vx: (Math.random() - 0.5) * 16,
+                        vy: (Math.random() - 0.7) * 16,
+                        size: Math.random() * 7 + 4,
+                        color: colors[Math.floor(Math.random() * colors.length)],
+                        alpha: 1,
+                        rot: Math.random() * 360,
+                        vRot: (Math.random() - 0.5) * 10
+                    });
+                }
+                if (!this.animId) this.loop();
+            },
+            loop() {
+                this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                for (let i = this.particles.length - 1; i >= 0; i--) {
+                    const p = this.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.vy += 0.35; // Gravitatsiya
+                    p.rot += p.vRot;
+                    p.alpha -= 0.015;
+
+                    if (p.alpha <= 0) {
+                        this.particles.splice(i, 1);
+                        continue;
+                    }
+
+                    this.ctx.save();
+                    this.ctx.globalAlpha = p.alpha;
+                    this.ctx.translate(p.x, p.y);
+                    this.ctx.rotate((p.rot * Math.PI) / 180);
+                    this.ctx.fillStyle = p.color;
+                    this.ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size * 0.6);
+                    this.ctx.restore();
+                }
+
+                if (this.particles.length > 0) {
+                    this.animId = requestAnimationFrame(() => this.loop());
+                } else {
+                    this.animId = null;
+                }
+            }
+        };
+        window.addEventListener('resize', () => Confetti.resize());
+
+        /**
+         * Kompyuter tanlovini aniqlash (Oddiy va Aqlli AI)
+         */
+        function getComputerChoice() {
+            const choices = ['rock', 'scissors', 'paper'];
+            if (state.difficulty === 'normal' || state.history.length < 2) {
+                return choices[Math.floor(Math.random() * choices.length)];
+            }
+
+            // Aqlli AI: O'yinchining eng ko'p ishlatgan yurishiga qarshi yurish (70% ehtimollik bilan)
+            if (Math.random() < 0.7) {
+                const counts = state.playerMoveCounts;
+                let mostUsed = 'rock';
+                if (counts.scissors > counts[mostUsed]) mostUsed = 'scissors';
+                if (counts.paper > counts[mostUsed]) mostUsed = 'paper';
+
+                // Eng ko'p ishlatilgan belgini yenguvchi belgi
+                if (mostUsed === 'rock') return 'paper';
+                if (mostUsed === 'scissors') return 'rock';
+                if (mostUsed === 'paper') return 'scissors';
+            }
+
+            return choices[Math.floor(Math.random() * choices.length)];
+        }
+
+        /**
+         * Raund g'olibini aniqlash
+         */
+        function determineWinner(player, computer) {
+            if (player === computer) return 'draw';
+            if (
+                (player === 'rock' && computer === 'scissors') ||
+                (player === 'scissors' && computer === 'paper') ||
+                (player === 'paper' && computer === 'rock')
+            ) {
+                return 'win';
+            }
+            return 'lose';
+        }
+
+        /**
+         * Asosiy o'yin jarayoni (Tugma bosilganda)
+         */
+        function playRound(playerChoice) {
+            if (state.isAnimating) return;
+            state.isAnimating = true;
+            AudioEngine.click();
+
+            // Tugmalarni vaqtincha bloklash
+            choiceButtons.forEach(btn => btn.disabled = true);
+
+            // Oldingi porlash effektlarini tozalash
+            playerHandBox.className = 'w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300';
+            computerHandBox.className = 'w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300';
+
+            // Silkinish animatsiyasi uchun qo'llarni musht (Tosh) holatiga keltirish
+            playerHandVisual.innerHTML = ICONS.rock;
+            computerHandVisual.innerHTML = ICONS.rock;
+            playerHandVisual.classList.add('animate-shake-left');
+            computerHandVisual.classList.add('animate-shake-right');
+
+            playerChoiceLabel.textContent = 'Tayyorlanmoqda...';
+            computerChoiceLabel.textContent = 'Tayyorlanmoqda...';
+
+            // "Tosh... Qaychi... Qog'oz!" sanog'i
+            const steps = ['Tosh...', 'Qaychi...', "Qog'oz!"];
+            let stepIndex = 0;
+
+            resultText.textContent = steps[0];
+            resultText.className = 'text-2xl sm:text-3xl font-black tracking-wide text-indigo-300';
+            subResultText.textContent = 'Diqqat qiling...';
+            AudioEngine.tick();
+
+            const countdownInterval = setInterval(() => {
+                stepIndex++;
+                if (stepIndex < steps.length) {
+                    resultText.textContent = steps[stepIndex];
+                    AudioEngine.tick();
+                } else {
+                    clearInterval(countdownInterval);
+                    revealResult(playerChoice);
+                }
+            }, 320);
+        }
+
+        /**
+         * Natijani ochish va hisoblarni yangilash
+         */
+        function revealResult(playerChoice) {
+            const computerChoice = getComputerChoice();
+            state.playerMoveCounts[playerChoice]++;
+
+            // Animatsiyani to'xtatish
+            playerHandVisual.classList.remove('animate-shake-left');
+            computerHandVisual.classList.remove('animate-shake-right');
+
+            // Tanlangan belgilarni ko'rsatish
+            playerHandVisual.innerHTML = ICONS[playerChoice];
+            computerHandVisual.innerHTML = ICONS[computerChoice];
+            playerChoiceLabel.textContent = `Siz: ${LABELS_UZ[playerChoice]}`;
+            computerChoiceLabel.textContent = `Kompyuter: ${LABELS_UZ[computerChoice]}`;
+
+            const outcome = determineWinner(playerChoice, computerChoice);
+
+            if (outcome === 'win') {
+                state.playerScore++;
+                state.streak++;
+                resultText.textContent = '🎉 SIZ YUTDINGIZ!';
+                resultText.className = 'text-2xl sm:text-3xl font-black tracking-wide text-emerald-400';
+                subResultText.textContent = `${LABELS_UZ[playerChoice]} ${LABELS_UZ[computerChoice].toLowerCase()}ni yengdi!`;
+                playerHandBox.classList.add('glow-win');
+                computerHandBox.classList.add('glow-lose');
+                AudioEngine.win();
+                Confetti.burst(40);
+            } else if (outcome === 'lose') {
+                state.computerScore++;
+                state.streak = 0;
+                resultText.textContent = '😔 KOMPYUTER YUTDI';
+                resultText.className = 'text-2xl sm:text-3xl font-black tracking-wide text-rose-400';
+                subResultText.textContent = `${LABELS_UZ[computerChoice]} ${LABELS_UZ[playerChoice].toLowerCase()}ni yengdi!`;
+                computerHandBox.classList.add('glow-win');
+                playerHandBox.classList.add('glow-lose');
+                AudioEngine.lose();
+            } else {
+                state.drawScore++;
+                resultText.textContent = '🤝 DURANG!';
+                resultText.className = 'text-2xl sm:text-3xl font-black tracking-wide text-amber-400';
+                subResultText.textContent = `Ikkala tomon ham ${LABELS_UZ[playerChoice].toLowerCase()} tanladi.`;
+                playerHandBox.classList.add('glow-draw');
+                computerHandBox.classList.add('glow-draw');
+                AudioEngine.draw();
+            }
+
+            // Tarixga qo'shish
+            state.history.unshift({
+                player: playerChoice,
+                computer: computerChoice,
+                outcome: outcome
+            });
+            if (state.history.length > 15) state.history.pop();
+
+            updateUI();
+
+            // Match tugaganini tekshirish (Best-of-3 yoki Best-of-5)
+            if (state.mode !== 'endless') {
+                const targetWins = parseInt(state.mode);
+                if (state.playerScore >= targetWins || state.computerScore >= targetWins) {
+                    setTimeout(() => showMatchEndModal(state.playerScore >= targetWins), 650);
+                    return;
+                }
+            }
+
+            state.isAnimating = false;
+            choiceButtons.forEach(btn => btn.disabled = false);
+        }
+
+        /**
+         * Ekrandagi hisoblar va tarixni yangilash
+         */
+        function updateUI() {
+            playerScoreEl.textContent = state.playerScore;
+            computerScoreEl.textContent = state.computerScore;
+            drawScoreEl.textContent = state.drawScore;
+
+            if (state.streak >= 2) {
+                streakBadge.classList.remove('hidden');
+                streakCount.textContent = state.streak;
+            } else {
+                streakBadge.classList.add('hidden');
+            }
+
+            const total = state.playerScore + state.computerScore + state.drawScore;
+            totalGamesText.textContent = `Jami o'yinlar: ${total}`;
+
+            if (state.history.length === 0) {
+                historyList.innerHTML = '<span class="text-xs text-zinc-500 italic">Hali o\'yin o\'ynalmadi...</span>';
+            } else {
+                const emojiMap = { rock: '✊', scissors: '✌️', paper: '✋' };
+                historyList.innerHTML = state.history.map(item => {
+                    const badgeStyle = item.outcome === 'win'
+                        ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+                        : item.outcome === 'lose'
+                        ? 'bg-rose-500/20 border-rose-500/40 text-rose-300'
+                        : 'bg-amber-500/20 border-amber-500/40 text-amber-300';
+                    return `
+                        <div class="flex-shrink-0 px-2.5 py-1 rounded-xl border ${badgeStyle} text-xs font-bold flex items-center gap-1.5">
+                            <span>${emojiMap[item.player]}</span>
+                            <span class="opacity-60">vs</span>
+                            <span>${emojiMap[item.computer]}</span>
+                        </div>
+                    `;
+                }).join('');
+            }
+        }
+
+        /**
+         * Match yakunlanganda modalni ko'rsatish
+         */
+        function showMatchEndModal(playerWon) {
+            const modal = document.getElementById('matchEndModal');
+            document.getElementById('matchEndEmoji').textContent = playerWon ? '🏆' : '🤖';
+            document.getElementById('matchEndTitle').textContent = playerWon ? 'CHEMPION!' : 'MAG\'LUBIYAT';
+            document.getElementById('matchEndTitle').className = `text-2xl font-black mb-1 ${playerWon ? 'text-emerald-400' : 'text-rose-400'}`;
+            document.getElementById('matchEndSubtitle').textContent = playerWon
+                ? `Siz kompyuterni ${state.playerScore}:${state.computerScore} hisobida mag'lub etdingiz!`
+                : `Kompyuter ${state.computerScore}:${state.playerScore} hisobida g'alaba qozondi.`;
+            document.getElementById('finalPlayerScore').textContent = state.playerScore;
+            document.getElementById('finalComputerScore').textContent = state.computerScore;
+
+            if (playerWon) Confetti.burst(100);
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        /**
+         * O'yinni qayta boshlash (Reset)
+         */
+        function resetGame() {
+            state.playerScore = 0;
+            state.computerScore = 0;
+            state.drawScore = 0;
+            state.streak = 0;
+            state.history = [];
+            state.playerMoveCounts = { rock: 0, scissors: 0, paper: 0 };
+            state.isAnimating = false;
+
+            playerHandVisual.innerHTML = ICONS.rock;
+            computerHandVisual.innerHTML = ICONS.rock;
+            playerHandBox.className = 'w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300';
+            computerHandBox.className = 'w-28 h-28 sm:w-36 sm:h-36 rounded-3xl bg-zinc-800/80 border-2 border-zinc-700 flex items-center justify-center p-4 shadow-inner transition-all duration-300';
+            
+            resultText.textContent = "O'zingizga mos belgini tanlang!";
+            resultText.className = 'text-2xl sm:text-3xl font-black tracking-wide text-white';
+            subResultText.textContent = 'Quyidagi tugmalardan birini bosing';
+            playerChoiceLabel.textContent = 'Sizning tanlovingiz';
+            computerChoiceLabel.textContent = 'Kompyuter tanlovi';
+
+            choiceButtons.forEach(btn => btn.disabled = false);
+            document.getElementById('matchEndModal').classList.add('hidden');
+            document.getElementById('matchEndModal').classList.remove('flex');
+            updateUI();
+        }
+
+        // Hodisalarni ulash (Event Listeners)
+        choiceButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const choice = btn.getAttribute('data-choice');
+                playRound(choice);
+            });
+        });
+
+        // Klaviatura tugmalari bilan boshqarish (1 - Tosh, 2 - Qaychi, 3 - Qog'oz)
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '1') playRound('rock');
+            if (e.key === '2') playRound('scissors');
+            if (e.key === '3') playRound('paper');
+        });
+
+        modeSelect.addEventListener('change', (e) => {
+            state.mode = e.target.value;
+            modeIndicator.textContent = state.mode === 'endless'
+                ? "Cheksiz o'yin"
+                : `${state.mode} g'alabagacha`;
+            resetGame();
+        });
+
+        difficultySelect.addEventListener('change', (e) => {
+            state.difficulty = e.target.value;
+            aiLevelTag.textContent = state.difficulty === 'normal' ? 'Oddiy rejim' : 'Aqlli AI';
+            AudioEngine.click();
+        });
+
+        document.getElementById('soundToggle').addEventListener('click', () => {
+            state.soundEnabled = !state.soundEnabled;
+            document.getElementById('soundOnIcon').classList.toggle('hidden', !state.soundEnabled);
+            document.getElementById('soundOffIcon').classList.toggle('hidden', state.soundEnabled);
+            if (state.soundEnabled) AudioEngine.click();
+        });
+
+        document.getElementById('resetBtn').addEventListener('click', () => {
+            AudioEngine.click();
+            resetGame();
+        });
+
+        document.getElementById('playAgainBtn').addEventListener('click', () => {
+            AudioEngine.click();
+            resetGame();
+        });
+
+        // Qoidalar modali boshqaruvi
+        const rulesModal = document.getElementById('rulesModal');
+        document.getElementById('rulesBtn').addEventListener('click', () => {
+            AudioEngine.click();
+            rulesModal.classList.remove('hidden');
+            rulesModal.classList.add('flex');
+        });
+
+        [document.getElementById('closeRulesBtn'), document.getElementById('gotItBtn')].forEach(el => {
+            el.addEventListener('click', () => {
+                AudioEngine.click();
+                rulesModal.classList.add('hidden');
+                rulesModal.classList.remove('flex');
+            });
+        });
+    </script>
+</body>
+</html>

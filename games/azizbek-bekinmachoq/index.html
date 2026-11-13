@@ -1,0 +1,554 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Bekinmachoq - Web O'yin</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js ovoz effektlari uchun -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- FontAwesome ikonkalari -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@600;700&family=Inter:wght@400;600;700&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: radial-gradient(circle at center, #1e293b 0%, #090d16 100%);
+            color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+
+        .font-gaming {
+            font-family: 'Fredoka', sans-serif;
+        }
+
+        #game-canvas {
+            background-color: #142218;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.7);
+            border: 3px solid #2d4a36;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            box-shadow: 0 4px 15px rgba(245, 158, 11, 0.4);
+            transition: all 0.2s ease;
+        }
+
+        .btn-primary:hover {
+            transform: scale(1.05);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.7);
+        }
+
+        .btn-primary:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col items-center justify-between p-3 sm:p-4">
+
+    <!-- Yuqori Panel -->
+    <header class="w-full max-w-lg flex justify-between items-center bg-slate-900/80 backdrop-blur-md border border-slate-700/60 rounded-2xl px-4 py-2.5 shadow-xl">
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-amber-500/20 flex items-center justify-center text-amber-400">
+                <i class="fa-solid fa-coins text-lg"></i>
+            </div>
+            <div>
+                <span class="text-[11px] text-slate-400 uppercase block font-bold">Tangalar</span>
+                <span id="coins-display" class="font-gaming text-lg font-bold text-amber-400">0 / 8</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <i class="fa-solid fa-layer-group text-lg"></i>
+            </div>
+            <div>
+                <span class="text-[11px] text-slate-400 uppercase block font-bold">Bosqich</span>
+                <span id="level-display" class="font-gaming text-lg font-bold text-emerald-400">1</span>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <div id="stealth-badge" class="px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+                <i class="fa-solid fa-eye"></i>
+                <span id="stealth-text">Ko'rinmoqda</span>
+            </div>
+            <button id="sound-btn" class="w-9 h-9 rounded-xl bg-slate-800 hover:bg-slate-700 flex items-center justify-center text-slate-300 transition">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Asosiy O'yin Maydoni -->
+    <main class="relative flex items-center justify-center my-1 flex-grow w-full">
+        <canvas id="game-canvas" class="rounded-2xl"></canvas>
+
+        <!-- Boshlash Ekrani -->
+        <div id="start-screen" class="absolute inset-0 max-w-lg mx-auto bg-slate-950/85 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-16 h-16 bg-amber-500/20 border-2 border-amber-400 rounded-2xl flex items-center justify-center mb-4 animate-bounce">
+                <i class="fa-solid fa-user-secret text-3xl text-amber-400"></i>
+            </div>
+            <h1 class="font-gaming text-3xl sm:text-4xl font-bold text-amber-400 mb-2">
+                BEKINMACHOQ
+            </h1>
+            <p class="text-slate-300 text-sm mb-6 max-w-xs leading-relaxed">
+                Izlovchining sariq fonar nuriga tushmasdan barcha oltin tangalarni yig'ing! <br>
+                <span class="text-emerald-400 font-semibold">Yashil butalar</span> ichiga kirsangiz ko'rinmas bo'lasiz!
+            </p>
+            <button id="start-btn" class="btn-primary font-gaming text-white font-bold text-lg px-8 py-3.5 rounded-xl tracking-wide cursor-pointer">
+                O'YINNI BOSHLASH
+            </button>
+        </div>
+
+        <!-- Qo'lga tushish Ekrani -->
+        <div id="caught-screen" class="hidden absolute inset-0 max-w-lg mx-auto bg-slate-950/90 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-16 h-16 bg-rose-500/20 border-2 border-rose-500 rounded-full flex items-center justify-center mb-3">
+                <i class="fa-solid fa-face-dizzy text-3xl text-rose-500"></i>
+            </div>
+            <h2 class="font-gaming text-3xl font-bold text-rose-500 mb-1">QO'LGA TUSHDINGIZ!</h2>
+            <p class="text-slate-400 text-sm mb-6">Izlovchi sizni payqab qoldi</p>
+            <button id="retry-btn" class="btn-primary font-gaming text-white font-bold px-8 py-3.5 rounded-xl cursor-pointer">
+                QAYTA URINISH
+            </button>
+        </div>
+
+        <!-- G'alaba Ekrani -->
+        <div id="win-screen" class="hidden absolute inset-0 max-w-lg mx-auto bg-slate-950/90 backdrop-blur-md rounded-2xl flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-16 h-16 bg-emerald-500/20 border-2 border-emerald-400 rounded-full flex items-center justify-center mb-3">
+                <i class="fa-solid fa-trophy text-3xl text-emerald-400"></i>
+            </div>
+            <h2 class="font-gaming text-3xl font-bold text-emerald-400 mb-1">BOSQICH YAKUNLANDI!</h2>
+            <p class="text-slate-300 text-sm mb-6">Siz barcha tangalarni sezdirmasdan yig'dingiz!</p>
+            <button id="next-btn" class="btn-primary font-gaming text-white font-bold px-8 py-3.5 rounded-xl cursor-pointer">
+                KEYINGI BOSQICH
+            </button>
+        </div>
+    </main>
+
+    <!-- Mobil Boshqaruv Tugmalari (D-Pad) -->
+    <footer class="w-full max-w-xs flex flex-col items-center gap-1.5 pb-1 md:hidden">
+        <button data-dir="UP" class="dpad-btn w-14 h-12 bg-slate-800/80 active:bg-amber-500 border border-slate-700 rounded-xl flex items-center justify-center text-lg shadow">
+            <i class="fa-solid fa-chevron-up"></i>
+        </button>
+        <div class="flex gap-5">
+            <button data-dir="LEFT" class="dpad-btn w-14 h-12 bg-slate-800/80 active:bg-amber-500 border border-slate-700 rounded-xl flex items-center justify-center text-lg shadow">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button data-dir="DOWN" class="dpad-btn w-14 h-12 bg-slate-800/80 active:bg-amber-500 border border-slate-700 rounded-xl flex items-center justify-center text-lg shadow">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
+            <button data-dir="RIGHT" class="dpad-btn w-14 h-12 bg-slate-800/80 active:bg-amber-500 border border-slate-700 rounded-xl flex items-center justify-center text-lg shadow">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+    </footer>
+
+    <!-- Kompyuter uchun eslatma -->
+    <div class="hidden md:block text-xs text-slate-400 pb-1">
+        Harakatlanish: <span class="text-amber-400 font-bold">◀ ▲ ▼ ▶</span> yoki <span class="text-amber-400 font-bold">W A S D</span> | Yashirinish uchun yashil butalar ichiga kiring!
+    </div>
+
+    <script>
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI elementlar
+        const coinsDisplay = document.getElementById('coins-display');
+        const levelDisplay = document.getElementById('level-display');
+        const stealthBadge = document.getElementById('stealth-badge');
+        const stealthText = document.getElementById('stealth-text');
+        const startScreen = document.getElementById('start-screen');
+        const caughtScreen = document.getElementById('caught-screen');
+        const winScreen = document.getElementById('win-screen');
+        const soundBtn = document.getElementById('sound-btn');
+        const soundIcon = document.getElementById('sound-icon');
+
+        // O'yin holati
+        let level = 1;
+        let isPlaying = false;
+        let soundEnabled = true;
+        let animId;
+
+        // O'yin obyektlari
+        let player = { x: 40, y: 40, radius: 13, speed: 3.3, hidden: false };
+        let walls = [];
+        let bushes = [];
+        let coins = [];
+        let seekers = [];
+        let totalCoins = 8;
+        let collectedCoins = 0;
+
+        // Ovoz tizimi (Tone.js)
+        let synth;
+        function initSound() {
+            if (!synth) synth = new Tone.Synth().toDestination();
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (Tone.context.state !== 'running') Tone.start();
+                const now = Tone.now();
+                if (type === 'coin') {
+                    synth.triggerAttackRelease("B5", "16n", now);
+                    synth.triggerAttackRelease("E6", "16n", now + 0.08);
+                } else if (type === 'caught') {
+                    synth.triggerAttackRelease("G3", "8n", now);
+                    synth.triggerAttackRelease("C3", "4n", now + 0.15);
+                } else if (type === 'win') {
+                    synth.triggerAttackRelease("C5", "16n", now);
+                    synth.triggerAttackRelease("E5", "16n", now + 0.1);
+                    synth.triggerAttackRelease("G5", "8n", now + 0.2);
+                }
+            } catch (e) {}
+        }
+
+        soundBtn.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundIcon.className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-rose-400';
+        });
+
+        // O'lchamni ekranga moslash
+        function resizeCanvas() {
+            const maxW = Math.min(window.innerWidth - 24, 500);
+            const maxH = window.innerHeight - 220;
+            const size = Math.max(280, Math.min(maxW, maxH));
+            canvas.width = size;
+            canvas.height = size;
+        }
+        window.addEventListener('resize', () => {
+            resizeCanvas();
+            if (!isPlaying) setupLevel();
+        });
+
+        // Boshqaruv holatlari
+        const keys = { UP: false, DOWN: false, LEFT: false, RIGHT: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.UP = true;
+            if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.DOWN = true;
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.LEFT = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.RIGHT = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowUp' || e.code === 'KeyW') keys.UP = false;
+            if (e.code === 'ArrowDown' || e.code === 'KeyS') keys.DOWN = false;
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.LEFT = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.RIGHT = false;
+        });
+
+        // Mobil D-pad
+        document.querySelectorAll('.dpad-btn').forEach(btn => {
+            const dir = btn.dataset.dir;
+            btn.addEventListener('touchstart', (e) => { e.preventDefault(); keys[dir] = true; });
+            btn.addEventListener('touchend', () => keys[dir] = false);
+            btn.addEventListener('mousedown', () => keys[dir] = true);
+            btn.addEventListener('mouseup', () => keys[dir] = false);
+        });
+
+        // Bosqich xaritasini yaratish
+        function setupLevel() {
+            resizeCanvas();
+            const W = canvas.width;
+            const H = canvas.height;
+
+            player = { x: W * 0.1, y: H * 0.1, radius: Math.max(10, W * 0.03), speed: W * 0.0075, hidden: false };
+            collectedCoins = 0;
+            totalCoins = 6 + level * 2;
+            coinsDisplay.innerText = `0 / ${totalCoins}`;
+            levelDisplay.innerText = level;
+
+            // Devorlar (to'siqlar)
+            walls = [
+                { x: W * 0.25, y: H * 0.15, w: W * 0.05, h: H * 0.3 },
+                { x: W * 0.65, y: H * 0.15, w: W * 0.2, h: H * 0.05 },
+                { x: W * 0.45, y: H * 0.45, w: W * 0.12, h: H * 0.12 },
+                { x: W * 0.15, y: H * 0.65, w: W * 0.25, h: H * 0.05 },
+                { x: W * 0.7, y: H * 0.55, w: W * 0.05, h: H * 0.3 }
+            ];
+
+            // Yashirinish uchun butalar
+            bushes = [
+                { x: W * 0.45, y: H * 0.22, r: W * 0.07 },
+                { x: W * 0.2, y: H * 0.48, r: W * 0.075 },
+                { x: W * 0.82, y: H * 0.38, r: W * 0.07 },
+                { x: W * 0.48, y: H * 0.82, r: W * 0.08 }
+            ];
+
+            // Tangalarni tasodifiy joylashtirish
+            coins = [];
+            for (let i = 0; i < totalCoins; i++) {
+                let cx, cy, valid;
+                do {
+                    valid = true;
+                    cx = Math.random() * (W - 60) + 30;
+                    cy = Math.random() * (H - 60) + 30;
+                    if (Math.hypot(cx - player.x, cy - player.y) < 60) valid = false;
+                    for (let w of walls) {
+                        if (cx > w.x - 15 && cx < w.x + w.w + 15 && cy > w.y - 15 && cy < w.y + w.h + 15) {
+                            valid = false;
+                        }
+                    }
+                } while (!valid);
+                coins.push({ x: cx, y: cy, r: 7 });
+            }
+
+            // Izlovchilarni (qidiruvchilarni) yaratish
+            seekers = [];
+            const seekerCount = Math.min(1 + Math.floor(level / 2), 3);
+            for (let i = 0; i < seekerCount; i++) {
+                seekers.push({
+                    x: W * (0.85 - i * 0.2),
+                    y: H * (0.85 - i * 0.15),
+                    r: player.radius + 2,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: W * 0.0032 + (level * 0.15),
+                    viewDist: W * 0.28,
+                    viewAngle: Math.PI / 3.5, // 50 daraja ko'rish burchagi
+                    turnTimer: 0
+                });
+            }
+        }
+
+        // Devor bilan to'qnashuvni tekshirish
+        function collidesWithWall(x, y, r) {
+            if (x - r < 0 || x + r > canvas.width || y - r < 0 || y + r > canvas.height) return true;
+            for (let w of walls) {
+                const closestX = Math.max(w.x, Math.min(x, w.x + w.w));
+                const closestY = Math.max(w.y, Math.min(y, w.y + w.h));
+                if (Math.hypot(x - closestX, y - closestY) < r) return true;
+            }
+            return false;
+        }
+
+        // O'yin mantig'ini yangilash
+        function update() {
+            if (!isPlaying) return;
+
+            // 1. O'yinchi harakati
+            let nextX = player.x;
+            let nextY = player.y;
+            if (keys.UP) nextY -= player.speed;
+            if (keys.DOWN) nextY += player.speed;
+            if (keys.LEFT) nextX -= player.speed;
+            if (keys.RIGHT) nextX += player.speed;
+
+            if (!collidesWithWall(nextX, player.y, player.radius)) player.x = nextX;
+            if (!collidesWithWall(player.x, nextY, player.radius)) player.y = nextY;
+
+            // 2. Buta ichida yashiringanligini tekshirish
+            player.hidden = false;
+            for (let b of bushes) {
+                if (Math.hypot(player.x - b.x, player.y - b.y) < b.r) {
+                    player.hidden = true;
+                    break;
+                }
+            }
+
+            if (player.hidden) {
+                stealthBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center gap-1.5";
+                stealthText.innerText = "Yashiringan";
+            } else {
+                stealthBadge.className = "px-3 py-1 rounded-full text-xs font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5";
+                stealthText.innerText = "Ko'rinmoqda";
+            }
+
+            // 3. Tangalarni yig'ish
+            for (let i = coins.length - 1; i >= 0; i--) {
+                const c = coins[i];
+                if (Math.hypot(player.x - c.x, player.y - c.y) < player.radius + c.r) {
+                    coins.splice(i, 1);
+                    collectedCoins++;
+                    coinsDisplay.innerText = `${collectedCoins} / ${totalCoins}`;
+                    playSound('coin');
+
+                    if (collectedCoins >= totalCoins) {
+                        isPlaying = false;
+                        playSound('win');
+                        winScreen.classList.remove('hidden');
+                        return;
+                    }
+                }
+            }
+
+            // 4. Izlovchilar harakati va ko'rish maydoni
+            for (let s of seekers) {
+                s.turnTimer--;
+                if (s.turnTimer <= 0) {
+                    s.angle += (Math.random() - 0.5) * 1.8;
+                    s.turnTimer = 60 + Math.random() * 80;
+                }
+
+                const sx = s.x + Math.cos(s.angle) * s.speed;
+                const sy = s.y + Math.sin(s.angle) * s.speed;
+
+                if (collidesWithWall(sx, sy, s.r)) {
+                    s.angle += Math.PI * 0.75 + (Math.random() - 0.5);
+                } else {
+                    s.x = sx;
+                    s.y = sy;
+                }
+
+                // O'yinchi ko'rinish maydoniga tushdimi?
+                if (!player.hidden) {
+                    const dist = Math.hypot(player.x - s.x, player.y - s.y);
+                    if (dist < s.viewDist) {
+                        const angleToPlayer = Math.atan2(player.y - s.y, player.x - s.x);
+                        let diff = angleToPlayer - s.angle;
+                        while (diff > Math.PI) diff -= Math.PI * 2;
+                        while (diff < -Math.PI) diff += Math.PI * 2;
+
+                        if (Math.abs(diff) < s.viewAngle / 2) {
+                            // O'rtada devor bor-yo'qligini tekshirish
+                            let blocked = false;
+                            for (let step = 10; step < dist; step += 10) {
+                                const checkX = s.x + Math.cos(angleToPlayer) * step;
+                                const checkY = s.y + Math.sin(angleToPlayer) * step;
+                                if (collidesWithWall(checkX, checkY, 2)) {
+                                    blocked = true;
+                                    break;
+                                }
+                            }
+                            if (!blocked) {
+                                isPlaying = false;
+                                playSound('caught');
+                                caughtScreen.classList.remove('hidden');
+                                return;
+                            }
+                        }
+                    }
+                }
+            }
+
+            draw();
+            animId = requestAnimationFrame(update);
+        }
+
+        // Barcha elementlarni chizish
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // O'tloq naqshlari
+            ctx.fillStyle = '#142218';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Tangalar
+            for (let c of coins) {
+                ctx.fillStyle = '#fbbf24';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#f59e0b';
+                ctx.beginPath();
+                ctx.arc(c.x, c.y, c.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+
+                ctx.fillStyle = '#fef3c7';
+                ctx.beginPath();
+                ctx.arc(c.x - 2, c.y - 2, 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Devorlar (Tosh to'siqlar)
+            for (let w of walls) {
+                ctx.fillStyle = '#334155';
+                ctx.beginPath();
+                ctx.roundRect(w.x, w.y, w.w, w.h, 8);
+                ctx.fill();
+                ctx.strokeStyle = '#475569';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+
+            // Izlovchilar va ularning fonar nuri
+            for (let s of seekers) {
+                // Fonar nuri (Ko'rish konusi)
+                const grad = ctx.createRadialGradient(s.x, s.y, 5, s.x, s.y, s.viewDist);
+                grad.addColorStop(0, 'rgba(250, 204, 21, 0.45)');
+                grad.addColorStop(1, 'rgba(250, 204, 21, 0.0)');
+
+                ctx.fillStyle = grad;
+                ctx.beginPath();
+                ctx.moveTo(s.x, s.y);
+                ctx.arc(s.x, s.y, s.viewDist, s.angle - s.viewAngle / 2, s.angle + s.viewAngle / 2);
+                ctx.closePath();
+                ctx.fill();
+
+                // Izlovchi tanasi
+                ctx.fillStyle = '#f43f5e';
+                ctx.beginPath();
+                ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Izlovchi ko'zlari (yo'nalishga qarab)
+                const eyeX = s.x + Math.cos(s.angle) * (s.r * 0.5);
+                const eyeY = s.y + Math.sin(s.angle) * (s.r * 0.5);
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(eyeX, eyeY, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // O'yinchi
+            ctx.globalAlpha = player.hidden ? 0.45 : 1.0;
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#e0f2fe';
+            ctx.lineWidth = 2.5;
+            ctx.stroke();
+            ctx.globalAlpha = 1.0;
+
+            // Yashil butalar (O'yinchi ustidan chiziladi)
+            for (let b of bushes) {
+                ctx.fillStyle = 'rgba(16, 185, 129, 0.78)';
+                ctx.beginPath();
+                ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = 'rgba(52, 211, 153, 0.5)';
+                ctx.beginPath();
+                ctx.arc(b.x - b.r * 0.25, b.y - b.r * 0.25, b.r * 0.5, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Tugmalar hodisalari
+        function startGame() {
+            initSound();
+            startScreen.classList.add('hidden');
+            caughtScreen.classList.add('hidden');
+            winScreen.classList.add('hidden');
+            setupLevel();
+            isPlaying = true;
+            cancelAnimationFrame(animId);
+            animId = requestAnimationFrame(update);
+        }
+
+        document.getElementById('start-btn').addEventListener('click', () => {
+            level = 1;
+            startGame();
+        });
+
+        document.getElementById('retry-btn').addEventListener('click', startGame);
+
+        document.getElementById('next-btn').addEventListener('click', () => {
+            level++;
+            startGame();
+        });
+
+        window.onload = () => {
+            setupLevel();
+            draw();
+        };
+    </script>
+</body>
+</html>

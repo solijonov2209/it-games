@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Legendary Cars Racing ($15k Budget)</title>
+  <link rel="stylesheet" href="./main.css">
+</head>
+<body>
+  <canvas id="game-canvas"></canvas>
+
+  <!-- Yuqori boshqaruv paneli -->
+  <div class="hud">
+    <div class="stat-box">
+      <span>LEVEL</span>
+      <strong id="level-display">1 / 1000</strong>
+    </div>
+    <div class="stat-box">
+      <span>TEZLIK</span>
+      <strong id="speed-display">0 km/h</strong>
+    </div>
+    <div class="stat-box">
+      <span>VAQT</span>
+      <strong id="timer-display">00:00</strong>
+    </div>
+    <div class="stat-box">
+      <span>MASOFA</span>
+      <strong id="distance-display">0.00 / 20 km</strong>
+    </div>
+    <div class="stat-box">
+      <span>PUL</span>
+      <strong id="money-display">$15000</strong>
+    </div>
+    <button id="shop-btn" class="shop-open-btn" title="Avtosalon">🛒 Legend Magazin</button>
+    <button id="sound-toggle" class="icon-btn" title="Ovoz">🔊</button>
+  </div>
+
+  <!-- Boshlash / Finish oynasi -->
+  <div id="overlay" class="overlay">
+    <div class="card">
+      <div id="status-badge" class="status-badge hidden"></div>
+      <h1 id="overlay-title">LEGENDARY RACES</h1>
+      <p id="overlay-desc">To'siqlar olib tashlandi! $15,000 byudjet bilan Tesla Roadster va afsonaviy mashinalarni minib 20 km masofani bosib o'ting!</p>
+      
+      <div class="controls-guide">
+        <div><kbd>W</kbd> Gaz / 100+ km/h</div>
+        <div><kbd>S</kbd> Tormoz</div>
+        <div><kbd>A</kbd> Chap polosa</div>
+        <div><kbd>D</kbd> O'ng polosa</div>
+      </div>
+
+      <div class="modal-actions">
+        <button id="start-btn" class="start-btn">BOSHLASH (<kbd>ENTER</kbd>)</button>
+        <button id="overlay-shop-btn" class="secondary-btn">🛒 AVTOSALONGA KIRISH ($15k)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Avtosalon (Magazin) oynasi -->
+  <div id="shop-modal" class="overlay hidden">
+    <div class="card shop-card">
+      <div class="shop-header">
+        <h2>🏎️ LEGENDARY AVTOSALON</h2>
+        <div class="shop-balance">Balans: <strong id="shop-money-display">$15000</strong></div>
+        <button id="close-shop-btn" class="icon-btn">✕</button>
+      </div>
+      <p class="shop-subtitle">Tesla Roadster (Uchadigan), DeLorean va boshqa afsonalar</p>
+
+      <div id="cars-grid" class="cars-grid"></div>
+    </div>
+  </div>
+
+  <script src="./main.js"></script>
+</body>
+</html>

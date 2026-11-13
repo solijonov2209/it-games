@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chess Master</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkbg: '#121214',
+                        cardbg: '#18181b',
+                        panelbg: '#27272a',
+                        boarddark: '#b58863',
+                        boardlight: '#f0d9b5',
+                        accent: '#22c55e'
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom board square colors for a modern aesthetic */
+        .square-light {
+            background-color: #ebecd0;
+        }
+        .square-dark {
+            background-color: #739552;
+        }
+        .square-light.selected {
+            background-color: #f6f669 !important;
+        }
+        .square-dark.selected {
+            background-color: #baca44 !important;
+        }
+        .square-light.highlight {
+            background: radial-gradient(circle, rgba(0,0,0,0.15) 25%, transparent 26%);
+        }
+        .square-dark.highlight {
+            background: radial-gradient(circle, rgba(0,0,0,0.2) 25%, transparent 26%);
+        }
+        .square-light.last-move {
+            background-color: #cdd26a !important;
+        }
+        .square-dark.last-move {
+            background-color: #aaa23a !important;
+        }
+        /* Custom scrollbar for move history */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #18181b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="bg-darkbg text-zinc-100 min-h-screen flex flex-col justify-between selection:bg-accent selection:text-white">
+
+    <!-- Header -->
+    <header class="w-full border-b border-zinc-800 bg-cardbg/80 backdrop-blur sticky top-0 z-50 px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-green-600 to-emerald-400 flex items-center justify-center shadow-lg shadow-green-900/30">
+                <i class="fa-solid fa-chess-pawn text-white text-xl"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg tracking-tight text-white">Chess Master</h1>
+                <p class="text-xs text-zinc-400">Professional Web Chess</p>
+            </div>
+        </div>
+        <div class="flex items-center space-x-2">
+            <button onclick="openModal('rulesModal')" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-book"></i>
+                <span class="hidden sm:inline">Rules</span>
+            </button>
+            <button onclick="resetGame()" class="px-3 py-1.5 text-xs font-medium rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-900/20 transition flex items-center space-x-1.5">
+                <i class="fa-solid fa-rotate-right"></i>
+                <span>New Game</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6 items-start justify-center">
+        
+        <!-- Left / Center: Chess Board and Players -->
+        <div class="lg:col-span-8 flex flex-col items-center justify-center space-y-4">
+            
+            <!-- Black Player Info Bar -->
+            <div id="blackPlayerCard" class="w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-zinc-700 flex items-center justify-center font-bold text-zinc-300 border-2 border-zinc-600">
+                        <i class="fa-solid fa-chess text-zinc-300"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-sm text-white flex items-center space-x-2">
+                            <span>Black Player</span>
+                            <span id="blackCaptures" class="text-xs text-zinc-400 space-x-0.5"></span>
+                        </div>
+                        <div class="text-xs text-zinc-400" id="blackStatus">Ready</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div id="blackTimer" class="font-mono font-bold text-lg px-3 py-1 bg-zinc-900 rounded-lg text-zinc-200 border border-zinc-700/50">
+                        10:00
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chess Board Container -->
+            <div class="relative p-2 bg-panelbg border border-zinc-800 rounded-2xl shadow-2xl">
+                <!-- Board grid with coordinates -->
+                <div id="chessboard" class="grid grid-cols-8 w-[340px] h-[340px] sm:w-[480px] sm:h-[480px] md:w-[520px] md:h-[520px] rounded-lg overflow-hidden border border-zinc-700 select-none relative shadow-inner">
+                    <!-- Squares injected via JS -->
+                </div>
+
+                <!-- Game Over / Promotion Overlay Modal Inside Board or Centered -->
+                <div id="overlayModal" class="absolute inset-0 bg-black/70 backdrop-blur-sm rounded-2xl flex flex-col items-center justify-center p-6 hidden z-30">
+                    <div id="overlayContent" class="bg-panelbg border border-zinc-700 p-6 rounded-2xl text-center max-w-sm w-full shadow-2xl space-y-4">
+                        <!-- Dynamic content -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- White Player Info Bar -->
+            <div id="whitePlayerCard" class="w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all ring-2 ring-emerald-500/50">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-zinc-200 flex items-center justify-center font-bold text-zinc-900 border-2 border-white">
+                        <i class="fa-solid fa-chess text-zinc-900"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-sm text-white flex items-center space-x-2">
+                            <span>White Player</span>
+                            <span id="whiteCaptures" class="text-xs text-zinc-400 space-x-0.5"></span>
+                        </div>
+                        <div class="text-xs text-emerald-400 font-medium" id="whiteStatus">Your Turn</div>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-2">
+                    <div id="whiteTimer" class="font-mono font-bold text-lg px-3 py-1 bg-zinc-900 rounded-lg text-emerald-400 border border-emerald-500/30">
+                        10:00
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Side: Controls, Move History & Tabs -->
+        <div class="lg:col-span-4 flex flex-col space-y-4 h-full">
+            
+            <!-- Game Controls & Settings Card -->
+            <div class="bg-panelbg border border-zinc-800 rounded-2xl p-4 shadow-md space-y-4">
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                    <h2 class="font-semibold text-sm text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-sliders text-emerald-400"></i>
+                        <span>Match Controls</span>
+                    </h2>
+                    <span id="turnIndicatorBadge" class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">White Turn</span>
+                </div>
+
+                <!-- Time Control Selectors -->
+                <div class="space-y-1.5">
+                    <label class="text-xs font-medium text-zinc-400">Time Control</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="setTimeControl(3)" class="time-btn py-1.5 px-2 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition border border-zinc-700">3 min</button>
+                        <button onclick="setTimeControl(5)" class="time-btn py-1.5 px-2 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition border border-zinc-700">5 min</button>
+                        <button onclick="setTimeControl(10)" class="time-btn py-1.5 px-2 text-xs font-medium rounded-lg bg-emerald-600 text-white transition border border-emerald-500 active-time" data-mins="10">10 min</button>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="grid grid-cols-2 gap-2 pt-1">
+                    <button onclick="flipBoard()" class="py-2 px-3 text-xs font-medium rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition flex items-center justify-center space-x-2 border border-zinc-700">
+                        <i class="fa-solid fa-arrows-up-down"></i>
+                        <span>Flip Board</span>
+                    </button>
+                    <button onclick="resignGame()" class="py-2 px-3 text-xs font-medium rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 transition flex items-center justify-center space-x-2 border border-rose-500/20">
+                        <i class="fa-solid fa-flag"></i>
+                        <span>Resign</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Move History Card -->
+            <div class="bg-panelbg border border-zinc-800 rounded-2xl p-4 shadow-md flex flex-col flex-1 min-h-[280px] max-h-[380px]">
+                <div class="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
+                    <h2 class="font-semibold text-sm text-white flex items-center space-x-2">
+                        <i class="fa-solid fa-list-ul text-emerald-400"></i>
+                        <span>Move History</span>
+                    </h2>
+                    <span id="moveCountBadge" class="text-xs font-mono text-zinc-400">0 moves</span>
+                </div>
+
+                <div id="moveHistoryList" class="flex-1 overflow-y-auto space-y-1 pr-1 font-mono text-xs">
+                    <div class="text-zinc-500 text-center py-8">No moves made yet</div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full border-t border-zinc-800 bg-cardbg/40 py-3 text-center text-xs text-zinc-500">
+        Chess Master &bull; Fully Interactive Chess Rules & Engine
+    </footer>
+
+    <!-- Rules Modal -->
+    <div id="rulesModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-panelbg border border-zinc-700 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl relative">
+            <div class="flex items-center justify-between border-b border-zinc-800 pb-3">
+                <h3 class="font-bold text-base text-white flex items-center space-x-2">
+                    <i class="fa-solid fa-book-open text-emerald-400"></i>
+                    <span>How to Play & Rules</span>
+                </h3>
+                <button onclick="closeModal('rulesModal')" class="text-zinc-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            <div class="text-xs text-zinc-300 space-y-3 max-h-[60vh] overflow-y-auto pr-2">
+                <p><strong>Chess Master</strong> supports full standard chess rules including piece movements, check detection, checkmate, stalemate, castling, pawn promotion, and en passant.</p>
+                <ul class="list-disc pl-4 space-y-1.5 text-zinc-400">
+                    <li><strong>Movement:</strong> Click any piece to see its legal destination dots. Click a dot to move.</li>
+                    <li><strong>Castling:</strong> Move your King two squares towards the Rook to castle (if paths are clear and rights preserved).</li>
+                    <li><strong>Pawn Promotion:</strong> Reaching the final rank prompts a choice for Queen, Rook, Bishop, or Knight.</li>
+                    <li><strong>En Passant:</strong> Pawns can capture opposing pawns that move two squares forward on the previous turn.</li>
+                </ul>
+            </div>
+            <div class="flex justify-end pt-2">
+                <button onclick="closeModal('rulesModal')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Custom Notification/Message Box -->
+    <div id="msgModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-panelbg border border-zinc-700 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl text-center">
+            <div id="msgIcon" class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto text-xl">
+                <i class="fa-solid fa-trophy"></i>
+            </div>
+            <h3 id="msgTitle" class="font-bold text-base text-white">Game Over</h3>
+            <p id="msgBody" class="text-xs text-zinc-300">White wins by checkmate!</p>
+            <div class="flex justify-center pt-2 space-x-2">
+                <button onclick="closeModal('msgModal'); resetGame();" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-semibold transition">Play Again</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript Chess Logic -->
+    <script>
+        // --- CHESS ENGINE STATE & CONSTANTS ---
+        const PIECES = {
+            'P': { name: 'pawn', color: 'w', unicode: '&#9817;', value: 1 },
+            'N': { name: 'knight', color: 'w', unicode: '&#9816;', value: 3 },
+            'B': { name: 'bishop', color: 'w', unicode: '&#9815;', value: 3 },
+            'R': { name: 'rook', color: 'w', unicode: '&#9814;', value: 5 },
+            'Q': { name: 'queen', color: 'w', unicode: '&#9813;', value: 9 },
+            'K': { name: 'king', color: 'w', unicode: '&#9812;', value: 0 },
+            'p': { name: 'pawn', color: 'b', unicode: '&#9823;', value: 1 },
+            'n': { name: 'knight', color: 'b', unicode: '&#9822;', value: 3 },
+            'b': { name: 'bishop', color: 'b', unicode: '&#9821;', value: 3 },
+            'r': { name: 'rook', color: 'b', unicode: '&#9820;', value: 5 },
+            'q': { name: 'queen', color: 'b', unicode: '&#9819;', value: 9 },
+            'k': { name: 'king', color: 'b', unicode: '&#9818;', value: 0 }
+        };
+
+        let board = [];
+        let turn = 'w'; // 'w' or 'b'
+        let selectedSquare = null;
+        let legalMoves = [];
+        let moveHistory = [];
+        let castlingRights = { w: { k: true, q: true }, b: { k: true, q: true } };
+        let enPassantTarget = null; // [r, c] square behind pawn that moved 2 steps
+        let halfmoveClock = 0;
+        let fullmoveNumber = 1;
+        let lastMove = null; // {from: [r,c], to: [r,c]}
+        let boardFlipped = false;
+        let capturedPieces = { w: [], b: [] };
+
+        // Timers in seconds
+        let initialTime = 600; // 10 mins default
+        let whiteTime = 600;
+        let blackTime = 600;
+        let timerInterval = null;
+        let gameActive = true;
+        let pendingPromotion = null; // stores promotion move details until user picks piece
+
+        // --- INITIALIZATION ---
+        function initGame() {
+            board = [
+                ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+                ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+                ['\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'],
+                ['\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'],
+                ['\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'],
+                ['\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0'],
+                ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+                ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R']
+            ];
+            turn = 'w';
+            selectedSquare = null;
+            legalMoves = [];
+            moveHistory = [];
+            castlingRights = { w: { k: true, q: true }, b: { k: true, q: true } };
+            enPassantTarget = null;
+            halfmoveClock = 0;
+            fullmoveNumber = 1;
+            lastMove = null;
+            capturedPieces = { w: [], b: [] };
+            whiteTime = initialTime;
+            blackTime = initialTime;
+            gameActive = true;
+            pendingPromotion = null;
+
+            stopTimer();
+            startTimer();
+            renderBoard();
+            updateUI();
+        }
+
+        // --- RENDER BOARD ---
+        function renderBoard() {
+            const container = document.getElementById('chessboard');
+            container.innerHTML = '';
+
+            const rows = boardFlipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+            const cols = boardFlipped ? [7,6,5,4,3,2,1,0] : [0,1,2,3,4,5,6,7];
+
+            rows.forEach(r => {
+                cols.forEach(c => {
+                    const sqDiv = document.createElement('div');
+                    const isDark = (r + c) % 2 === 1;
+                    sqDiv.className = `w-full h-full flex items-center justify-center relative cursor-pointer select-none transition-colors duration-150 ${isDark ? 'square-dark' : 'square-light'}`;
+                    sqDiv.dataset.row = r;
+                    sqDiv.dataset.col = c;
+
+                    // Last move highlight
+                    if (lastMove && ((lastMove.from[0] === r && lastMove.from[1] === c) || (lastMove.to[0] === r && lastMove.to[1] === c))) {
+                        sqDiv.classList.add(isDark ? 'last-move' : 'last-move');
+                    }
+
+                    // Selected highlight
+                    if (selectedSquare && selectedSquare[0] === r && selectedSquare[1] === c) {
+                        sqDiv.classList.add('selected');
+                    }
+
+                    // Legal move indicator highlight
+                    const isLegal = legalMoves.some(m => m[0] === r && m[1] === c);
+                    if (isLegal) {
+                        sqDiv.classList.add('highlight');
+                        if (board[r][c] !== '\0') {
+                            // Ring indicator for capture
+                            const captureRing = document.createElement('div');
+                            captureRing.className = 'absolute inset-1 rounded-full border-4 border-rose-500/60 pointer-events-none animate-pulse';
+                            sqDiv.appendChild(captureRing);
+                        }
+                    }
+
+                    // Piece render
+                    const piece = board[r][c];
+                    if (piece !== '\0') {
+                        const pieceSpan = document.createElement('span');
+                        pieceSpan.innerHTML = PIECES[piece].unicode;
+                        const isWhitePiece = PIECES[piece].color === 'w';
+                        pieceSpan.className = `text-3xl sm:text-4xl md:text-5xl font-bold transition transform hover:scale-110 ${isWhitePiece ? 'text-white drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]' : 'text-zinc-900 drop-shadow-[0_1px_2px_rgba(255,255,255,0.3)]'}`;
+                        sqDiv.appendChild(pieceSpan);
+                    }
+
+                    // Coordinate labels on edges
+                    if (c === (boardFlipped ? 7 : 0)) {
+                        const rankLabel = document.createElement('span');
+                        rankLabel.className = `absolute top-1 left-1 text-[10px] font-bold pointer-events-none ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`;
+                        rankLabel.innerText = 8 - r;
+                        sqDiv.appendChild(rankLabel);
+                    }
+                    if (r === (boardFlipped ? 0 : 7)) {
+                        const fileLabel = document.createElement('span');
+                        fileLabel.className = `absolute bottom-0.5 right-1 text-[10px] font-bold pointer-events-none ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`;
+                        fileLabel.innerText = String.fromCharCode(97 + c);
+                        sqDiv.appendChild(fileLabel);
+                    }
+
+                    sqDiv.addEventListener('click', () => handleSquareClick(r, c));
+                    container.appendChild(sqDiv);
+                });
+            });
+        }
+
+        // --- INTERACTION & MOVE LOGIC ---
+        function handleSquareClick(r, c) {
+            if (!gameActive || pendingPromotion) return;
+
+            const piece = board[r][c];
+            const isOwnPiece = piece !== '\0' && PIECES[piece].color === turn;
+
+            if (selectedSquare) {
+                const [sr, sc] = selectedSquare;
+                const isLegalMove = legalMoves.some(m => m[0] === r && m[1] === c);
+
+                if (isLegalMove) {
+                    executeMove(sr, sc, r, c);
+                    selectedSquare = null;
+                    legalMoves = [];
+                    renderBoard();
+                    return;
+                } else if (isOwnPiece) {
+                    selectedSquare = [r, c];
+                    legalMoves = getLegalMoves(r, c);
+                    renderBoard();
+                    return;
+                } else {
+                    selectedSquare = null;
+                    legalMoves = [];
+                    renderBoard();
+                    return;
+                }
+            } else {
+                if (isOwnPiece) {
+                    selectedSquare = [r, c];
+                    legalMoves = getLegalMoves(r, c);
+                    renderBoard();
+                }
+            }
+        }
+
+        // --- MOVE GENERATION & VALIDATION ---
+        function getPseudoLegalMoves(r, c, customBoard = board) {
+            let moves = [];
+            const piece = customBoard[r][c];
+            if (piece === '\0') return moves;
+            const color = PIECES[piece].color;
+            const type = PIECES[piece].name;
+
+            const addMove = (tr, tc) => {
+                if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+                    const target = customBoard[tr][tc];
+                    if (target === '\0') {
+                        moves.push([tr, tc]);
+                    } else {
+                        if (PIECES[target].color !== color) {
+                            moves.push([tr, tc]);
+                        }
+                    }
+                }
+            };
+
+            if (type === 'pawn') {
+                const dir = color === 'w' ? -1 : 1;
+                const startRow = color === 'w' ? 6 : 1;
+                // Forward 1
+                if (r + dir >= 0 && r + dir < 8 && customBoard[r + dir][c] === '\0') {
+                    moves.push([r + dir, c]);
+                    // Forward 2
+                    if (r === startRow && customBoard[r + 2 * dir][c] === '\0') {
+                        moves.push([r + 2 * dir, c]);
+                    }
+                }
+                // Captures
+                for (let dc of [-1, 1]) {
+                    const tr = r + dir;
+                    const tc = c + dc;
+                    if (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+                        const target = customBoard[tr][tc];
+                        if (target !== '\0' && PIECES[target].color !== color) {
+                            moves.push([tr, tc]);
+                        }
+                        // En Passant
+                        if (enPassantTarget && enPassantTarget[0] === tr && enPassantTarget[1] === tc) {
+                            moves.push([tr, tc]);
+                        }
+                    }
+                }
+            } else if (type === 'knight') {
+                const jumps = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
+                jumps.forEach(([dr, dc]) => addMove(r + dr, c + dc));
+            } else if (type === 'bishop' || type === 'rook' || type === 'queen') {
+                let dirs = [];
+                if (type === 'bishop' || type === 'queen') dirs.push([-1,-1],[-1,1],[1,-1],[1,1]);
+                if (type === 'rook' || type === 'queen') dirs.push([-1,0],[1,0],[0,-1],[0,1]);
+                dirs.forEach(([dr, dc]) => {
+                    let tr = r + dr;
+                    let tc = c + dc;
+                    while (tr >= 0 && tr < 8 && tc >= 0 && tc < 8) {
+                        const target = customBoard[tr][tc];
+                        if (target === '\0') {
+                            moves.push([tr, tc]);
+                        } else {
+                            if (PIECES[target].color !== color) moves.push([tr, tc]);
+                            break;
+                        }
+                        tr += dr;
+                        tc += dc;
+                    }
+                });
+            } else if (type === 'king') {
+                const steps = [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]];
+                steps.forEach(([dr, dc]) => addMove(r + dr, c + dc));
+
+                // Castling
+                if (color === 'w' && r === 7 && c === 4) {
+                    if (castlingRights.w.k && customBoard[7][5] === '\0' && customBoard[7][6] === '\0' && !isSquareAttacked(7, 4, 'b', customBoard) && !isSquareAttacked(7, 5, 'b', customBoard) && !isSquareAttacked(7, 6, 'b', customBoard)) {
+                        moves.push([7, 6]);
+                    }
+                    if (castlingRights.w.q && customBoard[7][3] === '\0' && customBoard[7][2] === '\0' && customBoard[7][1] === '\0' && !isSquareAttacked(7, 4, 'b', customBoard) && !isSquareAttacked(7, 3, 'b', customBoard) && !isSquareAttacked(7, 2, 'b', customBoard)) {
+                        moves.push([7, 2]);
+                    }
+                } else if (color === 'b' && r === 0 && c === 4) {
+                    if (castlingRights.b.k && customBoard[0][5] === '\0' && customBoard[0][6] === '\0' && !isSquareAttacked(0, 4, 'w', customBoard) && !isSquareAttacked(0, 5, 'w', customBoard) && !isSquareAttacked(0, 6, 'w', customBoard)) {
+                        moves.push([0, 6]);
+                    }
+                    if (castlingRights.b.q && customBoard[0][3] === '\0' && customBoard[0][2] === '\0' && customBoard[0][1] === '\0' && !isSquareAttacked(0, 4, 'w', customBoard) && !isSquareAttacked(0, 3, 'w', customBoard) && !isSquareAttacked(0, 2, 'w', customBoard)) {
+                        moves.push([0, 2]);
+                    }
+                }
+            }
+            return moves;
+        }
+
+        function isSquareAttacked(r, c, byColor, customBoard) {
+            for (let ar = 0; ar < 8; ar++) {
+                for (let ac = 0; ac < 8; ac++) {
+                    const p = customBoard[ar][ac];
+                    if (p !== '\0' && PIECES[p].color === byColor) {
+                        // Avoid infinite recursion with king check checks by using pseudo-legal without king castle
+                        let pMoves = [];
+                        const type = PIECES[p].name;
+                        const color = PIECES[p].color;
+                        if (type === 'pawn') {
+                            const dir = color === 'w' ? -1 : 1;
+                            for (let dc of [-1, 1]) {
+                                if (ar + dir === r && ac + dc === c) return true;
+                            }
+                        } else {
+                            pMoves = getPseudoLegalMoves(ar, ac, customBoard);
+                            if (pMoves.some(m => m[0] === r && m[1] === c)) return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        function findKing(color, customBoard) {
+            const kChar = color === 'w' ? 'K' : 'k';
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    if (customBoard[r][c] === kChar) return [r, c];
+                }
+            }
+            return null;
+        }
+
+        function isInCheck(color, customBoard) {
+            const kPos = findKing(color, customBoard);
+            if (!kPos) return false;
+            const oppColor = color === 'w' ? 'b' : 'w';
+            return isSquareAttacked(kPos[0], kPos[1], oppColor, customBoard);
+        }
+
+        function getLegalMoves(r, c) {
+            const pseudo = getPseudoLegalMoves(r, c);
+            const legal = [];
+            const piece = board[r][c];
+            const color = PIECES[piece].color;
+
+            pseudo.forEach(([tr, tc]) => {
+                // Simulate move on cloned board
+                const cloned = board.map(row => [...row]);
+                // Handle en passant simulation
+                let capturedEp = false;
+                if (PIECES[piece].name === 'pawn' && enPassantTarget && tr === enPassantTarget[0] && tc === enPassantTarget[1] && cloned[tr][tc] === '\0') {
+                    const pawnRow = color === 'w' ? tr + 1 : tr - 1;
+                    cloned[pawnRow][tc] = '\0';
+                    capturedEp = true;
+                }
+                // Handle castling rook movement simulation
+                if (PIECES[piece].name === 'king' && Math.abs(tc - c) === 2) {
+                    if (tc === 6) { // Kingside
+                        cloned[r][5] = cloned[r][7];
+                        cloned[r][7] = '\0';
+                    } else if (tc === 2) { // Queenside
+                        cloned[r][3] = cloned[r][0];
+                        cloned[r][0] = '\0';
+                    }
+                }
+
+                cloned[tr][tc] = cloned[r][c];
+                cloned[r][c] = '\0';
+
+                if (!isInCheck(color, cloned)) {
+                    legal.push([tr, tc]);
+                }
+            });
+            return legal;
+        }
+
+        function getAllLegalMovesForColor(color) {
+            let allMoves = [];
+            for (let r = 0; r < 8; r++) {
+                for (let c = 0; c < 8; c++) {
+                    const p = board[r][c];
+                    if (p !== '\0' && PIECES[p].color === color) {
+                        const moves = getLegalMoves(r, c);
+                        moves.forEach(m => allMoves.push({ from: [r, c], to: m }));
+                    }
+                }
+            }
+            return allMoves;
+        }
+
+        // --- EXECUTE MOVE ---
+        function executeMove(fr, fc, tr, tc) {
+            const piece = board[fr][fc];
+            const target = board[tr][tc];
+            const color = PIECES[piece].color;
+            const type = PIECES[piece].name;
+
+            let moveNotation = '';
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+            // Check promotion
+            if (type === 'pawn' && (tr === 0 || tr === 7)) {
+                pendingPromotion = { fr, fc, tr, tc, color };
+                showPromotionModal(color);
+                return;
+            }
+
+            completeMoveExecution(fr, fc, tr, tc, piece, target);
+        }
+
+        function completeMoveExecution(fr, fc, tr, tc, piece, target, promoteTo = null) {
+            const color = PIECES[piece].color;
+            const type = PIECES[piece].name;
+            const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+
+            let isCapture = target !== '\0';
+            let moveString = '';
+
+            // Handle en passant capture record
+            if (type === 'pawn' && enPassantTarget && tr === enPassantTarget[0] && tc === enPassantTarget[1] && target === '\0') {
+                const pawnRow = color === 'w' ? tr + 1 : tr - 1;
+                const capturedPawn = board[pawnRow][tc];
+                capturedPieces[color].push(capturedPawn);
+                board[pawnRow][tc] = '\0';
+                isCapture = true;
+            } else if (target !== '\0') {
+                capturedPieces[color].push(target);
+            }
+
+            // Handle Castling execution
+            if (type === 'king' && Math.abs(tc - fc) === 2) {
+                if (tc === 6) { // Kingside
+                    board[tr][5] = board[tr][7];
+                    board[tr][7] = '\0';
+                    moveString = 'O-O';
+                } else if (tc === 2) { // Queenside
+                    board[tr][3] = board[tr][0];
+                    board[tr][0] = '\0';
+                    moveString = 'O-O-O';
+                }
+            }
+
+            // Move piece
+            board[tr][tc] = promoteTo ? (color === 'w' ? promoteTo.toUpperCase() : promoteTo.toLowerCase()) : piece;
+            board[fr][fc] = '\0';
+
+            // Set En Passant target
+            if (type === 'pawn' && Math.abs(tr - fr) === 2) {
+                enPassantTarget = [(fr + tr) / 2, fc];
+            } else {
+                enPassantTarget = null;
+            }
+
+            // Update castling rights
+            if (type === 'king') {
+                castlingRights[color].k = false;
+                castlingRights[color].q = false;
+            }
+            if (type === 'rook') {
+                if (fr === 7 && fc === 0) castlingRights.w.q = false;
+                if (fr === 7 && fc === 7) castlingRights.w.k = false;
+                if (fr === 0 && fc === 0) castlingRights.b.q = false;
+                if (fr === 0 && fc === 7) castlingRights.b.k = false;
+            }
+
+            // Standard Notation generation
+            if (moveString === '') {
+                if (type === 'pawn') {
+                    if (isCapture) moveString = files[fc] + 'x' + files[tc] + (8 - tr);
+                    else moveString = files[tc] + (8 - tr);
+                    if (promoteTo) moveString += '=' + promoteTo.toUpperCase();
+                } else {
+                    let pieceLetter = type === 'knight' ? 'N' : type.charAt(0).toUpperCase();
+                    let captureSign = isCapture ? 'x' : '';
+                    moveString = pieceLetter + captureSign + files[tc] + (8 - tr);
+                }
+            }
+
+            lastMove = { from: [fr, fc], to: [tr, tc] };
+
+            // Switch turn
+            turn = color === 'w' ? 'b' : 'w';
+            if (color === 'b') fullmoveNumber++;
+
+            // Check Check / Checkmate / Stalemate
+            const oppColor = turn;
+            const inCheck = isInCheck(oppColor, board);
+            const oppMoves = getAllLegalMovesForColor(oppColor);
+
+            if (inCheck) {
+                if (oppMoves.length === 0) {
+                    moveString += '#';
+                    endGame(color === 'w' ? 'White wins by Checkmate!' : 'Black wins by Checkmate!');
+                } else {
+                    moveString += '+';
+                }
+            } else {
+                if (oppMoves.length === 0) {
+                    endGame('Draw by Stalemate!');
+                }
+            }
+
+            moveHistory.push(moveString);
+            renderBoard();
+            updateUI();
+        }
+
+        // --- PROMOTION MODAL ---
+        function showPromotionModal(color) {
+            const modal = document.getElementById('overlayModal');
+            const content = document.getElementById('overlayContent');
+            const promoPieces = ['q', 'r', 'b', 'n'];
+
+            content.innerHTML = `
+                <h3 class="font-bold text-white text-base">Choose Promotion Piece</h3>
+                <div class="grid grid-cols-4 gap-2 py-3">
+                    ${promoPieces.map(p => `
+                        <button onclick="promotePiece('${p}')" class="p-3 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-3xl text-white transition flex items-center justify-center border border-zinc-700">
+                            ${PIECES[color === 'w' ? p.toUpperCase() : p].unicode}
+                        </button>
+                    `).join('')}
+                </div>
+            `;
+            modal.classList.remove('hidden');
+        }
+
+        function promotePiece(pieceChar) {
+            document.getElementById('overlayModal').classList.add('hidden');
+            if (pendingPromotion) {
+                const { fr, fc, tr, tc, color } = pendingPromotion;
+                pendingPromotion = null;
+                const piece = board[fr][fc];
+                const target = board[tr][tc];
+                completeMoveExecution(fr, fc, tr, tc, piece, target, pieceChar);
+            }
+        }
+
+        // --- UI & TIMER UPDATES ---
+        function updateUI() {
+            // Turn badges & player cards
+            const isWhiteTurn = turn === 'w';
+            document.getElementById('turnIndicatorBadge').innerText = isWhiteTurn ? "White Turn" : "Black Turn";
+            
+            const whiteCard = document.getElementById('whitePlayerCard');
+            const blackCard = document.getElementById('blackPlayerCard');
+            
+            if (isWhiteTurn) {
+                whiteCard.className = "w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all ring-2 ring-emerald-500/50";
+                blackCard.className = "w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all opacity-75";
+                document.getElementById('whiteStatus').innerText = "Your Turn";
+                document.getElementById('blackStatus').innerText = "Waiting";
+            } else {
+                blackCard.className = "w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all ring-2 ring-emerald-500/50";
+                whiteCard.className = "w-full max-w-[560px] bg-panelbg border border-zinc-800 rounded-xl p-3 flex items-center justify-between shadow-md transition-all opacity-75";
+                document.getElementById('blackStatus').innerText = "Your Turn";
+                document.getElementById('whiteStatus').innerText = "Waiting";
+            }
+
+            // Captured pieces
+            const wCaps = capturedPieces.w.map(p => PIECES[p].unicode).join(' ');
+            const bCaps = capturedPieces.b.map(p => PIECES[p].unicode).join(' ');
+            document.getElementById('whiteCaptures').innerHTML = wCaps;
+            document.getElementById('blackCaptures').innerHTML = bCaps;
+
+            // Move history list
+            const historyList = document.getElementById('moveHistoryList');
+            if (moveHistory.length === 0) {
+                historyList.innerHTML = `<div class="text-zinc-500 text-center py-8">No moves made yet</div>`;
+                document.getElementById('moveCountBadge').innerText = "0 moves";
+            } else {
+                let html = '';
+                for (let i = 0; i < moveHistory.length; i += 2) {
+                    const moveNum = Math.floor(i / 2) + 1;
+                    const wMove = moveHistory[i] || '';
+                    const bMove = moveHistory[i+1] || '';
+                    html += `
+                        <div class="flex items-center py-1 px-2 hover:bg-zinc-800/50 rounded transition">
+                            <span class="w-8 text-zinc-500 font-bold">${moveNum}.</span>
+                            <span class="w-24 text-zinc-200">${wMove}</span>
+                            <span class="w-24 text-zinc-400">${bMove}</span>
+                        </div>
+                    `;
+                }
+                historyList.innerHTML = html;
+                historyList.scrollTop = historyList.scrollHeight;
+                document.getElementById('moveCountBadge').innerText = `${moveHistory.length} moves`;
+            }
+        }
+
+        function startTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (!gameActive) return;
+                if (turn === 'w') {
+                    whiteTime--;
+                    if (whiteTime <= 0) {
+                        whiteTime = 0;
+                        endGame("Black wins on time!");
+                    }
+                } else {
+                    blackTime--;
+                    if (blackTime <= 0) {
+                        blackTime = 0;
+                        endGame("White wins on time!");
+                    }
+                }
+                updateTimersDisplay();
+            }, 1000);
+        }
+
+        function stopTimer() {
+            if (timerInterval) clearInterval(timerInterval);
+        }
+
+        function updateTimersDisplay() {
+            const formatTime = (seconds) => {
+                const m = Math.floor(seconds / 60);
+                const s = seconds % 60;
+                return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            };
+            document.getElementById('whiteTimer').innerText = formatTime(whiteTime);
+            document.getElementById('blackTimer').innerText = formatTime(blackTime);
+        }
+
+        function setTimeControl(mins) {
+            initialTime = mins * 60;
+            resetGame();
+            // Highlight active time button
+            document.querySelectorAll('.time-btn').forEach(btn => {
+                if (btn.innerText.includes(mins.toString())) {
+                    btn.className = "time-btn py-1.5 px-2 text-xs font-medium rounded-lg bg-emerald-600 text-white transition border border-emerald-500";
+                } else {
+                    btn.className = "time-btn py-1.5 px-2 text-xs font-medium rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 transition border border-zinc-700";
+                }
+            });
+        }
+
+        function flipBoard() {
+            boardFlipped = !boardFlipped;
+            renderBoard();
+        }
+
+        function resignGame() {
+            if (!gameActive) return;
+            const winner = turn === 'w' ? 'Black' : 'White';
+            endGame(`${winner} wins by resignation!`);
+        }
+
+        function endGame(message) {
+            gameActive = false;
+            stopTimer();
+            const modal = document.getElementById('msgModal');
+            document.getElementById('msgBody').innerText = message;
+            modal.classList.remove('hidden');
+        }
+
+        // Modal Helpers
+        function openModal(id) {
+            document.getElementById(id).classList.remove('hidden');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+        }
+
+        function resetGame() {
+            closeModal('msgModal');
+            closeModal('overlayModal');
+            initGame();
+        }
+
+        // Start on load
+        window.onload = () => {
+            initGame();
+        };
+    </script>
+</body>
+</html>

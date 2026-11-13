@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Namangan IT School — O'yinlar</title>
+  <meta name="description" content="O'quvchilarimiz yaratgan o'yinlar to'plami">
+  <link rel="icon" href="assets/placeholder.svg">
+
+  <!-- Tema sahifa chizilishidan oldin qo'yiladi (oq "chaqnash" bo'lmasligi uchun) -->
+  <script>
+    try {
+      var t = JSON.parse(localStorage.getItem("gp_theme"));
+      if (!t) t = window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+      document.documentElement.setAttribute("data-theme", t);
+    } catch (e) {}
+  </script>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <!-- ===== Header ===== -->
+  <header class="header">
+    <div class="container">
+      <a class="logo" href="index.html">
+        <span class="logo-icon">🎮</span>
+        <span class="logo-text">IT School <span>Games</span></span>
+      </a>
+
+      <label class="search">
+        <input id="search" type="search" placeholder="O'yin, o'quvchi yoki tavsif bo'yicha qidirish..." autocomplete="off">
+      </label>
+
+      <button id="themeBtn" class="icon-btn" type="button" aria-label="Kun/tun rejimi">🌙</button>
+    </div>
+  </header>
+
+  <main class="container">
+
+    <!-- ===== Banner ===== -->
+    <section class="hero">
+      <h1>O'quvchilarimiz yaratgan o'yinlar 🚀</h1>
+      <p>Har bir o'yin HTML, CSS va JavaScript'da noldan yozilgan. Tanlang va o'ynang!</p>
+    </section>
+
+    <!-- ===== Filtrlar ===== -->
+    <div class="filters">
+      <div id="chips" class="chips" role="tablist"></div>
+      <select id="authorSelect" class="select" aria-label="O'quvchilar">
+        <option value="all">👥 Barcha o'quvchilar</option>
+      </select>
+    </div>
+
+    <!-- ===== Yaqinda o'ynalganlar ===== -->
+    <section id="recentSection" class="section hidden">
+      <h2 class="section-title">🕒 Yaqinda o'ynalganlar</h2>
+      <div id="recentRow" class="row"></div>
+    </section>
+
+    <!-- ===== Sevimlilar ===== -->
+    <section id="favSection" class="section hidden">
+      <h2 class="section-title">❤️ Sevimlilar</h2>
+      <div id="favRow" class="row"></div>
+    </section>
+
+    <!-- ===== Barcha o'yinlar ===== -->
+    <section class="section">
+      <h2 class="section-title">🎯 Barcha o'yinlar <span id="gameCount" class="count">0</span></h2>
+      <div id="grid" class="grid"></div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    Namangan IT School · O'quvchilar o'yinlari platformasi
+  </footer>
+
+  <!-- Avval o'yinlar ro'yxati, keyin mantiq -->
+  <script src="js/games.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

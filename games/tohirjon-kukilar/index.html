@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kukilar fabrikasi</title>
+  <style>
+    body {
+      margin: 0; height: 100vh; overflow: hidden;
+      display: flex; align-items: center; justify-content: center; gap: 40px;
+      font-family: Arial, sans-serif; color: #4a2c10;
+      background: radial-gradient(circle, #ffe7b8, #f5b85c);
+      user-select: none; flex-wrap: wrap;
+    }
+    .left { text-align: center; }
+    h1 { margin: 0; font-size: 34px; }
+    .rate { opacity: 0.7; margin-bottom: 14px; }
+    #cookie {
+      font-size: 150px; background: none; border: none; cursor: pointer;
+      transition: transform 0.08s; filter: drop-shadow(0 10px 12px rgba(0,0,0,0.25));
+    }
+    #cookie:active { transform: scale(0.9); }
+    .shop { display: flex; flex-direction: column; gap: 10px; min-width: 240px; }
+    .shop h2 { margin: 0 0 4px; }
+    .shop button {
+      padding: 12px 14px; border: none; border-radius: 12px; font-size: 16px; text-align: left;
+      background: #fff8ec; color: #4a2c10; cursor: pointer; box-shadow: 0 4px 0 #d08c33;
+    }
+    .shop button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .float {
+      position: absolute; pointer-events: none; font-weight: bold; font-size: 22px;
+      animation: up 0.8s ease-out forwards;
+    }
+    @keyframes up { to { transform: translateY(-60px); opacity: 0; } }
+  </style>
+</head>
+<body>
+  <div class="left">
+    <h1>🍪 <span id="count">0</span></h1>
+    <div class="rate">sekundiga <span id="rate">0</span> ta</div>
+    <button id="cookie" aria-label="Kuki">🍪</button>
+  </div>
+
+  <div class="shop">
+    <h2>🛒 Do'kon</h2>
+    <button id="buyClick">👆 Kuchli barmoq (+1 bosish) — <b id="clickPrice">15</b></button>
+    <button id="buyBaker">👩‍🍳 Novvoy (+1/sek) — <b id="bakerPrice">50</b></button>
+    <button id="buyFactory">🏭 Fabrika (+10/sek) — <b id="factoryPrice">500</b></button>
+  </div>
+
+  <script>
+    // O'yin holati
+    var cookies = 0, perClick = 1, perSecond = 0;
+    var prices = { click: 15, baker: 50, factory: 500 };
+
+    var $ = function (id) { return document.getElementById(id); };
+
+    function update() {
+      $("count").textContent = Math.floor(cookies);
+      $("rate").textContent = perSecond;
+      $("clickPrice").textContent = prices.click;
+      $("bakerPrice").textContent = prices.baker;
+      $("factoryPrice").textContent = prices.factory;
+      $("buyClick").disabled = cookies < prices.click;
+      $("buyBaker").disabled = cookies < prices.baker;
+      $("buyFactory").disabled = cookies < prices.factory;
+    }
+
+    // Kukini bosish
+    $("cookie").addEventListener("click", function (e) {
+      cookies += perClick;
+      var f = document.createElement("div");
+      f.className = "float";
+      f.textContent = "+" + perClick;
+      f.style.left = e.clientX + "px";
+      f.style.top = e.clientY + "px";
+      document.body.appendChild(f);
+      setTimeout(function () { f.remove(); }, 800);
+      update();
+    });
+
+    // Sotib olish: narx har safar 1.5 barobar oshadi
+    function buy(name, effect) {
+      if (cookies < prices[name]) return;
+      cookies -= prices[name];
+      prices[name] = Math.ceil(prices[name] * 1.5);
+      effect();
+      update();
+    }
+    $("buyClick").onclick = function () { buy("click", function () { perClick++; }); };
+    $("buyBaker").onclick = function () { buy("baker", function () { perSecond += 1; }); };
+    $("buyFactory").onclick = function () { buy("factory", function () { perSecond += 10; }); };
+
+    // Har 100 ms'da avtomatik daromad
+    setInterval(function () { cookies += perSecond / 10; update(); }, 100);
+    update();
+  </script>
+</body>
+</html>

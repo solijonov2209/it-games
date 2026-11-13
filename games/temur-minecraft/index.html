@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Minecraft 2D с верстаком</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #78A7FF;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            user-select: none;
+        }
+        canvas {
+            display: block;
+        }
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        #hotbar {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 6px;
+            background: rgba(20, 20, 20, 0.8);
+            padding: 8px;
+            border-radius: 8px;
+            border: 2px solid #555;
+        }
+        .slot {
+            width: 52px;
+            height: 52px;
+            background: #8B8B8B;
+            border: 3px solid #373737;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 11px;
+            font-weight: bold;
+            cursor: pointer;
+            position: relative;
+            text-align: center;
+        }
+        .slot.active {
+            border-color: #FFF;
+            background: #A0A0A0;
+        }
+        .slot-count {
+            position: absolute;
+            bottom: 2px;
+            right: 4px;
+            font-size: 12px;
+            text-shadow: 1px 1px 0 #000;
+        }
+        #craft-panel {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            width: 280px;
+            background: rgba(30, 30, 30, 0.9);
+            color: #fff;
+            padding: 12px;
+            border-radius: 8px;
+            border: 2px solid #777;
+        }
+        #craft-panel h3 {
+            margin: 0 0 8px 0;
+            font-size: 15px;
+            color: #FFD54F;
+        }
+        .recipe {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 6px 8px;
+            margin-bottom: 6px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .recipe button {
+            background: #4CAF50;
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .recipe button:disabled {
+            background: #555;
+            cursor: not-allowed;
+            color: #999;
+        }
+    </style>
+</head>
+<body>
+
+<div id="hud">
+    <b>A / D</b> — идти | <b>W / Пробел</b> — прыжок<br>
+    <b>ЛКМ</b> — ломать блок | <b>ПКМ</b> — ставить блок / открыть верстак<br>
+    <b>1–8</b> или колесо мыши — выбор слота | <b>C</b> — закрыть меню верстака
+</div>
+
+<div id="craft-panel">
+    <h3 id="craft-title">Крафт в руках</h3>
+    <div id="recipes-list"></div>
+</div>
+
+<div id="hotbar"></div>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+const TILE = 36;
+const WORLD_W = 80;
+const WORLD_H = 45;
+
+// Типы блоков и предметов
+const ITEMS = {
+    0: { name: 'Воздух', color: null, solid: false },
+    1: { name: 'Трава', color: '#4CAF50', topColor: '#66BB6A', solid: true, hard: 15 },
+    2: { name: 'Земля', color: '#795548', solid: true, hard: 15 },
+    3: { name: 'Камень', color: '#9E9E9E', solid: true, hard: 35 },
+    4: { name: 'Бревно', color: '#5D4037', solid: false, hard: 20 },
+    5: { name: 'Листва', color: '#2E7D32', solid: false, hard: 8 },
+    6: { name: 'Уголь', color: '#424242', solid: true, hard: 40 },
+    7: { name: 'Железо', color: '#D7CCC8', solid: true, hard: 50 },
+    8: { name: 'Доски', color: '#BC8F56', solid: true, hard: 15 },
+    9: { name: 'Верстак', color: '#8D5524', isBench: true, solid: true, hard: 20 },
+    10: { name: 'Палки', color: '#A1887F', isTool: true },
+    11: { name: 'Дер. кирка', color: '#C59B6D', isTool: true, power: 2 },
+    12: { name: 'Кам. кирка', color: '#B0BEC5', isTool: true, power: 4 },
+    13: { name: 'Кам. меч', color: '#CFD8DC', isTool: true },
+    14: { name: 'Печь', color: '#616161', solid: true, hard: 30 }
+};
+
+// Генерация мира
+const world = Array.from({ length: WORLD_H }, () => Array(WORLD_W).fill(0));
+const surfaceHeights = [];
+
+for (let x = 0; x < WORLD_W; x++) {
+    const h = Math.floor(16 + Math.sin(x * 0.15) * 3 + Math.cos(x * 0.07) * 2);
+    surfaceHeights[x] = h;
+    for (let y = h; y < WORLD_H; y++) {
+        if (y === h) world[y][x] = 1;
+        else if (y < h + 4) world[y][x] = 2;
+        else {
+            const r = Math.random();
+            if (r < 0.06) world[y][x] = 6;
+            else if (r < 0.09 && y > h + 8) world[y][x] = 7;
+            else world[y][x] = 3;
+        }
+    }
+}
+
+// Генерация деревьев
+for (let x = 4; x < WORLD_W - 4; x += Math.floor(5 + Math.random() * 6)) {
+    const h = surfaceHeights[x];
+    const treeH = 3 + Math.floor(Math.random() * 2);
+    for (let i = 1; i <= treeH; i++) {
+        if (h - i >= 0) world[h - i][x] = 4;
+    }
+    for (let lx = -2; lx <= 2; lx++) {
+        for (let ly = -2; ly <= 0; ly++) {
+            const wx = x + lx;
+            const wy = h - treeH + ly;
+            if (wx >= 0 && wx < WORLD_W && wy >= 0 && world[wy][wx] === 0) {
+                world[wy][wx] = 5;
+            }
+        }
+    }
+}
+
+// Игрок
+const player = {
+    x: 15 * TILE,
+    y: 8 * TILE,
+    w: TILE * 0.7,
+    h: TILE * 1.7,
+    vx: 0,
+    vy: 0,
+    onGround: false
+};
+
+// Инвентарь (слоты: {id, count})
+const inventory = Array(8).fill(null);
+let selectedSlot = 0;
+let nearBench = false;
+
+function addItem(id, count = 1) {
+    for (let i = 0; i < inventory.length; i++) {
+        if (inventory[i] && inventory[i].id === id) {
+            inventory[i].count += count;
+            updateUI();
+            return true;
+        }
+    }
+    for (let i = 0; i < inventory.length; i++) {
+        if (!inventory[i]) {
+            inventory[i] = { id, count };
+            updateUI();
+            return true;
+        }
+    }
+    return false;
+}
+
+function countItem(id) {
+    return inventory.reduce((sum, s) => (s && s.id === id ? sum + s.count : sum), 0);
+}
+
+function removeItem(id, count) {
+    let need = count;
+    for (let i = 0; i < inventory.length; i++) {
+        if (inventory[i] && inventory[i].id === id) {
+            const take = Math.min(inventory[i].count, need);
+            inventory[i].count -= take;
+            need -= take;
+            if (inventory[i].count <= 0) inventory[i] = null;
+            if (need <= 0) break;
+        }
+    }
+    updateUI();
+}
+
+// Рецепты крафта
+const RECIPES = [
+    { name: 'Доски (4 шт)', out: { id: 8, count: 4 }, req: [{ id: 4, count: 1 }], bench: false },
+    { name: 'Верстак', out: { id: 9, count: 1 }, req: [{ id: 8, count: 4 }], bench: false },
+    { name: 'Палки (4 шт)', out: { id: 10, count: 4 }, req: [{ id: 8, count: 2 }], bench: true },
+    { name: 'Дер. кирка', out: { id: 11, count: 1 }, req: [{ id: 8, count: 3 }, { id: 10, count: 2 }], bench: true },
+    { name: 'Кам. кирка', out: { id: 12, count: 1 }, req: [{ id: 3, count: 3 }, { id: 10, count: 2 }], bench: true },
+    { name: 'Кам. меч', out: { id: 13, count: 1 }, req: [{ id: 3, count: 2 }, { id: 10, count: 1 }], bench: true },
+    { name: 'Печь', out: { id: 14, count: 1 }, req: [{ id: 3, count: 8 }], bench: true }
+];
+
+function updateUI() {
+    // Хотбар
+    const hotbar = document.getElementById('hotbar');
+    hotbar.innerHTML = '';
+    inventory.forEach((slot, i) => {
+        const div = document.createElement('div');
+        div.className = 'slot' + (i === selectedSlot ? ' active' : '');
+        div.onclick = () => { selectedSlot = i; updateUI(); };
+        if (slot) {
+            const item = ITEMS[slot.id];
+            div.style.background = item.color;
+            div.innerHTML = `<span>${item.name}</span><span class="slot-count">${slot.count}</span>`;
+        }
+        hotbar.appendChild(div);
+    });
+
+    // Крафт
+    const title = document.getElementById('craft-title');
+    title.textContent = nearBench ? 'Меню верстака (Открыто)' : 'Крафт в руках (Поставьте верстак)';
+
+    const list = document.getElementById('recipes-list');
+    list.innerHTML = '';
+
+    RECIPES.forEach(r => {
+        if (r.bench && !nearBench) return;
+        const canCraft = r.req.every(rq => countItem(rq.id) >= rq.count);
+        const reqText = r.req.map(rq => `${ITEMS[rq.id].name} x${rq.count}`).join(', ');
+
+        const row = document.createElement('div');
+        row.className = 'recipe';
+        row.innerHTML = `<div><b>${r.name}</b><br><small>${reqText}</small></div>`;
+        const btn = document.createElement('button');
+        btn.textContent = 'Создать';
+        btn.disabled = !canCraft;
+        btn.onclick = () => {
+            r.req.forEach(rq => removeItem(rq.id, rq.count));
+            addItem(r.out.id, r.out.count);
+        };
+        row.appendChild(btn);
+        list.appendChild(row);
+    });
+}
+
+// Управление
+const keys = {};
+window.addEventListener('keydown', e => {
+    keys[e.code] = true;
+    if (e.code.startsWith('Digit')) {
+        const idx = parseInt(e.code.replace('Digit', '')) - 1;
+        if (idx >= 0 && idx < 8) {
+            selectedSlot = idx;
+            updateUI();
+        }
+    }
+    if (e.code === 'KeyC' && nearBench) {
+        nearBench = false;
+        updateUI();
+    }
+});
+window.addEventListener('keyup', e => keys[e.code] = false);
+window.addEventListener('wheel', e => {
+    selectedSlot = (selectedSlot + (e.deltaY > 0 ? 1 : 7)) % 8;
+updateUI();
+});
+// Мышь и добыча блоков
+let mouse = { x: 0, y: 0, left: false };
+let mining = { gx: -1, gy: -1, progress: 0 };
+canvas.addEventListener('mousemove', e => {
+mouse.x = e.clientX;
+mouse.y = e.clientY;
+});
+canvas.addEventListener('mousedown', e => {
+const camX = player.x - canvas.width / 2;
+const camY = player.y - canvas.height / 2;
+const gx = Math.floor((mouse.x + camX) / TILE);
+const gy = Math.floor((mouse.y + camY) / TILE);
+if (gx < 0 || gx >= WORLD_W || gy < 0 || gy >= WORLD_H) return;
+const dist = Math.hypot((gx + 0.5) * TILE - (player.x + player.w / 2), (gy + 0.5) * TILE - (player.y + player.h / 2));
+if (dist > TILE * 4.5) return;
+if (e.button === 0) {
+mouse.left = true;
+} else if (e.button === 2) {
+// Если клик по верстаку — открыть меню верстака
+if (world[gy][gx] === 9) {
+nearBench = true;
+updateUI();
+return;
+}
+// Установка блока
+const slot = inventory[selectedSlot];
+if (world[gy][gx] === 0 && slot && !ITEMS[slot.id].isTool) {
+// Проверка, чтобы не замуровать игрока
+const px1 = Math.floor(player.x / TILE);
+const px2 = Math.floor((player.x + player.w) / TILE);
+const py1 = Math.floor(player.y / TILE);
+const py2 = Math.floor((player.y + player.h) / TILE);
+if (!(gx >= px1 && gx <= px2 && gy >= py1 && gy <= py2)) {
+world[gy][gx] = slot.id;
+removeItem(slot.id, 1);
+}
+}
+}
+});
+window.addEventListener('mouseup', () => {
+mouse.left = false;
+mining.progress = 0;
+});
+window.addEventListener('contextmenu', e => e.preventDefault());
+// Коллизии
+function checkCollision(nx, ny) {
+const left = Math.floor(nx / TILE);
+const right = Math.floor((nx + player.w - 0.1) / TILE);
+const top = Math.floor(ny / TILE);
+const bottom = Math.floor((ny + player.h - 0.1) / TILE);
+for (let y = top; y <= bottom; y++) {
+for (let x = left; x <= right; x++) {
+if (y < 0 || y >= WORLD_H || x < 0 || x >= WORLD_W) return true;
+if (ITEMS[world[y][x]].solid) return true;
+}
+}
+return false;
+}
+// Игровой цикл
+function update() {
+// Движение
+player.vx = 0;
+if (keys['KeyA'] || keys['ArrowLeft']) player.vx = -4.5;
+if (keys['KeyD'] || keys['ArrowRight']) player.vx = 4.5;
+if ((keys['KeyW'] || keys['Space'] || keys['ArrowUp']) && player.onGround) {
+player.vy = -10.5;
+player.onGround = false;
+}
+player.vy += 0.55; // Гравитация
+if (!checkCollision(player.x + player.vx, player.y)) {
+player.x += player.vx;
+}
+if (!checkCollision(player.x, player.y + player.vy)) {
+player.y += player.vy;
+player.onGround = false;
+} else {
+if (player.vy > 0) player.onGround = true;
+player.vy = 0;
+}
+// Добыча блока
+const camX = player.x - canvas.width / 2;
+const camY = player.y - canvas.height / 2;
+const gx = Math.floor((mouse.x + camX) / TILE);
+const gy = Math.floor((mouse.y + camY) / TILE);
+if (mouse.left && gx >= 0 && gx < WORLD_W && gy >= 0 && gy < WORLD_H && world[gy][gx] !== 0) {
+const dist = Math.hypot((gx + 0.5) * TILE - (player.x + player.w / 2), (gy + 0.5) * TILE - (player.y + player.h / 2));
+if (dist <= TILE * 4.5) {
+if (mining.gx !== gx || mining.gy !== gy) {
+mining = { gx, gy, progress: 0 };
+}
+const slot = inventory[selectedSlot];
+const power = (slot && ITEMS[slot.id].power) ? ITEMS[slot.id].power : 1;
+mining.progress += power;
+const blockId = world[gy][gx];
+if (mining.progress >= ITEMS[blockId].hard) {
+world[gy][gx] = 0;
+addItem(blockId, 1);
+mining.progress = 0;
+if (blockId === 9) { nearBench = false; updateUI(); }
+}
+}
+} else {
+mining.progress = 0;
+}
+}
+function draw() {
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+const camX = player.x - canvas.width / 2;
+const camY = player.y - canvas.height / 2;
+// Отрисовка блоков
+for (let y = 0; y < WORLD_H; y++) {
+for (let x = 0; x < WORLD_W; x++) {
+const id = world[y][x];
+if (id === 0) continue;
+const sx = x * TILE - camX;
+const sy = y * TILE - camY;
+if (sx < -TILE || sx > canvas.width || sy < -TILE || sy > canvas.height) continue;
+const item = ITEMS[id];
+ctx.fillStyle = item.color;
+ctx.fillRect(sx, sy, TILE, TILE);
+// Детализация блоков
+if (id === 1) {
+ctx.fillStyle = '#795548';
+ctx.fillRect(sx, sy + 8, TILE, TILE - 8);
+} else if (id === 9) {
+ctx.fillStyle = '#D7A86E';
+ctx.fillRect(sx + 4, sy + 4, TILE - 8, 8);
+ctx.strokeStyle = '#3E2723';
+ctx.strokeRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
+} else if (id === 6 || id === 7) {
+ctx.fillStyle = id === 6 ? '#212121' : '#FFAB91';
+ctx.fillRect(sx + 8, sy + 8, 8, 8);
+ctx.fillRect(sx + 20, sy + 18, 7, 7);
+}
+ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+ctx.strokeRect(sx, sy, TILE, TILE);
+}
+}
+// Прогресс ломания
+if (mining.progress > 0 && world[mining.gy]?.[mining.gx]) {
+const id = world[mining.gy][mining.gx];
+const ratio = mining.progress / ITEMS[id].hard;
+ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+ctx.fillRect(mining.gx * TILE - camX, mining.gy * TILE - camY, TILE * ratio, TILE);
+}
+// Отрисовка игрока (Стив)
+const px = player.x - camX;
+const py = player.y - camY;
+ctx.fillStyle = '#00ACC1'; // Футболка
+ctx.fillRect(px, py + player.h * 0.35, player.w, player.h * 0.35);
+ctx.fillStyle = '#3949AB'; // Штаны
+ctx.fillRect(px, py + player.h * 0.7, player.w, player.h * 0.3);
+ctx.fillStyle = '#D7A887'; // Голова
+ctx.fillRect(px + 2, py, player.w - 4, player.h * 0.35);
+requestAnimationFrame(() => {
+update();
+draw();
+});
+}
+updateUI();
+draw();
+</script>
+</body>
+</html>

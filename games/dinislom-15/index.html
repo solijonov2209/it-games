@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>15 boshqotirma</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      font-family: Arial, sans-serif; color: #fff; user-select: none;
+      background: linear-gradient(160deg, #6c4cf5, #00b37e);
+    }
+    h1 { margin: 0; font-size: 28px; text-align: center; }
+    .hud { font-size: 18px; }
+    .board {
+      position: relative; width: min(88vw, 60vh); aspect-ratio: 1;
+      background: #ffffff33; border-radius: 18px; padding: 8px; box-sizing: border-box;
+    }
+    .tile {
+      position: absolute; width: calc((100% - 16px) / 4 - 6px); aspect-ratio: 1;
+      display: grid; place-items: center; border-radius: 12px; cursor: pointer;
+      background: #fff; color: #6c4cf5; font-size: clamp(22px, 6vw, 40px); font-weight: 900;
+      box-shadow: 0 5px 0 #c9c0ff; transition: left 0.15s, top 0.15s;
+    }
+    .tile.right { background: #d6ffe9; color: #00875f; box-shadow: 0 5px 0 #8fe0b8; }
+    button {
+      padding: 10px 24px; font-size: 18px; border: none; border-radius: 999px;
+      background: #ffcc00; color: #222; font-weight: bold; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1 id="title">🧩 15 boshqotirma</h1>
+  <div class="hud">Yurishlar: <b id="moves">0</b> · Strelkalar ham ishlaydi</div>
+  <div class="board" id="board"></div>
+  <button id="shuffle">🔀 Aralashtirish</button>
+
+  <script>
+    var board = document.getElementById("board");
+    var tiles = [];   // tiles[pozitsiya] = raqam (0 — bo'sh katak)
+    var moves = 0;
+
+    function draw() {
+      board.innerHTML = "";
+      tiles.forEach(function (n, pos) {
+        if (n === 0) return;
+        var el = document.createElement("div");
+        el.className = "tile" + (n === pos + 1 ? " right" : "");
+        el.textContent = n;
+        var step = "((100% - 16px) / 4)";
+        el.style.left = "calc(8px + " + step + " * " + (pos % 4) + " + 3px)";
+        el.style.top = "calc(8px + " + step + " * " + Math.floor(pos / 4) + " + 3px)";
+        el.onclick = function () { tryMove(pos); };
+        board.appendChild(el);
+      });
+      document.getElementById("moves").textContent = moves;
+    }
+
+    // Katak bo'sh joy yonida bo'lsa — suramiz
+    function tryMove(pos) {
+      var empty = tiles.indexOf(0);
+      var sameRow = Math.floor(pos / 4) === Math.floor(empty / 4);
+      var near = (Math.abs(pos - empty) === 1 && sameRow) || Math.abs(pos - empty) === 4;
+      if (!near) return false;
+      tiles[empty] = tiles[pos];
+      tiles[pos] = 0;
+      moves++;
+      draw();
+      checkWin();
+      return true;
+    }
+
+    function checkWin() {
+      for (var i = 0; i < 15; i++) if (tiles[i] !== i + 1) return;
+      document.getElementById("title").textContent = "🎉 Yechildi! " + moves + " yurishda";
+    }
+
+    // Har doim yechiladigan bo'lishi uchun tartibli holatdan tasodifiy yurishlar qilamiz
+    function shuffle() {
+      tiles = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 0];
+      for (var k = 0; k < 300; k++) {
+        var empty = tiles.indexOf(0);
+        var options = [empty - 4, empty + 4];
+        if (empty % 4 !== 0) options.push(empty - 1);
+        if (empty % 4 !== 3) options.push(empty + 1);
+        options = options.filter(function (p) { return p >= 0 && p < 16; });
+        var p = options[Math.floor(Math.random() * options.length)];
+        tiles[empty] = tiles[p]; tiles[p] = 0;
+      }
+      moves = 0;
+      document.getElementById("title").textContent = "🧩 15 boshqotirma";
+      draw();
+    }
+
+    // Strelka bosilganda bo'sh joyga qo'shni katak suriladi
+    document.addEventListener("keydown", function (e) {
+      var empty = tiles.indexOf(0);
+      var map = { ArrowUp: empty + 4, ArrowDown: empty - 4, ArrowLeft: empty + 1, ArrowRight: empty - 1 };
+      if (!(e.key in map)) return;
+      e.preventDefault();
+      var p = map[e.key];
+      if (p >= 0 && p < 16) tryMove(p);
+    });
+
+    document.getElementById("shuffle").onclick = shuffle;
+    shuffle();
+  </script>
+</body>
+</html>

@@ -1,0 +1,574 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Kosmik Himoyachi - Web O'yin</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js ovoz effektlari uchun -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <!-- FontAwesome ikonkalari -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Inter:wght@400;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #050814;
+            color: #ffffff;
+            overflow: hidden;
+            touch-action: none; /* Mobil qurilmalarda ekranni surishni bloklash */
+            user-select: none;
+        }
+
+        .font-gaming {
+            font-family: 'Orbitron', sans-serif;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at center, #0f172a 0%, #020617 100%);
+        }
+
+        /* Neon tugmalar effekti */
+        .neon-btn {
+            background: linear-gradient(45deg, #06b6d4, #3b82f6);
+            box-shadow: 0 0 15px rgba(6, 182, 212, 0.5);
+            transition: all 0.2s ease;
+        }
+
+        .neon-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 25px rgba(6, 182, 212, 0.8);
+        }
+
+        .neon-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen flex flex-col relative">
+
+    <!-- Yuqori panel (Hisob va Jonlar) -->
+    <header class="absolute top-0 left-0 w-full p-4 flex justify-between items-center z-10 pointer-events-none">
+        <div class="bg-slate-900/70 backdrop-blur-md border border-cyan-500/30 px-4 py-2 rounded-2xl flex items-center gap-3 shadow-lg">
+            <i class="fa-solid fa-star text-yellow-400"></i>
+            <div>
+                <span class="text-xs text-slate-400 block uppercase">Ball</span>
+                <span id="score-display" class="font-gaming text-xl font-bold text-cyan-400">0</span>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/70 backdrop-blur-md border border-purple-500/30 px-4 py-2 rounded-2xl hidden sm:flex items-center gap-3 shadow-lg">
+            <i class="fa-solid fa-trophy text-amber-400"></i>
+            <div>
+                <span class="text-xs text-slate-400 block uppercase">Rekord</span>
+                <span id="highscore-display" class="font-gaming text-xl font-bold text-purple-400">0</span>
+            </div>
+        </div>
+
+        <div class="bg-slate-900/70 backdrop-blur-md border border-rose-500/30 px-4 py-2 rounded-2xl flex items-center gap-2 shadow-lg pointer-events-auto">
+            <div id="lives-container" class="flex gap-1 text-rose-500 text-lg">
+                <i class="fa-solid fa-heart"></i>
+                <i class="fa-solid fa-heart"></i>
+                <i class="fa-solid fa-heart"></i>
+            </div>
+            <button id="sound-toggle" class="ml-3 text-slate-300 hover:text-white p-1">
+                <i id="sound-icon" class="fa-solid fa-volume-high"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Asosiy O'yin Maydoni (Canvas) -->
+    <main class="flex-grow w-full h-full relative">
+        <canvas id="game-canvas"></canvas>
+
+        <!-- Boshlash Ekrani (Start Modal) -->
+        <div id="start-screen" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm flex flex-col items-center justify-center p-6 z-20 text-center">
+            <div class="w-20 h-20 bg-cyan-500/20 rounded-full flex items-center justify-center border-2 border-cyan-400 mb-4 animate-bounce">
+                <i class="fa-solid fa-rocket text-4xl text-cyan-400"></i>
+            </div>
+            <h1 class="font-gaming text-4xl md:text-5xl font-black bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-500 mb-2">
+                KOSMIK HIMOYACHI
+            </h1>
+            <p class="text-slate-300 max-w-md mb-8 text-sm md:text-base">
+                Meteoritlarni yo'q qiling va galaktikani saqlab qoling! <br>
+                <span class="text-cyan-400 text-xs mt-2 block">Boshqaruv: Sichqoncha, barmoq bilan surish yoki Klaviatura (◀ ▶ / Space)</span>
+            </p>
+            <button id="start-btn" class="neon-btn font-gaming text-white font-bold text-lg px-8 py-4 rounded-2xl tracking-wider cursor-pointer">
+                O'YINNI BOSHLASH
+            </button>
+        </div>
+
+        <!-- O'yin Tugashi Ekrani (Game Over Modal) -->
+        <div id="gameover-screen" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex flex-col items-center justify-center p-6 z-20 text-center">
+            <h2 class="font-gaming text-4xl md:text-5xl font-black text-rose-500 mb-2">O'YIN TUGADI</h2>
+            <p class="text-slate-400 mb-6">Kemangiz halokatga uchradi!</p>
+            
+            <div class="bg-slate-900/90 border border-slate-700 rounded-2xl p-6 mb-8 w-full max-w-xs">
+                <div class="flex justify-between items-center mb-3 pb-3 border-b border-slate-800">
+                    <span class="text-slate-400">To'plangan ball:</span>
+                    <span id="final-score" class="font-gaming text-2xl font-bold text-cyan-400">0</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-400">Eng yaxshi natija:</span>
+                    <span id="final-highscore" class="font-gaming text-xl font-bold text-purple-400">0</span>
+                </div>
+            </div>
+
+            <button id="restart-btn" class="neon-btn font-gaming text-white font-bold text-lg px-8 py-4 rounded-2xl tracking-wider cursor-pointer">
+                QAYTA O'YNASH
+            </button>
+        </div>
+    </main>
+
+    <!-- Mobil qurilmalar uchun pastki boshqaruv tugmalari -->
+    <footer class="md:hidden absolute bottom-4 left-0 w-full px-6 flex justify-between items-center z-10 pointer-events-none">
+        <div class="flex gap-4 pointer-events-auto">
+            <button id="btn-left" class="w-14 h-14 bg-slate-800/70 active:bg-cyan-600/70 backdrop-blur border border-slate-600 rounded-2xl flex items-center justify-center text-xl">
+                <i class="fa-solid fa-chevron-left"></i>
+            </button>
+            <button id="btn-right" class="w-14 h-14 bg-slate-800/70 active:bg-cyan-600/70 backdrop-blur border border-slate-600 rounded-2xl flex items-center justify-center text-xl">
+                <i class="fa-solid fa-chevron-right"></i>
+            </button>
+        </div>
+        <button id="btn-fire" class="pointer-events-auto w-16 h-16 bg-rose-600/80 active:bg-rose-500 backdrop-blur border border-rose-400 rounded-full flex items-center justify-center text-2xl shadow-lg">
+            <i class="fa-solid fa-crosshairs"></i>
+        </button>
+    </footer>
+
+    <script>
+        // Canvas va kontekstni sozlash
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // UI elementlari
+        const scoreDisplay = document.getElementById('score-display');
+        const highscoreDisplay = document.getElementById('highscore-display');
+        const livesContainer = document.getElementById('lives-container');
+        const startScreen = document.getElementById('start-screen');
+        const gameoverScreen = document.getElementById('gameover-screen');
+        const finalScore = document.getElementById('final-score');
+        const finalHighscore = document.getElementById('final-highscore');
+        const soundToggle = document.getElementById('sound-toggle');
+        const soundIcon = document.getElementById('sound-icon');
+
+        // O'yin holati o'zgaruvchilari
+        let gameRunning = false;
+        let score = 0;
+        let highScore = localStorage.getItem('kosmik_rekord') || 0;
+        let lives = 3;
+        let soundEnabled = true;
+        let animationId;
+        let lastEnemySpawn = 0;
+        let enemySpawnInterval = 1200; // ms
+
+        highscoreDisplay.innerText = highScore;
+
+        // Ovoz sintezatori (Tone.js)
+        let synth, noiseSynth;
+        function initAudio() {
+            if (!synth) {
+                synth = new Tone.PolySynth(Tone.Synth).toDestination();
+                noiseSynth = new Tone.NoiseSynth({
+                    noise: { type: 'brown' },
+                    envelope: { attack: 0.01, decay: 0.2, sustain: 0 }
+                }).toDestination();
+            }
+        }
+
+        function playSound(type) {
+            if (!soundEnabled) return;
+            try {
+                if (Tone.context.state !== 'running') Tone.start();
+                if (type === 'shoot') {
+                    synth.triggerAttackRelease("C6", "32n");
+                } else if (type === 'explosion') {
+                    noiseSynth.triggerAttackRelease("16n");
+                } else if (type === 'hit') {
+                    synth.triggerAttackRelease(["A2", "E2"], "8n");
+                }
+            } catch (e) {}
+        }
+
+        soundToggle.addEventListener('click', () => {
+            soundEnabled = !soundEnabled;
+            soundIcon.className = soundEnabled ? 'fa-solid fa-volume-high' : 'fa-solid fa-volume-xmark text-rose-400';
+        });
+
+        // O'lchamlarni ekranga moslash
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            if (player) {
+                player.y = canvas.height - 90;
+                if (player.x > canvas.width - player.width) {
+                    player.x = canvas.width - player.width;
+                }
+            }
+        }
+        window.addEventListener('resize', resizeCanvas);
+
+        // Yulduzlar foni
+        const stars = [];
+        for (let i = 0; i < 80; i++) {
+            stars.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                size: Math.random() * 2 + 0.5,
+                speed: Math.random() * 1.5 + 0.3
+            });
+        }
+
+        // O'yinchi (Kosmik kema)
+        const player = {
+            width: 50,
+            height: 55,
+            x: window.innerWidth / 2 - 25,
+            y: window.innerHeight - 90,
+            speed: 7,
+            dx: 0,
+            lastShot: 0,
+            fireRate: 250 // ms
+        };
+
+        let bullets = [];
+        let enemies = [];
+        let particles = [];
+
+        // Klaviatura va tugmalar boshqaruvi
+        const keys = { ArrowLeft: false, ArrowRight: false, Space: false };
+
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.ArrowLeft = true;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = true;
+            if (e.code === 'Space') keys.Space = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            if (e.code === 'ArrowLeft' || e.code === 'KeyA') keys.ArrowLeft = false;
+            if (e.code === 'ArrowRight' || e.code === 'KeyD') keys.ArrowRight = false;
+            if (e.code === 'Space') keys.Space = false;
+        });
+
+        // Mobil tugmalar
+        const btnLeft = document.getElementById('btn-left');
+        const btnRight = document.getElementById('btn-right');
+        const btnFire = document.getElementById('btn-fire');
+
+        btnLeft.addEventListener('touchstart', (e) => { e.preventDefault(); keys.ArrowLeft = true; });
+        btnLeft.addEventListener('touchend', () => keys.ArrowLeft = false);
+        btnRight.addEventListener('touchstart', (e) => { e.preventDefault(); keys.ArrowRight = true; });
+        btnRight.addEventListener('touchend', () => keys.ArrowRight = false);
+        btnFire.addEventListener('touchstart', (e) => { e.preventDefault(); keys.Space = true; });
+        btnFire.addEventListener('touchend', () => keys.Space = false);
+
+        // Barmoq/Sichqoncha bilan to'g'ridan-to'g'ri surish
+        canvas.addEventListener('touchmove', (e) => {
+            if (!gameRunning) return;
+            const touchX = e.touches[0].clientX;
+            player.x = touchX - player.width / 2;
+            keys.Space = true; // Harakatlanganda avtomatik o'q otish
+        });
+        canvas.addEventListener('touchend', () => {
+            keys.Space = false;
+        });
+
+        // O'q otish funksiyasi
+        function shootBullet() {
+            const now = Date.now();
+            if (now - player.lastShot > player.fireRate) {
+                bullets.push({
+                    x: player.x + player.width / 2 - 3,
+                    y: player.y,
+                    width: 6,
+                    height: 16,
+                    speed: 10
+                });
+                player.lastShot = now;
+                playSound('shoot');
+            }
+        }
+
+        // Dushman / Meteorit yaratish
+        function spawnEnemy() {
+            const size = Math.random() * 25 + 30;
+            const isAlien = Math.random() > 0.6;
+            enemies.push({
+                x: Math.random() * (canvas.width - size),
+                y: -size,
+                width: size,
+                height: size,
+                speed: Math.random() * 2.5 + 2 + (score / 500), // Ball oshgan sari tezlashadi
+                type: isAlien ? 'alien' : 'meteor',
+                rotation: 0,
+                rotSpeed: (Math.random() - 0.5) * 0.08
+            });
+        }
+
+        // Portlash zarrachalari
+        function createExplosion(x, y, color) {
+            for (let i = 0; i < 15; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 8,
+                    vy: (Math.random() - 0.5) * 8,
+                    radius: Math.random() * 3 + 1,
+                    color: color,
+                    alpha: 1
+                });
+            }
+        }
+
+        // Kosmik kemani chizish
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x + player.width / 2, player.y + player.height / 2);
+
+            // Olov alangasi (dvigatel)
+            ctx.fillStyle = Math.random() > 0.5 ? '#f97316' : '#facc15';
+            ctx.beginPath();
+            ctx.moveTo(-8, player.height / 2 - 5);
+            ctx.lineTo(8, player.height / 2 - 5);
+            ctx.lineTo(0, player.height / 2 + (Math.random() * 12 + 8));
+            ctx.closePath();
+            ctx.fill();
+
+            // Kema korpusi
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height / 2);
+            ctx.lineTo(player.width / 2, player.height / 2 - 5);
+            ctx.lineTo(0, player.height / 2 - 15);
+            ctx.lineTo(-player.width / 2, player.height / 2 - 5);
+            ctx.closePath();
+            ctx.fill();
+
+            // Kabina oynasi
+            ctx.fillStyle = '#e0f2fe';
+            ctx.beginPath();
+            ctx.arc(0, 0, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.restore();
+        }
+
+        // Jonlar ko'rsatkichini yangilash
+        function updateLivesUI() {
+            livesContainer.innerHTML = '';
+            for (let i = 0; i < 3; i++) {
+                const heart = document.createElement('i');
+                heart.className = i < lives ? 'fa-solid fa-heart text-rose-500' : 'fa-regular fa-heart text-slate-600';
+                livesContainer.appendChild(heart);
+            }
+        }
+
+        // O'yinni tugatish
+        function endGame() {
+            gameRunning = false;
+            cancelAnimationFrame(animationId);
+            
+            if (score > highScore) {
+                highScore = score;
+                localStorage.setItem('kosmik_rekord', highScore);
+                highscoreDisplay.innerText = highScore;
+            }
+
+            finalScore.innerText = score;
+            finalHighscore.innerText = highScore;
+            gameoverScreen.classList.remove('hidden');
+        }
+
+        // Asosiy o'yin tsikli
+        function update(timestamp) {
+            if (!gameRunning) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Yulduzlarni chizish va harakatlantirish
+            ctx.fillStyle = '#ffffff';
+            stars.forEach(star => {
+                star.y += star.speed;
+                if (star.y > canvas.height) {
+                    star.y = 0;
+                    star.x = Math.random() * canvas.width;
+                }
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            ctx.globalAlpha = 1;
+
+            // O'yinchi harakati
+            if (keys.ArrowLeft) player.x -= player.speed;
+            if (keys.ArrowRight) player.x += player.speed;
+            if (keys.Space) shootBullet();
+
+            // Chegaradan chiqib ketmaslik
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            drawPlayer();
+
+            // O'qlarni yangilash
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.y -= b.speed;
+
+                // O'q dizayni
+                ctx.fillStyle = '#22d3ee';
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = '#22d3ee';
+                ctx.fillRect(b.x, b.y, b.width, b.height);
+                ctx.shadowBlur = 0;
+
+                if (b.y + b.height < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+
+            // Yangi dushman chiqarish
+            if (timestamp - lastEnemySpawn > enemySpawnInterval) {
+                spawnEnemy();
+                lastEnemySpawn = timestamp;
+                if (enemySpawnInterval > 450) enemySpawnInterval -= 10; // Qiyinlashib boradi
+            }
+
+            // Dushmanlarni yangilash
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const e = enemies[i];
+                e.y += e.speed;
+                e.rotation += e.rotSpeed;
+
+                ctx.save();
+                ctx.translate(e.x + e.width / 2, e.y + e.height / 2);
+                ctx.rotate(e.rotation);
+
+                if (e.type === 'meteor') {
+                    ctx.fillStyle = '#94a3b8';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, e.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.strokeStyle = '#475569';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                } else {
+                    // O'zga sayyoralik kemasi
+                    ctx.fillStyle = '#a855f7';
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, e.width / 2, e.height / 3.5, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.fillStyle = '#38bdf8';
+                    ctx.beginPath();
+                    ctx.arc(0, -4, e.width / 4, Math.PI, 0);
+                    ctx.fill();
+                }
+                ctx.restore();
+
+                // O'q bilan to'qnashuvni tekshirish
+                let destroyed = false;
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    const b = bullets[j];
+                    if (
+                        b.x < e.x + e.width &&
+                        b.x + b.width > e.x &&
+                        b.y < e.y + e.height &&
+                        b.y + b.height > e.y
+                    ) {
+                        createExplosion(e.x + e.width / 2, e.y + e.height / 2, e.type === 'alien' ? '#c084fc' : '#94a3b8');
+                        bullets.splice(j, 1);
+                        enemies.splice(i, 1);
+                        score += e.type === 'alien' ? 20 : 10;
+                        scoreDisplay.innerText = score;
+                        playSound('explosion');
+                        destroyed = true;
+                        break;
+                    }
+                }
+
+                if (destroyed) continue;
+
+                // O'yinchi kemasi bilan to'qnashuv
+                if (
+                    player.x < e.x + e.width - 8 &&
+                    player.x + player.width > e.x + 8 &&
+                    player.y < e.y + e.height - 8 &&
+                    player.y + player.height > e.y + 8
+                ) {
+                    createExplosion(player.x + player.width / 2, player.y + player.height / 2, '#f43f5e');
+                    enemies.splice(i, 1);
+                    lives--;
+                    updateLivesUI();
+                    playSound('hit');
+
+                    if (lives <= 0) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                // Ekrandan pastga tushib ketsa
+                if (e.y > canvas.height) {
+                    enemies.splice(i, 1);
+                }
+            }
+
+            // Portlash zarrachalarini chizish
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= 0.03;
+
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                } else {
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            ctx.globalAlpha = 1;
+
+            animationId = requestAnimationFrame(update);
+        }
+
+        // O'yinni ishga tushirish
+        function startGame() {
+            initAudio();
+            resizeCanvas();
+            score = 0;
+            lives = 3;
+            bullets = [];
+            enemies = [];
+            particles = [];
+            enemySpawnInterval = 1200;
+            player.x = canvas.width / 2 - player.width / 2;
+
+            scoreDisplay.innerText = score;
+            updateLivesUI();
+
+            startScreen.classList.add('hidden');
+            gameoverScreen.classList.add('hidden');
+
+            gameRunning = true;
+            lastEnemySpawn = performance.now();
+            animationId = requestAnimationFrame(update);
+        }
+
+        document.getElementById('start-btn').addEventListener('click', startGame);
+        document.getElementById('restart-btn').addEventListener('click', startGame);
+
+        // Dastlabki o'lchamni sozlash
+        window.onload = resizeCanvas;
+    </script>
+</body>
+</html>

@@ -1,0 +1,650 @@
+/* =========================================================
+   O'yinlar platformasi — umumiy uslublar
+   Ranglar CSS o'zgaruvchilarida saqlanadi, shuning uchun
+   kun/tun rejimi faqat o'zgaruvchilarni almashtirish orqali ishlaydi.
+   ========================================================= */
+
+/* ---------- 1. Rang mavzulari (tema) ---------- */
+:root {
+  --bg: #f3f5fb;
+  --bg-soft: #e9edf7;
+  --surface: #ffffff;
+  --surface-2: #f6f7fc;
+  --text: #1d2140;
+  --text-soft: #6b7194;
+  --border: #e1e5f2;
+  --primary: #6c4cf5;        /* asosiy binafsha */
+  --primary-2: #9a6bff;
+  --accent: #ffcc00;         /* sariq urg'u */
+  --heart: #ff4d6d;
+  --shadow: 0 6px 20px rgba(40, 45, 90, 0.08);
+  --shadow-lg: 0 16px 40px rgba(60, 50, 140, 0.18);
+  --radius: 18px;
+  --radius-sm: 12px;
+  --header-h: 68px;
+  color-scheme: light;
+}
+
+/* Tun rejimi */
+:root[data-theme="dark"] {
+  --bg: #12142a;
+  --bg-soft: #1a1d38;
+  --surface: #1e2142;
+  --surface-2: #262a52;
+  --text: #eef0ff;
+  --text-soft: #9aa0c8;
+  --border: #2e3360;
+  --primary: #8b6cff;
+  --primary-2: #b18cff;
+  --accent: #ffd43b;
+  --heart: #ff5c7a;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+  color-scheme: dark;
+}
+
+/* ---------- 2. Asosiy sozlamalar ---------- */
+* { box-sizing: border-box; }
+
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: "Nunito", system-ui, -apple-system, "Segoe UI", sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.5;
+  min-height: 100vh;
+  transition: background 0.3s, color 0.3s;
+}
+
+a { color: inherit; text-decoration: none; }
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: inherit;
+}
+
+img { display: block; max-width: 100%; }
+
+.container {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 0 20px;
+}
+
+/* ---------- 3. Header ---------- */
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  height: var(--header-h);
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.header .container {
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 900;
+  font-size: 1.35rem;
+  white-space: nowrap;
+}
+
+.logo-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  font-size: 1.3rem;
+  background: linear-gradient(135deg, var(--primary), var(--primary-2));
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(108, 76, 245, 0.4);
+}
+
+.logo-text span { color: var(--primary); }
+
+.search {
+  flex: 1;
+  max-width: 560px;
+  margin: 0 auto;
+  position: relative;
+}
+
+.search input {
+  width: 100%;
+  height: 44px;
+  padding: 0 16px 0 44px;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background: var(--bg-soft);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.search input:focus {
+  border-color: var(--primary);
+  background: var(--surface);
+}
+
+.search::before {
+  content: "🔍";
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 1rem;
+  opacity: 0.7;
+}
+
+.icon-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.2rem;
+  background: var(--bg-soft);
+  transition: transform 0.2s, background 0.2s;
+}
+
+.icon-btn:hover { transform: scale(1.08); background: var(--border); }
+
+/* ---------- 4. Hero (bosh sahifa banneri) ---------- */
+.hero {
+  margin: 24px 0 8px;
+  padding: 28px 32px;
+  border-radius: 24px;
+  color: #fff;
+  background:
+    radial-gradient(circle at 85% 20%, rgba(255, 204, 0, 0.55), transparent 40%),
+    radial-gradient(circle at 10% 90%, rgba(0, 210, 255, 0.45), transparent 45%),
+    linear-gradient(120deg, #6c4cf5, #b14cf5 60%, #ff5c9a);
+  box-shadow: var(--shadow-lg);
+}
+
+.hero h1 { margin: 0 0 6px; font-size: clamp(1.5rem, 3.5vw, 2.3rem); font-weight: 900; }
+.hero p { margin: 0; font-size: 1.05rem; opacity: 0.95; }
+
+/* ---------- 5. Filtrlar ---------- */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin: 22px 0 6px;
+}
+
+.chips {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 4px 2px;
+  flex: 1;
+  scrollbar-width: none;
+}
+.chips::-webkit-scrollbar { display: none; }
+
+.chip {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 2px solid var(--border);
+  font-weight: 800;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.chip:hover { border-color: var(--primary); transform: translateY(-2px); }
+
+.chip.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 6px 14px rgba(108, 76, 245, 0.35);
+}
+
+.select {
+  height: 42px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.95rem;
+  outline: none;
+  cursor: pointer;
+}
+.select:focus { border-color: var(--primary); }
+
+/* ---------- 6. Bo'limlar ---------- */
+.section { margin: 28px 0; }
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 14px;
+  font-size: 1.35rem;
+  font-weight: 900;
+}
+
+.section-title .count {
+  font-size: 0.85rem;
+  font-weight: 800;
+  color: var(--text-soft);
+  background: var(--bg-soft);
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+
+/* Asosiy grid */
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+/* Gorizontal qator (Yaqinda o'ynalganlar, Sevimlilar) */
+.row {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 200px;
+  gap: 16px;
+  overflow-x: auto;
+  padding: 6px 4px 14px;
+  scroll-snap-type: x mandatory;
+}
+.row > * { scroll-snap-align: start; }
+
+.hidden { display: none !important; }
+
+/* ---------- 7. O'yin kartochkasi ---------- */
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow);
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+  animation: pop-in 0.35s ease both;
+}
+
+.card:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow: var(--shadow-lg);
+  z-index: 2;
+}
+
+.card-thumb {
+  position: relative;
+  aspect-ratio: 16 / 9;
+  background: var(--bg-soft);
+  overflow: hidden;
+}
+
+.card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+}
+
+.card:hover .card-thumb img { transform: scale(1.08); }
+
+/* Hover'da chiqadigan "O'ynash" tugmasi */
+.card-play {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(20, 15, 50, 0.35);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.card-play span {
+  padding: 10px 22px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #1d2140;
+  font-weight: 900;
+  font-size: 1rem;
+  transform: translateY(10px);
+  transition: transform 0.25s;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+}
+
+.card:hover .card-play,
+.card:focus-within .card-play { opacity: 1; }
+.card:hover .card-play span { transform: translateY(0); }
+
+/* Sevimli (♥) tugmasi */
+.fav-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  z-index: 3;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: 1.1rem;
+  background: rgba(255, 255, 255, 0.9);
+  color: #b7bad0;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s, color 0.2s;
+}
+
+.fav-btn:hover { transform: scale(1.15); }
+.fav-btn.active { color: var(--heart); animation: heart-beat 0.4s ease; }
+
+.card-body { padding: 10px 14px 14px; }
+
+.card-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-author {
+  margin: 2px 0 8px;
+  font-size: 0.88rem;
+  color: var(--text-soft);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff;
+  background: var(--primary);
+}
+
+/* Har bir kategoriya uchun alohida rang (app.js data-cat beradi) */
+.badge[data-cat="Arcade"]   { background: #ff7a00; }
+.badge[data-cat="Puzzle"]   { background: #00b37e; }
+.badge[data-cat="Action"]   { background: #ff3d5a; }
+.badge[data-cat="Ta'limiy"] { background: #1e90ff; }
+.badge[data-cat="Poyga"]    { background: #e0a800; }
+.badge[data-cat="Sport"]    { background: #16a34a; }
+
+.plays {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: var(--text-soft);
+}
+
+/* Kichik kartochka (gorizontal qatorlarda) */
+.card.small .card-body { padding: 8px 12px 10px; }
+.card.small .card-title { font-size: 0.95rem; }
+.card.small .card-author { margin-bottom: 0; }
+.card.small .card-meta { display: none; }
+
+/* Hech narsa topilmadi */
+.empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 50px 20px;
+  color: var(--text-soft);
+  font-weight: 700;
+}
+.empty .big { font-size: 3rem; display: block; margin-bottom: 6px; }
+
+/* ---------- 8. O'yin sahifasi ---------- */
+.play-header .container { gap: 10px; }
+
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 999px;
+  background: var(--bg-soft);
+  font-weight: 800;
+  white-space: nowrap;
+  transition: background 0.2s, transform 0.2s;
+}
+.back-btn:hover { background: var(--border); transform: translateX(-2px); }
+
+.play-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.play-info h1 {
+  margin: 0;
+  font-size: 1.2rem;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.play-info p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.play-actions { display: flex; gap: 8px; }
+.play-actions .icon-btn.active { color: var(--heart); }
+
+/* O'yin oynasi (iframe qobig'i) */
+.stage-wrap { margin: 20px 0; }
+
+.stage {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  max-height: calc(100vh - var(--header-h) - 60px);
+  margin: 0 auto;
+  background: #0d0f22;
+  border-radius: var(--radius);
+  overflow: hidden;
+  box-shadow: var(--shadow-lg);
+}
+
+/* Vertikal o'yinlar uchun */
+.stage.portrait {
+  aspect-ratio: 9 / 16;
+  width: auto;
+  height: calc(100vh - var(--header-h) - 60px);
+  max-width: 100%;
+}
+
+.stage iframe {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  display: block;
+  background: #fff;
+}
+
+/* To'liq ekran rejimida burchaklar kerak emas */
+.stage:fullscreen { border-radius: 0; max-height: none; width: 100%; height: 100%; }
+
+/* Yuklanish spinneri */
+.loader {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 14px;
+  background: #0d0f22;
+  color: #fff;
+  font-weight: 800;
+  z-index: 5;
+  transition: opacity 0.3s;
+}
+.loader.done { opacity: 0; pointer-events: none; }
+
+.spinner {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 6px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+/* O'yin haqida bloklar */
+.info-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 20px;
+}
+
+.panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px 22px;
+  box-shadow: var(--shadow);
+}
+
+.panel h2 { margin: 0 0 8px; font-size: 1.15rem; font-weight: 900; }
+.panel p { margin: 0; color: var(--text-soft); font-weight: 600; }
+
+.controls-box {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-soft);
+  font-weight: 800;
+}
+
+/* "O'yin topilmadi" */
+.not-found {
+  text-align: center;
+  padding: 80px 20px;
+}
+.not-found .big { font-size: 5rem; }
+.not-found h1 { margin: 10px 0; font-weight: 900; }
+.not-found p { color: var(--text-soft); font-weight: 700; }
+
+.btn {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 26px;
+  border-radius: 999px;
+  background: var(--primary);
+  color: #fff;
+  font-weight: 900;
+  box-shadow: 0 8px 18px rgba(108, 76, 245, 0.35);
+  transition: transform 0.2s;
+}
+.btn:hover { transform: translateY(-2px) scale(1.03); }
+
+/* Footer */
+.footer {
+  margin-top: 40px;
+  padding: 24px 0 36px;
+  text-align: center;
+  color: var(--text-soft);
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+/* ---------- 9. Animatsiyalar ---------- */
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.97); }
+  to   { opacity: 1; transform: none; }
+}
+
+@keyframes heart-beat {
+  0% { transform: scale(1); }
+  40% { transform: scale(1.35); }
+  100% { transform: scale(1); }
+}
+
+/* Harakatni kamaytirishni xohlaganlar uchun */
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- 10. Responsive ---------- */
+@media (max-width: 900px) {
+  .info-grid { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 640px) {
+  :root { --header-h: auto; }
+  .container { padding: 0 14px; }
+
+  /* Telefonda qidiruv ikkinchi qatorga tushadi */
+  .header .container {
+    flex-wrap: wrap;
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+  .header .search { order: 3; flex-basis: 100%; max-width: none; }
+  .logo { flex: 1; }
+  .logo-text { font-size: 1.15rem; }
+
+  .hero { padding: 20px; border-radius: 18px; }
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .row { grid-auto-columns: 160px; gap: 12px; }
+  .card-body { padding: 8px 10px 10px; }
+  .card-title { font-size: 0.95rem; }
+  .fav-btn { width: 32px; height: 32px; font-size: 1rem; }
+  .filters .select { width: 100%; }
+
+  .play-header .container { flex-wrap: nowrap; }
+  .back-btn span { display: none; }
+  .back-btn { padding: 0 14px; }
+  .play-actions { gap: 4px; }
+  .play-actions .icon-btn { width: 38px; height: 38px; font-size: 1rem; }
+  .stage { border-radius: 12px; max-height: 75vh; }
+  .stage.portrait { height: 75vh; }
+}

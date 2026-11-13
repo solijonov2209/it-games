@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "games",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:\\Users\\WINDOW~1\\AppData\\Local\\Temp\\claude\\a4de694003fb9b5f\\d4498e19-e3e6-43f9-99bb-e80c58a4737e\\scratchpad\\serve.js", "C:\\Users\\Windows 11\\Desktop\\Namangan -ITschool_Game", "8765"],
+      "port": 8765
+    }
+  ]
+}

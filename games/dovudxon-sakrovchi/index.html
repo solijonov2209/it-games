@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sakrovchi</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; user-select: none; }
+    canvas { display: block; width: 100%; height: 100%; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <script>
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var W, H, GROUND;
+    function resize() {
+      W = canvas.width = innerWidth;
+      H = canvas.height = innerHeight;
+      GROUND = H - 70;
+    }
+    addEventListener("resize", resize);
+    resize();
+
+    var GRAVITY = 0.8, JUMP = -15;
+    var hero, obstacles, clouds, speed, distance, state, spawnIn;
+    var best = Number(localStorage.getItem("dovudxon-sakrovchi-best")) || 0;
+
+    clouds = [];
+    for (var i = 0; i < 5; i++) clouds.push({ x: Math.random() * W, y: 30 + Math.random() * 150 });
+
+    function reset() {
+      hero = { x: 90, y: GROUND, vy: 0, size: 44, jumps: 0 };
+      obstacles = [];
+      speed = 6;
+      distance = 0;
+      spawnIn = 60;
+    }
+    reset();
+    state = "menu"; // menu | play | over
+
+    // Sakrash: havoda bir marta qo'shimcha sakrash mumkin
+    function jump() {
+      if (state !== "play") { reset(); state = "play"; return; }
+      if (hero.jumps < 2) {
+        hero.vy = JUMP;
+        hero.jumps++;
+      }
+    }
+
+    function update() {
+      clouds.forEach(function (c) { c.x -= 0.5; if (c.x < -100) c.x = W + 50; });
+      if (state !== "play") return;
+
+      speed += 0.002;
+      distance += speed / 10;
+
+      hero.vy += GRAVITY;
+      hero.y += hero.vy;
+      if (hero.y >= GROUND) { hero.y = GROUND; hero.vy = 0; hero.jumps = 0; }
+
+      // Yangi to'siq
+      spawnIn--;
+      if (spawnIn <= 0) {
+        var types = ["🌵", "🪨", "🔥"];
+        obstacles.push({ x: W + 30, type: types[Math.floor(Math.random() * types.length)] });
+        spawnIn = 50 + Math.random() * 70 - Math.min(30, speed * 2);
+      }
+      obstacles.forEach(function (o) { o.x -= speed; });
+      obstacles = obstacles.filter(function (o) { return o.x > -50; });
+
+      // To'qnashuv
+      obstacles.forEach(function (o) {
+        if (Math.abs(o.x - hero.x) < 30 && GROUND - hero.y < 34) {
+          state = "over";
+          var score = Math.floor(distance);
+          if (score > best) { best = score; localStorage.setItem("dovudxon-sakrovchi-best", best); }
+        }
+      });
+    }
+
+    function text(str, x, y, size, color) {
+      ctx.font = "bold " + size + "px Arial";
+      ctx.fillStyle = color || "#1d2140";
+      ctx.textAlign = "center";
+      ctx.fillText(str, x, y);
+    }
+
+    function draw() {
+      // Osmon
+      var sky = ctx.createLinearGradient(0, 0, 0, H);
+      sky.addColorStop(0, "#5ec4ff");
+      sky.addColorStop(1, "#d6f1ff");
+      ctx.fillStyle = sky;
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.textBaseline = "middle";
+      ctx.font = "50px Arial";
+      clouds.forEach(function (c) { ctx.fillText("☁️", c.x, c.y); });
+
+      // Yer
+      ctx.fillStyle = "#5cb85c";
+      ctx.fillRect(0, GROUND + 22, W, 14);
+      ctx.fillStyle = "#8b5a2b";
+      ctx.fillRect(0, GROUND + 36, W, H);
+
+      // Qahramon va to'siqlar
+      ctx.textAlign = "center";
+      ctx.font = "40px Arial";
+      obstacles.forEach(function (o) { ctx.fillText(o.type, o.x, GROUND); });
+      ctx.save();
+      ctx.translate(hero.x, hero.y);
+      ctx.scale(-1, 1); // yugurayotgan odam o'ngga qarasin
+      ctx.font = hero.size + "px Arial";
+      ctx.fillText("🏃", 0, 0);
+      ctx.restore();
+
+      text("📏 " + Math.floor(distance) + " m", W - 90, 30, 22);
+      text("🏆 " + best + " m", 80, 30, 22);
+
+      if (state === "menu") {
+        text("🏃 Sakrovchi", W / 2, H / 2 - 50, 48, "#fff");
+        text("Probel / ↑ / ekranni bosish — sakrash (havoda yana bir marta mumkin)", W / 2, H / 2 + 5, 18, "#1d2140");
+        text("Boshlash uchun bosing", W / 2, H / 2 + 40, 22, "#1d2140");
+      }
+      if (state === "over") {
+        text("💥 Yiqildingiz!", W / 2, H / 2 - 40, 44, "#ff3d5a");
+        text(Math.floor(distance) + " metr yugurdingiz", W / 2, H / 2 + 10, 24);
+        text("Qayta boshlash uchun bosing", W / 2, H / 2 + 45, 20);
+      }
+    }
+
+    function loop() { update(); draw(); requestAnimationFrame(loop); }
+    loop();
+
+    addEventListener("keydown", function (e) {
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
+        e.preventDefault();
+        if (!e.repeat) jump();
+      }
+    });
+    addEventListener("pointerdown", jump);
+  </script>
+</body>
+</html>

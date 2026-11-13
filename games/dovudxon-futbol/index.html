@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>El Clasico & Super Liga 11v11 - Futbol O'yini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:ital,wght@0,600;0,700;1,700&family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #090d16;
+            font-family: 'Inter', sans-serif;
+        }
+        .sport-font {
+            font-family: 'Chakra Petch', sans-serif;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        /* Glassmorphism panels */
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .team-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .team-card:hover {
+            transform: translateY(-4px);
+        }
+        .team-card.selected {
+            border-color: #38bdf8;
+            box-shadow: 0 0 25px rgba(56, 189, 248, 0.45);
+            background: rgba(30, 41, 59, 0.95);
+        }
+        .team-card.selected-opp {
+            border-color: #f43f5e;
+            box-shadow: 0 0 25px rgba(244, 63, 94, 0.45);
+            background: rgba(30, 41, 59, 0.95);
+        }
+        .key-badge {
+            box-shadow: 0 4px 0 rgba(0,0,0,0.45);
+            transition: transform 0.08s ease, box-shadow 0.08s ease;
+        }
+        .key-badge.active, .key-badge:active {
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 rgba(0,0,0,0.45);
+        }
+        @keyframes pulseBanner {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        .goal-banner-anim {
+            animation: pulseBanner 0.6s infinite ease-in-out;
+        }
+    </style>
+</head>
+<body class="text-white flex flex-col items-center justify-center relative">
+
+    <!-- O'yin maydoni (3D Perspektivali Canvas) -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Yuqori Tablo (Scoreboard & 90 daqiqalik vaqt) -->
+    <div id="hudTop" class="hidden fixed top-3 left-1/2 -translate-x-1/2 z-20 flex flex-col items-center pointer-events-none w-full max-w-2xl px-3">
+        <div class="glass-panel rounded-2xl px-4 py-2 flex items-center justify-between gap-3 sm:gap-6 w-full border border-white/15">
+            <!-- Uy jamoasi (Siz) -->
+            <div class="flex items-center gap-2.5 flex-1 justify-end">
+                <span id="hudHomeName" class="sport-font font-bold text-sm sm:text-lg tracking-wider uppercase truncate">REAL MADRID</span>
+                <div id="hudHomeBadge" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white/80 shadow-md flex items-center justify-center text-xs font-extrabold">RM</div>
+            </div>
+
+            <!-- Hisob va 90 daqiqalik taymer -->
+            <div class="flex flex-col items-center bg-slate-950/90 px-4 py-1 rounded-xl border border-white/10 min-w-[125px]">
+                <div class="sport-font text-2xl sm:text-3xl font-bold tracking-widest text-white leading-none flex items-center gap-2">
+                    <span id="hudHomeScore" class="text-sky-400">0</span>
+                    <span class="text-slate-500 text-xl">:</span>
+                    <span id="hudAwayScore" class="text-rose-400">0</span>
+                </div>
+                <div class="flex items-center gap-1.5 mt-1">
+                    <span id="hudHalfBadge" class="text-[10px] font-bold px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 rounded uppercase">1-TAYM</span>
+                    <span id="hudClock" class="sport-font text-xs sm:text-sm font-bold text-amber-300">00:00</span>
+                </div>
+            </div>
+
+            <!-- Mehmon jamoa (Raqib) -->
+            <div class="flex items-center gap-2.5 flex-1 justify-start">
+                <div id="hudAwayBadge" class="w-7 h-7 sm:w-8 sm:h-8 rounded-full border-2 border-white/80 shadow-md flex items-center justify-center text-xs font-extrabold">FCB</div>
+                <span id="hudAwayName" class="sport-font font-bold text-sm sm:text-lg tracking-wider uppercase truncate">BARCELONA</span>
+            </div>
+        </div>
+
+        <!-- O'yin holati xabarnomasi (GOL!, TAYM TUGADI, va h.k.) -->
+        <div id="eventBanner" class="hidden mt-4 px-8 py-3 rounded-2xl glass-panel border-2 border-amber-400/70 text-center goal-banner-anim">
+            <div id="eventTitle" class="sport-font text-3xl sm:text-5xl font-extrabold text-amber-300 tracking-wider drop-shadow-lg">GOOOOL!</div>
+            <div id="eventSub" class="text-xs sm:text-sm text-slate-200 font-semibold mt-1">Ajoyib zarba!</div>
+        </div>
+    </div>
+
+    <!-- O'ng yuqori boshqaruv tugmalari (Ovoz & Menyu) -->
+    <div id="hudControlsTop" class="hidden fixed top-3 right-3 z-30 flex items-center gap-2">
+        <button id="btnSound" title="Ovozni yoqish/o'chirish" class="glass-panel p-2.5 rounded-xl hover:bg-slate-800 transition text-slate-200">
+            <svg id="iconSoundOn" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"></path></svg>
+            <svg id="iconSoundOff" class="w-5 h-5 hidden text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path></svg>
+        </button>
+        <button id="btnMenu" class="glass-panel px-3 py-2 rounded-xl hover:bg-slate-800 transition text-xs font-bold uppercase tracking-wider text-slate-200">
+            Menyu
+        </button>
+    </div>
+
+    <!-- Pastki Boshqaruv Ko'rsatmalari va Sensorli Tugmalar (A, B, C) -->
+    <div id="hudBottom" class="hidden fixed bottom-3 left-0 right-0 z-20 px-4 flex flex-col sm:flex-row items-center justify-between gap-3 pointer-events-none">
+        <!-- Chap taraf: Klaviaturada boshqaruv yordamchisi -->
+        <div class="glass-panel rounded-2xl px-3.5 py-2 flex items-center gap-3 text-xs pointer-events-auto">
+            <div class="flex items-center gap-1.5">
+                <span class="px-2 py-1 rounded bg-slate-800 border border-slate-600 font-bold text-slate-200">↑↓←→</span>
+                <span class="text-slate-300 font-medium">Harakat</span>
+            </div>
+            <div class="h-4 w-[1px] bg-slate-700"></div>
+            <div class="text-slate-300">
+                Faol o'yinchi: <span id="activePlayerLabel" class="font-bold text-sky-400">#9 Hujumchi</span>
+            </div>
+        </div>
+
+        <!-- O'ng taraf: A, B, C zarba va pas tugmalari (ham klaviatura, ham bosish uchun) -->
+        <div class="flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
+            <button id="btnKeyA" class="key-badge flex items-center gap-2 bg-gradient-to-b from-rose-500 to-rose-700 hover:from-rose-400 hover:to-rose-600 border border-rose-300/40 px-4 py-2.5 rounded-xl font-bold text-white shadow-lg">
+                <span class="w-7 h-7 rounded-lg bg-black/30 flex items-center justify-center sport-font text-base font-extrabold text-amber-300">A</span>
+                <div class="text-left leading-tight">
+                    <div class="text-xs sm:text-sm font-extrabold">QATTIQ TEPISH</div>
+                    <div class="text-[10px] text-rose-100 opacity-90">Darvozaga zarba</div>
+                </div>
+            </button>
+
+            <button id="btnKeyB" class="key-badge flex items-center gap-2 bg-gradient-to-b from-emerald-500 to-emerald-700 hover:from-emerald-400 hover:to-emerald-600 border border-emerald-300/40 px-4 py-2.5 rounded-xl font-bold text-white shadow-lg">
+                <span class="w-7 h-7 rounded-lg bg-black/30 flex items-center justify-center sport-font text-base font-extrabold text-amber-300">B</span>
+                <div class="text-left leading-tight">
+                    <div class="text-xs sm:text-sm font-extrabold">PAS BERISH</div>
+                    <div class="text-[10px] text-emerald-100 opacity-90">Sherigiga uzatish</div>
+                </div>
+            </button>
+
+            <button id="btnKeyC" class="key-badge flex items-center gap-2 bg-gradient-to-b from-sky-500 to-sky-700 hover:from-sky-400 hover:to-sky-600 border border-sky-300/40 px-4 py-2.5 rounded-xl font-bold text-white shadow-lg">
+                <span class="w-7 h-7 rounded-lg bg-black/30 flex items-center justify-center sport-font text-base font-extrabold text-amber-300">C</span>
+                <div class="text-left leading-tight">
+                    <div class="text-xs sm:text-sm font-extrabold">TEPADAN PAS</div>
+                    <div class="text-[10px] text-sky-100 opacity-90">Raqib ustidan oshirish</div>
+                </div>
+            </button>
+        </div>
+    </div>
+
+    <!-- Jamoa tanlash va Boshlash Ekrani (Start Modal) -->
+    <div id="startModal" class="fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md overflow-y-auto">
+        <div class="glass-panel rounded-3xl max-w-4xl w-full p-6 sm:p-8 border border-white/15 my-auto">
+            <div class="text-center mb-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-xs font-bold uppercase tracking-widest mb-2">
+                    ⚽ 11 ga 11 • 90 Daqiqalik O'yin • Jonli Stadion
+                </div>
+                <h1 class="sport-font text-3xl sm:text-5xl font-extrabold tracking-tight text-white">
+                    SUPER FUTBOL <span class="text-transparent bg-clip-text bg-gradient-to-r from-sky-400 to-emerald-400">CHEMPIONATI</span>
+                </h1>
+                <p class="text-slate-400 text-xs sm:text-sm mt-1">O'z jamoangiz va raqibingizni tanlang — maydon pastki darvoza ortidan ko'rinadi</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <!-- 1. Sizning jamoangiz -->
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-white/10">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-sky-400">1. Sizning Jamoangiz (Pastki tomon)</span>
+                        <span class="text-[11px] text-slate-400">11 o'yinchi</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2.5" id="homeTeamGrid">
+                        <!-- JS orqali to'ldiriladi -->
+                    </div>
+                </div>
+
+                <!-- 2. Raqib jamoa -->
+                <div class="bg-slate-900/60 p-4 rounded-2xl border border-white/10">
+                    <div class="flex items-center justify-between mb-3">
+                        <span class="text-xs font-bold uppercase tracking-wider text-rose-400">2. Raqib Jamoa (Yuqori tomon)</span>
+                        <span class="text-[11px] text-slate-400">11 o'yinchi (AI)</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-2.5" id="awayTeamGrid">
+                        <!-- JS orqali to'ldiriladi -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- O'yin davomiyligi (90 daqiqalik taymer tezligi) va Boshqaruv qoidalari -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 bg-slate-900/50 p-4 rounded-2xl border border-white/10">
+                <div>
+                    <label class="block text-xs font-bold uppercase tracking-wider text-slate-300 mb-2">90 Daqiqalik O'yin Tezligi:</label>
+                    <div class="grid grid-cols-3 gap-2" id="speedSelector">
+                        <button type="button" data-duration="180" class="speed-btn px-2 py-2 rounded-xl border border-white/15 bg-slate-800/80 text-xs font-bold hover:border-sky-400 transition">
+                            Tez (3 daq)
+                        </button>
+                        <button type="button" data-duration="300" class="speed-btn active px-2 py-2 rounded-xl border-2 border-sky-400 bg-sky-500/20 text-xs font-bold text-sky-300 transition">
+                            O'rtacha (5 daq)
+                        </button>
+                        <button type="button" data-duration="480" class="speed-btn px-2 py-2 rounded-xl border border-white/15 bg-slate-800/80 text-xs font-bold hover:border-sky-400 transition">
+                            Uzoq (8 daq)
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-col justify-center text-xs text-slate-300 space-y-1.5">
+                    <div class="font-bold text-amber-300 uppercase tracking-wider">Tugmalar vazifasi:</div>
+                    <div><span class="inline-block w-5 text-center font-extrabold bg-rose-600 rounded text-white mr-1">A</span> Qattiq zarba berish (Darvozaga tepish)</div>
+                    <div><span class="inline-block w-5 text-center font-extrabold bg-emerald-600 rounded text-white mr-1">B</span> Yerlatib aniq pas berish</div>
+                    <div><span class="inline-block w-5 text-center font-extrabold bg-sky-600 rounded text-white mr-1">C</span> Raqib ustidan oshirib sherigiga uzatish</div>
+                </div>
+            </div>
+
+            <button id="btnStartMatch" class="w-full py-4 rounded-2xl bg-gradient-to-r from-emerald-500 via-teal-500 to-sky-500 hover:from-emerald-400 hover:to-sky-400 text-slate-950 font-extrabold sport-font text-xl sm:text-2xl tracking-wider uppercase shadow-xl shadow-emerald-500/25 transition transform hover:scale-[1.01] active:scale-[0.99]">
+                O'YINNI BOSHLASH ⚽
+            </button>
+        </div>
+    </div>
+
+    <!-- O'yin Yakuni Ekrani (Full Time Modal) -->
+    <div id="endModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="glass-panel rounded-3xl max-w-md w-full p-7 text-center border border-white/20">
+            <div class="text-xs font-bold uppercase tracking-widest text-amber-400 mb-1">90:00 • UCHRASHUV YAKUNLANDI</div>
+            <h2 id="endResultTitle" class="sport-font text-3xl sm:text-4xl font-extrabold text-white mb-5">G'ALABA!</h2>
+
+            <div class="bg-slate-900/90 rounded-2xl p-5 border border-white/10 mb-6 flex items-center justify-between">
+                <div class="flex flex-col items-center flex-1">
+                    <div id="endHomeBadge" class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center font-extrabold text-sm mb-2">RM</div>
+                    <div id="endHomeName" class="sport-font font-bold text-sm">REAL MADRID</div>
+                </div>
+                <div class="sport-font text-4xl sm:text-5xl font-extrabold text-white px-4">
+                    <span id="endHomeScore" class="text-sky-400">0</span> - <span id="endAwayScore" class="text-rose-400">0</span>
+                </div>
+                <div class="flex flex-col items-center flex-1">
+                    <div id="endAwayBadge" class="w-12 h-12 rounded-full border-2 border-white flex items-center justify-center font-extrabold text-sm mb-2">FCB</div>
+                    <div id="endAwayName" class="sport-font font-bold text-sm">BARCELONA</div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button id="btnRematch" class="flex-1 py-3.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold sport-font text-base uppercase tracking-wider transition">
+                    Qayta o'ynash
+                </button>
+                <button id="btnChangeTeams" class="flex-1 py-3.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-sm uppercase tracking-wider border border-white/15 transition">
+                    Jamoani almashtirish
+                </button>
+            </div>
+        </div>
+    </div>
+
+<script>
+/**
+ * SUPER FUTBOL CHEMPIONATI 11v11
+ * Pastki darvoza ortidan ko'rinadigan 3D perspektivali futbol simulyatori.
+ * Jamoalar: Real Madrid, FC Barcelona, Manchester City.
+ * Boshqaruv: Yo'nalish tugmalari (harakat), A (qattiq tepish), B (pas), C (raqib tepasidan pas).
+ */
+
+// ==========================================
+// 1. JAMOALAR KONFIGURATSIYASI
+// ==========================================
+const TEAMS = {
+    real: {
+        id: 'real',
+        name: 'REAL MADRID',
+        short: 'RMA',
+        primary: '#ffffff',
+        secondary: '#d4af37', // Oltin hoshiya
+        shorts: '#ffffff',
+        socks: '#ffffff',
+        text: '#0f172a',
+        badgeBg: 'linear-gradient(135deg, #ffffff 0%, #e2e8f0 100%)',
+        badgeText: '#1e3a8a',
+        gkColor: '#f97316',
+        stripes: false
+    },
+    barca: {
+        id: 'barca',
+        name: 'FC BARCELONA',
+        short: 'FCB',
+        primary: '#004d98', // Ko'k
+        secondary: '#a50044', // Anorrang
+        shorts: '#004d98',
+        socks: '#a50044',
+        text: '#ffffff',
+        badgeBg: 'linear-gradient(135deg, #004d98 50%, #a50044 50%)',
+        badgeText: '#ffed02',
+        gkColor: '#22c55e',
+        stripes: true
+    },
+    city: {
+        id: 'city',
+        name: 'MANCHESTER CITY',
+        short: 'MCI',
+        primary: '#6cabdd', // Havorang
+        secondary: '#1c2c5b', // To'q ko'k
+        shorts: '#ffffff',
+        socks: '#6cabdd',
+        text: '#0f172a',
+        badgeBg: 'linear-gradient(135deg, #6cabdd 0%, #3b82f6 100%)',
+        badgeText: '#ffffff',
+        gkColor: '#eab308',
+        stripes: false
+    }
+};
+
+// ==========================================
+// 2. OVOZ EFFEKTLARI (Web Audio API - tashqi faylsiz)
+// ==========================================
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.crowdNode = null;
+        this.crowdGain = null;
+    }
+
+    init() {
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+            this.startAmbientCrowd();
+        }
+        if (this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        if (this.crowdGain) {
+            this.crowdGain.gain.setTargetAtTime(this.muted ? 0 : 0.035, this.ctx.currentTime, 0.1);
+        }
+        return this.muted;
+    }
+
+    // Stadion tomoshabinlarining doimiy shovqini
+    startAmbientCrowd() {
+        if (!this.ctx) return;
+        const bufferSize = 2 * this.ctx.sampleRate;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let lastOut = 0.0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            output[i] = (lastOut + (0.02 * white)) / 1.02;
+            lastOut = output[i];
+            output[i] *= 2.5;
+        }
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 420;
+        filter.Q.value = 0.7;
+
+        this.crowdGain = this.ctx.createGain();
+        this.crowdGain.gain.value = this.muted ? 0 : 0.035;
+
+        whiteNoise.connect(filter);
+        filter.connect(this.crowdGain);
+        this.crowdGain.connect(this.ctx.destination);
+        whiteNoise.start(0);
+    }
+
+    // To'p tepish ovozi
+    playKick(power = 1.0) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(140 * power, now);
+        osc.frequency.exponentialRampToValueAtTime(38, now + 0.14);
+
+        gain.gain.setValueAtTime(Math.min(0.45, 0.25 * power), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.16);
+    }
+
+    // Hakam hushtagi
+    playWhistle(long = false) {
+        if (this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const duration = long ? 0.75 : 0.32;
+        const osc = this.ctx.createOscillator();
+        const lfo = this.ctx.createOscillator();
+        const lfoGain = this.ctx.createGain();
+        const gain = this.ctx.createGain();
+
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(2850, now);
+
+        lfo.frequency.value = 38;
+        lfoGain.gain.value = 95;
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+
+        gain.gain.setValueAtTime(0.01, now);
+        gain.gain.linearRampToValueAtTime(0.18, now + 0.04);
+        gain.gain.setValueAtTime(0.18, now + duration - 0.06);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        lfo.start(now);
+        osc.stop(now + duration);
+        lfo.stop(now + duration);
+    }
+
+    // Gol urilganda tomoshabinlar hayqirig'i
+    playGoalCheer() {
+        if (this.muted || !this.ctx || !this.crowdGain) return;
+        const now = this.ctx.currentTime;
+        this.crowdGain.gain.cancelScheduledValues(now);
+        this.crowdGain.gain.setValueAtTime(0.04, now);
+        this.crowdGain.gain.linearRampToValueAtTime(0.26, now + 0.3);
+        this.crowdGain.gain.setValueAtTime(0.24, now + 2.0);
+        this.crowdGain.gain.linearRampToValueAtTime(0.035, now + 3.5);
+    }
+}
+
+const sound = new SoundEngine();
+
+// ==========================================
+// 3. MAYDON VA 3D PERSPEKTIVA PROEKSIYASI
+// ==========================================
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// Maydonning mantiqiy o'lchamlari (metrda: standart 68m x 105m)
+const PITCH_W = 68;
+const PITCH_L = 105;
+const GOAL_W = 8.4;   // Biroz kengroq, o'yin qiziqarli bo'lishi uchun
+const GOAL_H = 2.6;
+
+// Perspektiva sozlamalari (ekran pastki darvoza ortidan tepaga qaraydi)
+const PERSP = {
+    topYRatio: 0.23,      // Uzoq (yuqori) darvoza chizig'i Y pozitsiyasi
+    bottomYRatio: 0.90,   // Yaqin (pastki) darvoza chizig'i Y pozitsiyasi
+    topWidthRatio: 0.44,  // Yuqori maydon kengligi ekran kengligiga nisbatan
+    bottomWidthRatio: 0.94 // Pastki maydon kengligi ekran kengligiga nisbatan
+};
+
+// Mantiqiy koordinatani (x: -34..+34, y: 0..105, z: balandlik) ekran pikseliga o'tkazish
+// y = 0 -> pastki darvoza (Sizning darvozangiz)
+// y = 105 -> yuqori darvoza (Raqib darvozasi)
+function project3D(wx, wy, wz = 0) {
+    const W = canvas.width;
+    const H = canvas.height;
+
+    // t = 0 (pastki yaqin chekka), t = 1 (yuqori uzoq chekka)
+    const tRaw = wy / PITCH_L;
+    // Perspektiva egri chizig'i (yaqin masofa kengroq, uzoq masofa zichroq ko'rinadi)
+    const t = Math.pow(Math.max(-0.15, Math.min(1.15, tRaw)), 0.86);
+
+    const topY = H * PERSP.topYRatio;
+    const bottomY = H * PERSP.bottomYRatio;
+    const screenYBase = bottomY - t * (bottomY - topY);
+
+    const topW = W * PERSP.topWidthRatio;
+    const bottomW = W * PERSP.bottomWidthRatio;
+    const currentPitchW = bottomW - t * (bottomW - topW);
+
+    const scale = currentPitchW / PITCH_W;
+    const screenX = W * 0.5 + wx * scale;
+    const screenY = screenYBase - wz * scale * 1.15;
+
+    return { x: screenX, y: screenY, baseY: screenYBase, scale };
+}
+
+// ==========================================
+// 4. O'YIN HOLATI VA O'YINCHILAR (11 vs 11)
+// ==========================================
+let selectedHomeKey = 'real';
+let selectedAwayKey = 'barca';
+let matchRealDuration = 300; // Standart 5 daqiqa = 90 o'yin daqiqasi
+
+const gameState = {
+    running: false,
+    paused: false,
+    half: 1,
+    matchSeconds: 0, // 0 dan 5400 gacha (90:00)
+    homeScore: 0,
+    awayScore: 0,
+    goalCelebrationTimer: 0,
+    crowdExcitement: 0.2,
+    kickoffTeam: 'home',
+    lastPasser: null,
+    passCooldown: 0
+};
+
+// To'p obyekti
+const ball = {
+    x: 0,
+    y: PITCH_L / 2,
+    z: 0,
+    vx: 0,
+    vy: 0,
+    vz: 0,
+    owner: null,
+    lastTouchTeam: null,
+    trail: []
+};
+
+// 11 kishilik 4-3-3 sxemasi (y: 0..105)
+const FORMATION_HOME = [
+    { num: 1,  role: 'GK',  name: 'Darvozabon', x: 0,   y: 3.5 },
+    { num: 2,  role: 'DEF', name: 'O\'ng himoyachi', x: 22,  y: 22 },
+    { num: 4,  role: 'DEF', name: 'Markaziy himoyachi', x: 8,   y: 19 },
+    { num: 5,  role: 'DEF', name: 'Markaziy himoyachi', x: -8,  y: 19 },
+    { num: 3,  role: 'DEF', name: 'Chap himoyachi', x: -22, y: 22 },
+    { num: 6,  role: 'MID', name: 'Tayanch yarim him.', x: 0,   y: 36 },
+    { num: 8,  role: 'MID', name: 'O\'ng yarim him.', x: 15,  y: 43 },
+    { num: 10, role: 'MID', name: 'Hujumkor yarim him.', x: -15, y: 43 },
+    { num: 7,  role: 'FWD', name: 'O\'ng qanot hujumchi', x: 20,  y: 50 },
+    { num: 9,  role: 'FWD', name: 'Markaziy hujumchi', x: 0,   y: 52 },
+    { num: 11, role: 'FWD', name: 'Chap qanot hujumchi', x: -20, y: 50 }
+];
+
+let players = [];
+let controlledPlayer = null;
+let spectators = [];
+let confetti = [];
+
+// Klaviatura tugmalari holati
+const keys = {
+    ArrowUp: false, ArrowDown: false, ArrowLeft: false, ArrowRight: false,
+    KeyW: false, KeyS: false, KeyA: false, KeyD: false
+};
+
+// ==========================================
+// 5. STADION TOMOSHABINLARINI YARATISH
+// ==========================================
+function generateSpectators() {
+    spectators = [];
+    const homeT = TEAMS[selectedHomeKey];
+    const awayT = TEAMS[selectedAwayKey];
+    const crowdColors = [
+        homeT.primary, homeT.secondary,
+        awayT.primary, awayT.secondary,
+        '#f8fafc', '#fbbf24', '#38bdf8', '#f43f5e', '#a855f7', '#10b981'
+    ];
+
+    // Yuqori tribuna (asosiy ko'rinadigan katta tribuna)
+    for (let row = 0; row < 6; row++) {
+        const count = 65 + row * 4;
+        for (let i = 0; i < count; i++) {
+            const ratio = (i + 0.5) / count;
+            spectators.push({
+                zone: 'top',
+                row,
+                ratio,
+                color: crowdColors[Math.floor(Math.random() * crowdColors.length)],
+                phase: Math.random() * Math.PI * 2,
+                speed: 3 + Math.random() * 4,
+                hasFlag: Math.random() < 0.08
+            });
+        }
+    }
+
+    // Chap va o'ng tribunalar
+    for (let side of ['left', 'right']) {
+        for (let row = 0; row < 4; row++) {
+            const count = 42;
+            for (let i = 0; i < count; i++) {
+                const ratio = (i + 0.5) / count;
+                spectators.push({
+                    zone: side,
+                    row,
+                    ratio,
+                    color: crowdColors[Math.floor(Math.random() * crowdColors.length)],
+                    phase: Math.random() * Math.PI * 2,
+                    speed: 3 + Math.random() * 4,
+                    hasFlag: Math.random() < 0.06
+                });
+            }
+        }
+    }
+}
+
+// ==========================================
+// 6. 22 O'YINCHINI INITSIALIZATSIYA QILISH
+// ==========================================
+function initPlayers(kickoffSide = 'home') {
+    players = [];
+
+    // Uy jamoasi (pastdan yuqoriga hujum qiladi)
+    FORMATION_HOME.forEach((p, idx) => {
+        let startX = p.x;
+        let startY = p.y;
+        // Markazdan boshlash pozitsiyasi
+        if (kickoffSide === 'home' && p.num === 9) {
+            startX = 0;
+            startY = PITCH_L / 2;
+        } else if (kickoffSide === 'home' && p.num === 10) {
+            startX = -5;
+            startY = PITCH_L / 2 - 1;
+        }
+        players.push({
+            id: 'H_' + p.num,
+            team: 'home',
+            num: p.num,
+            role: p.role,
+            name: p.name,
+            homeX: p.x,
+            homeY: p.y,
+            x: startX,
+            y: startY,
+            vx: 0,
+            vy: 0,
+            facing: 0, // 0 = yuqoriga (raqib darvozasiga), Math.PI = pastga
+            runCycle: Math.random() * 6,
+            tackleCooldown: 0,
+            diveTimer: 0,
+            diveDir: 0
+        });
+    });
+
+    // Mehmon jamoasi (yuqoridan pastga hujum qiladi)
+    FORMATION_HOME.forEach((p) => {
+        let startX = -p.x;
+        let startY = PITCH_L - p.y;
+        if (kickoffSide === 'away' && p.num === 9) {
+            startX = 0;
+            startY = PITCH_L / 2;
+        } else if (kickoffSide === 'away' && p.num === 10) {
+            startX = 5;
+            startY = PITCH_L / 2 + 1;
+        }
+        players.push({
+            id: 'A_' + p.num,
+            team: 'away',
+            num: p.num,
+            role: p.role,
+            name: p.name,
+            homeX: -p.x,
+            homeY: PITCH_L - p.y,
+            x: startX,
+            y: startY,
+            vx: 0,
+            vy: 0,
+            facing: Math.PI,
+            runCycle: Math.random() * 6,
+            tackleCooldown: 0,
+            diveTimer: 0,
+            diveDir: 0
+        });
+    });
+
+    // To'pni markazga qo'yish
+    ball.x = 0;
+    ball.y = PITCH_L / 2;
+    ball.z = 0;
+    ball.vx = 0;
+    ball.vy = 0;
+    ball.vz = 0;
+    ball.trail = [];
+
+    const kicker = players.find(pl => pl.team === kickoffSide && pl.num === 9);
+    ball.owner = kicker;
+    ball.lastTouchTeam = kickoffSide;
+
+    if (kickoffSide === 'home') {
+        controlledPlayer = kicker;
+    } else {
+        controlledPlayer = players.find(pl => pl.team === 'home' && pl.num === 9);
+    }
+    updateActivePlayerUI();
+}
+
+function updateActivePlayerUI() {
+    if (!controlledPlayer) return;
+    const el = document.getElementById('activePlayerLabel');
+    if (el) {
+        el.textContent = `#${controlledPlayer.num} ${controlledPlayer.name}`;
+    }
+}
+
+// ==========================================
+// 7. HARAKATLAR: A (QATTIQ TEPISH), B (PAS), C (TEPADAN PAS)
+// ==========================================
+
+// Eng qulay sherikni topish (B va C tugmalari uchun)
+function findBestTeammate(passer, isLofted = false) {
+    const teammates = players.filter(p => p.team === passer.team && p !== passer && p.role !== 'GK');
+    let best = null;
+    let bestScore = -Infinity;
+
+    const dirX = Math.sin(passer.facing);
+    const dirY = Math.cos(passer.facing);
+
+    for (const tm of teammates) {
+        const dx = tm.x - passer.x;
+        const dy = tm.y - passer.y;
+        const dist = Math.hypot(dx, dy);
+
+        // Juda yaqin yoki haddan tashqari uzoq bo'lmasin
+        const maxRange = isLofted ? 52 : 36;
+        if (dist < 4 || dist > maxRange) continue;
+
+        const nx = dx / dist;
+        const ny = dy / dist;
+        // O'yinchi qarab turgan yo'nalishga mosligi (-1 dan +1 gacha)
+        const alignment = nx * dirX + ny * dirY;
+
+        // Hujum yo'nalishida oldinda turgan sherikka ustunlik
+        const forwardGain = passer.team === 'home' ? dy : -dy;
+
+        // Yo'lda raqib bor-yo'qligini tekshirish (yerlatib pas uchun muhim)
+        let blockedPenalty = 0;
+        if (!isLofted) {
+            for (const opp of players) {
+                if (opp.team === passer.team) continue;
+                const odx = opp.x - passer.x;
+                const ody = opp.y - passer.y;
+                const proj = odx * nx + ody * ny;
+                if (proj > 0 && proj < dist) {
+                    const perpDist = Math.abs(odx * ny - ody * nx);
+                    if (perpDist < 2.4) blockedPenalty += 28;
+                }
+            }
+        }
+
+        const score = alignment * 35 + forwardGain * 0.7 - Math.abs(dist - (isLofted ? 26 : 16)) * 0.5 - blockedPenalty;
+        if (score > bestScore) {
+            bestScore = score;
+            best = tm;
+        }
+    }
+    return best;
+}
+
+// 'A' TUGMASI: Qattiq tepish (Darvozaga kuchli zarba)
+function actionHardShot(shooter) {
+    if (!shooter || ball.owner !== shooter) return;
+
+    const targetGoalY = shooter.team === 'home' ? PITCH_L : 0;
+    // Darvoza burchagiga mo'ljal olish (o'yinchining harakat yo'nalishiga qarab)
+    let aimX = shooter.x * 0.35 + Math.sin(shooter.facing) * 3.2;
+    aimX = Math.max(-GOAL_W * 0.44, Math.min(GOAL_W * 0.44, aimX));
+
+    const dx = aimX - ball.x;
+    const dy = targetGoalY - ball.y;
+    const dist = Math.hypot(dx, dy) || 1;
+
+    const shotSpeed = 46; // Juda kuchli zarba tezligi (m/s)
+    ball.owner = null;
+    ball.lastTouchTeam = shooter.team;
+    ball.vx = (dx / dist) * shotSpeed;
+    ball.vy = (dy / dist) * shotSpeed;
+    ball.vz = 5.2 + Math.random() * 2.2; // Yuqoriga ko'tariluvchi kuchli zarba
+    ball.z = 0.25;
+
+    shooter.tackleCooldown = 0.45;
+    gameState.crowdExcitement = Math.min(1, gameState.crowdExcitement + 0.35);
+    sound.playKick(1.35);
+    flashKeyBadge('btnKeyA');
+}
+
+// 'B' TUGMASI: Oddiy yerlatib pas berish
+function actionGroundPass(passer) {
+    if (!passer || ball.owner !== passer) return;
+
+    const target = findBestTeammate(passer, false);
+    ball.owner = null;
+    ball.lastTouchTeam = passer.team;
+    passer.tackleCooldown = 0.35;
+
+    if (target) {
+        // Sherigining harakatini hisobga olib oldinroqqa uzatish
+        const leadX = target.x + target.vx * 0.25;
+        const leadY = target.y + target.vy * 0.25;
+        const dx = leadX - ball.x;
+        const dy = leadY - ball.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const passSpeed = Math.min(32, Math.max(19, dist * 1.35));
+
+        ball.vx = (dx / dist) * passSpeed;
+        ball.vy = (dy / dist) * passSpeed;
+        ball.vz = 0.4;
+        ball.z = 0.1;
+
+        if (passer.team === 'home') {
+            controlledPlayer = target;
+            updateActivePlayerUI();
+        }
+    } else {
+        // Sherik topilmasa, qarab turgan tomonga uzatish
+        const speed = 24;
+        ball.vx = Math.sin(passer.facing) * speed;
+        ball.vy = Math.cos(passer.facing) * speed;
+        ball.vz = 0.3;
+    }
+
+    sound.playKick(0.85);
+    flashKeyBadge('btnKeyB');
+}
+
+// 'C' TUGMASI: Raqib jamoa tepasidan sherigiga yetkazish (Lob / Lofted Pass)
+function actionLoftedPass(passer) {
+    if (!passer || ball.owner !== passer) return;
+
+    const target = findBestTeammate(passer, true);
+    ball.owner = null;
+    ball.lastTouchTeam = passer.team;
+    passer.tackleCooldown = 0.4;
+
+    if (target) {
+        const dx = target.x - ball.x;
+        const dy = target.y - ball.y;
+        const dist = Math.hypot(dx, dy) || 1;
+
+        // Parvoz vaqtini hisoblash va baland yoy (arc) berish
+        const flightTime = Math.min(1.45, Math.max(0.75, dist / 24));
+        ball.vx = dx / flightTime;
+        ball.vy = dy / flightTime;
+        // Gravitatsiya (g = 18) bo'yicha balandlikka ko'tarish (raqib boshidan ancha baland)
+        ball.vz = 0.5 * 18 * flightTime;
+        ball.z = 0.3;
+
+        if (passer.team === 'home') {
+            controlledPlayer = target;
+            updateActivePlayerUI();
+        }
+    } else {
+        const speed = 22;
+        ball.vx = Math.sin(passer.facing) * speed;
+        ball.vy = Math.cos(passer.facing) * speed;
+        ball.vz = 9.5;
+        ball.z = 0.3;
+    }
+
+    sound.playKick(1.05);
+    flashKeyBadge('btnKeyC');
+}
+
+function flashKeyBadge(id) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.add('active');
+    setTimeout(() => el.classList.remove('active'), 160);
+}
+
+// ==========================================
+// 8. SUN'IY INTELLEKT (AI) VA FIZIKA YANGILASH
+// ==========================================
+function updateGame(dt) {
+    if (!gameState.running || gameState.paused) return;
+
+    // Gol nishonlash pauzasi
+    if (gameState.goalCelebrationTimer > 0) {
+        gameState.goalCelebrationTimer -= dt;
+        updateConfetti(dt);
+        if (gameState.goalCelebrationTimer <= 0) {
+            document.getElementById('eventBanner').classList.add('hidden');
+            confetti = [];
+            initPlayers(gameState.kickoffTeam);
+            sound.playWhistle(false);
+        }
+        return;
+    }
+
+    // 90 daqiqalik taymerni yuritish (5400 o'yin soniyasi)
+    const timeScale = 5400 / matchRealDuration;
+    gameState.matchSeconds += dt * timeScale;
+
+    // 45:00 da 1-taym tugashi
+    if (gameState.half === 1 && gameState.matchSeconds >= 2700) {
+        gameState.half = 2;
+        gameState.matchSeconds = 2700;
+        showBanner('1-TAYM TUGADI', '2-taym boshlanmoqda...');
+        sound.playWhistle(false);
+        setTimeout(() => {
+            if (gameState.running) {
+                document.getElementById('eventBanner').classList.add('hidden');
+                initPlayers('away');
+            }
+        }, 2000);
+    }
+
+    // 90:00 da o'yin tugashi
+    if (gameState.matchSeconds >= 5400) {
+        gameState.matchSeconds = 5400;
+        finishMatch();
+        return;
+    }
+
+    updateHUDClock();
+    gameState.crowdExcitement = Math.max(0.15, gameState.crowdExcitement - dt * 0.08);
+
+    // 1. Foydalanuvchi boshqarayotgan o'yinchini aniqlash (agar to'p bizda bo'lmasa, eng yaqiniga o'tadi)
+    if (ball.owner && ball.owner.team === 'home') {
+        if (controlledPlayer !== ball.owner) {
+            controlledPlayer = ball.owner;
+            updateActivePlayerUI();
+        }
+    } else {
+        // To'p erkin yoki raqibda bo'lsa, eng yaqin maydon o'yinchisini boshqaramiz
+        let nearest = null;
+        let minDist = Infinity;
+        for (const p of players) {
+            if (p.team === 'home' && p.role !== 'GK') {
+                const d = Math.hypot(p.x - ball.x, p.y - ball.y);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = p;
+                }
+            }
+        }
+        if (nearest && nearest !== controlledPlayer && minDist < 28) {
+            controlledPlayer = nearest;
+            updateActivePlayerUI();
+        }
+    }
+
+    // 2. Barcha 22 o'yinchini harakatlantirish
+    for (const p of players) {
+        if (p.tackleCooldown > 0) p.tackleCooldown -= dt;
+        if (p.diveTimer > 0) p.diveTimer -= dt;
+
+        if (p === controlledPlayer) {
+            updateControlledPlayer(p, dt);
+        } else {
+            updateAIPlayer(p, dt);
+        }
+
+        // Maydon chegaralaridan chiqib ketmaslik
+        p.x = Math.max(-PITCH_W / 2 - 1.5, Math.min(PITCH_W / 2 + 1.5, p.x));
+        p.y = Math.max(-1.5, Math.min(PITCH_L + 1.5, p.y));
+    }
+
+    // 3. To'p fizikasini yangilash
+    updateBall(dt);
+}
+
+function updateControlledPlayer(p, dt) {
+    let moveX = 0;
+    let moveY = 0;
+    if (keys.ArrowLeft || keys.KeyA && false) {} // KeyA zarba uchun band!
+    if (keys.ArrowLeft) moveX -= 1;
+    if (keys.ArrowRight) moveX += 1;
+    if (keys.ArrowUp) moveY += 1;
+    if (keys.ArrowDown) moveY -= 1;
+
+    const len = Math.hypot(moveX, moveY);
+    const maxSpeed = ball.owner === p ? 11.2 : 12.2;
+
+    if (len > 0) {
+        moveX /= len;
+        moveY /= len;
+        p.vx = moveX * maxSpeed;
+        p.vy = moveY * maxSpeed;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.facing = Math.atan2(moveX, moveY);
+        p.runCycle += dt * 13;
+    } else {
+        p.vx = 0;
+        p.vy = 0;
+    }
+}
+
+function updateAIPlayer(p, dt) {
+    const isHome = p.team === 'home';
+    const attackDir = isHome ? 1 : -1;
+
+    // Darvozabon AI
+    if (p.role === 'GK') {
+        const goalY = isHome ? 2.2 : PITCH_L - 2.2;
+        const targetX = Math.max(-GOAL_W * 0.45, Math.min(GOAL_W * 0.45, ball.x * 0.65));
+        moveTowards(p, targetX, goalY, 8.5, dt);
+
+        // Agar to'p darvozabonda bo'lsa, 1 soniyada oldinga pas beradi
+        if (ball.owner === p) {
+            p.tackleCooldown -= dt;
+            if (p.tackleCooldown <= 0) {
+                p.facing = isHome ? 0 : Math.PI;
+                actionLoftedPass(p);
+            }
+        }
+        return;
+    }
+
+    // Maydon o'yinchilari AI
+    let targetX = p.homeX;
+    let targetY = p.homeY;
+    let speed = 9.6;
+
+    // Jamoa hujumda yoki himoyadaligiga qarab pozitsiyani siljitish
+    const ballProgress = (ball.y - PITCH_L / 2) * 0.45;
+    targetY += ballProgress;
+    targetX += ball.x * 0.25;
+
+    // Agar bu AI o'yinchida to'p bo'lsa (Raqib AI hujumi)
+    if (ball.owner === p) {
+        const oppGoalY = isHome ? PITCH_L : 0;
+        const distToGoal = Math.abs(oppGoalY - p.y);
+
+        // Darvozaga yaqinlashsa zarba beradi
+        if (distToGoal < 24 && Math.abs(p.x) < 18) {
+            p.facing = Math.atan2(-p.x * 0.5, oppGoalY - p.y);
+            actionHardShot(p);
+            return;
+        }
+
+        // Oldinda raqib yaqinlashsa pas yoki tepadan pas beradi
+        let closeOpp = false;
+        for (const other of players) {
+            if (other.team !== p.team && Math.hypot(other.x - p.x, other.y - p.y) < 5.5) {
+                closeOpp = true;
+                break;
+            }
+        }
+        if (closeOpp && Math.random() < 0.04) {
+            if (Math.random() < 0.45) actionLoftedPass(p);
+            else actionGroundPass(p);
+            return;
+        }
+
+        // Darvoza tomon dribling qilish
+        targetX = Math.sin(gameState.matchSeconds * 0.02 + p.num) * 10;
+        targetY = oppGoalY;
+        speed = 10.2;
+    } else {
+        // To'pga eng yaqin AI o'yinchi to'pni quvadi (pressing)
+        const distToBall = Math.hypot(ball.x - p.x, ball.y - p.y);
+        let amClosest = true;
+        for (const tm of players) {
+            if (tm.team === p.team && tm !== p && tm !== controlledPlayer && tm.role !== 'GK') {
+                if (Math.hypot(ball.x - tm.x, ball.y - tm.y) < distToBall - 1.5) {
+                    amClosest = false;
+                    break;
+                }
+            }
+        }
+
+        if (amClosest && distToBall < 32 && (!ball.owner || ball.owner.team !== p.team)) {
+            targetX = ball.x;
+            targetY = ball.y;
+            speed = 10.6;
+        }
+    }
+
+    targetX = Math.max(-PITCH_W / 2 + 2, Math.min(PITCH_W / 2 - 2, targetX));
+    targetY = Math.max(4, Math.min(PITCH_L - 4, targetY));
+    moveTowards(p, targetX, targetY, speed, dt);
+}
+
+function moveTowards(p, tx, ty, speed, dt) {
+    const dx = tx - p.x;
+    const dy = ty - p.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > 0.35) {
+        p.vx = (dx / dist) * speed;
+        p.vy = (dy / dist) * speed;
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.facing = Math.atan2(dx, dy);
+        p.runCycle += dt * 11;
+    } else {
+        p.vx = 0;
+        p.vy = 0;
+    }
+}
+
+function updateBall(dt) {
+    // To'p izi (trail)
+    ball.trail.push({ x: ball.x, y: ball.y, z: ball.z, alpha: 0.75 });
+    if (ball.trail.length > 14) ball.trail.shift();
+    for (const tr of ball.trail) tr.alpha *= 0.88;
+
+    // Agar to'p biror o'yinchining oyog'ida bo'lsa
+    if (ball.owner) {
+        const o = ball.owner;
+        const dribbleOffset = Math.sin(o.runCycle) * 0.25;
+        ball.x = o.x + Math.sin(o.facing) * (0.85 + dribbleOffset);
+        ball.y = o.y + Math.cos(o.facing) * (0.85 + dribbleOffset);
+        ball.z = 0;
+        ball.vx = o.vx;
+        ball.vy = o.vy;
+        ball.vz = 0;
+
+        // Raqib o'yinchi to'pni olib qo'yishi (Tackle)
+        for (const opp of players) {
+            if (opp.team !== o.team && opp.tackleCooldown <= 0 && o.tackleCooldown <= 0) {
+                const dist = Math.hypot(opp.x - ball.x, opp.y - ball.y);
+                if (dist < 1.35) {
+                    ball.owner = opp;
+                    ball.lastTouchTeam = opp.team;
+                    opp.tackleCooldown = 0.7;
+                    o.tackleCooldown = 0.7;
+                    sound.playKick(0.6);
+                    if (opp.team === 'home') {
+                        controlledPlayer = opp;
+                        updateActivePlayerUI();
+                    }
+                    break;
+                }
+            }
+        }
+        return;
+    }
+
+    // Erkin uchayotgan to'p fizikasi
+    ball.x += ball.vx * dt;
+    ball.y += ball.vy * dt;
+    ball.z += ball.vz * dt;
+
+    // Gravitatsiya (baland pas 'C' uchun)
+    if (ball.z > 0 || ball.vz > 0) {
+        ball.vz -= 18 * dt;
+        if (ball.z <= 0) {
+            ball.z = 0;
+            if (Math.abs(ball.vz) > 2.2) {
+                ball.vz = -ball.vz * 0.48; // Yerga urilib sakrashi
+            } else {
+                ball.vz = 0;
+            }
+        }
+    }
+
+    // Maysa ishqalanishi
+    const friction = ball.z > 0.1 ? 0.992 : 0.972;
+    ball.vx *= Math.pow(friction, dt * 60);
+    ball.vy *= Math.pow(friction, dt * 60);
+
+    // O'yinchilar to'pni qabul qilishi (agar to'p balandligi 2.1m dan past bo'lsa - aks holda tepadan o'tib ketadi!)
+    if (ball.z < 2.15) {
+        for (const p of players) {
+            if (p.tackleCooldown > 0) continue;
+            const catchRadius = p.role === 'GK' ? 2.1 : 1.45;
+            const dist = Math.hypot(p.x - ball.x, p.y - ball.y);
+
+            if (dist < catchRadius) {
+                const ballSpeed = Math.hypot(ball.vx, ball.vy);
+                // Darvozabon kuchli zarbani qaytarishi (Seyv!)
+                if (p.role === 'GK' && ballSpeed > 26 && ball.lastTouchTeam !== p.team) {
+                    p.diveTimer = 0.65;
+                    p.diveDir = ball.x > p.x ? 1 : -1;
+                    ball.vx = (Math.random() - 0.5) * 14;
+                    ball.vy = (p.team === 'home' ? 1 : -1) * 12;
+                    ball.vz = 3.5;
+                    p.tackleCooldown = 0.5;
+                    sound.playKick(1.1);
+                    showBanner('SEYV!', 'Darvozabon ajoyib tarzda qaytardi!', 1100);
+                    return;
+                }
+
+                // O'yinchi to'pni egallaydi
+                ball.owner = p;
+                ball.lastTouchTeam = p.team;
+                ball.z = 0;
+                ball.vz = 0;
+                if (p.role === 'GK') p.tackleCooldown = 0.9;
+                if (p.team === 'home') {
+                    controlledPlayer = p;
+                    updateActivePlayerUI();
+                }
+                return;
+            }
+        }
+    }
+
+    // GOL TEKSHIRUVI!
+    // Yuqori darvoza (y >= PITCH_L) -> Siz gol urdingiz!
+    if (ball.y >= PITCH_L && Math.abs(ball.x) <= GOAL_W / 2 && ball.z <= GOAL_H) {
+        handleGoal('home');
+        return;
+    }
+    // Pastki darvoza (y <= 0) -> Raqib gol urdi!
+    if (ball.y <= 0 && Math.abs(ball.x) <= GOAL_W / 2 && ball.z <= GOAL_H) {
+        handleGoal('away');
+        return;
+    }
+
+    // Yon chiziq va darvoza orti autlari
+    if (Math.abs(ball.x) > PITCH_W / 2) {
+        ball.x = Math.sign(ball.x) * (PITCH_W / 2 - 0.5);
+        ball.vx = -ball.vx * 0.55;
+    }
+    if (ball.y > PITCH_L) {
+        ball.y = PITCH_L - 1.5;
+        ball.vy = -Math.abs(ball.vy) * 0.45;
+    }
+    if (ball.y < 0) {
+        ball.y = 1.5;
+        ball.vy = Math.abs(ball.vy) * 0.45;
+    }
+}
+
+function handleGoal(scoringTeam) {
+    if (scoringTeam === 'home') {
+        gameState.homeScore++;
+        gameState.kickoffTeam = 'away';
+        showBanner('GOOOOL! ⚽🔥', `${TEAMS[selectedHomeKey].name} hisobni oshirdi!`);
+    } else {
+        gameState.awayScore++;
+        gameState.kickoffTeam = 'home';
+        showBanner('GOL! ⚽', `${TEAMS[selectedAwayKey].name} gol urdi!`);
+    }
+
+    document.getElementById('hudHomeScore').textContent = gameState.homeScore;
+    document.getElementById('hudAwayScore').textContent = gameState.awayScore;
+
+    gameState.goalCelebrationTimer = 2.6;
+    gameState.crowdExcitement = 1.0;
+    sound.playWhistle(false);
+    sound.playGoalCheer();
+    spawnConfetti();
+}
+
+function showBanner(title, sub, autoHideMs = 0) {
+    const banner = document.getElementById('eventBanner');
+    document.getElementById('eventTitle').textContent = title;
+    document.getElementById('eventSub').textContent = sub;
+    banner.classList.remove('hidden');
+    if (autoHideMs > 0) {
+        setTimeout(() => {
+            if (gameState.goalCelebrationTimer <= 0) {
+                banner.classList.add('hidden');
+            }
+        }, autoHideMs);
+    }
+}
+
+function updateHUDClock() {
+    const totalSecs = Math.floor(gameState.matchSeconds);
+    const mins = Math.floor(totalSecs / 60);
+    const secs = totalSecs % 60;
+    document.getElementById('hudClock').textContent =
+        `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    document.getElementById('hudHalfBadge').textContent = gameState.half === 1 ? '1-TAYM' : '2-TAYM';
+}
+
+function finishMatch() {
+    gameState.running = false;
+    sound.playWhistle(true);
+
+    const homeT = TEAMS[selectedHomeKey];
+    const awayT = TEAMS[selectedAwayKey];
+
+    document.getElementById('endHomeName').textContent = homeT.name;
+    document.getElementById('endAwayName').textContent = awayT.name;
+    document.getElementById('endHomeScore').textContent = gameState.homeScore;
+    document.getElementById('endAwayScore').textContent = gameState.awayScore;
+
+    const endHBadge = document.getElementById('endHomeBadge');
+    endHBadge.style.background = homeT.badgeBg;
+    endHBadge.style.color = homeT.badgeText;
+    endHBadge.textContent = homeT.short;
+
+    const endABadge = document.getElementById('endAwayBadge');
+    endABadge.style.background = awayT.badgeBg;
+    endABadge.style.color = awayT.badgeText;
+    endABadge.textContent = awayT.short;
+
+    const titleEl = document.getElementById('endResultTitle');
+    if (gameState.homeScore > gameState.awayScore) {
+        titleEl.textContent = 'TABRIKLAYMIZ, G\'ALABA! 🏆';
+        titleEl.className = 'sport-font text-3xl sm:text-4xl font-extrabold text-emerald-400 mb-5';
+    } else if (gameState.homeScore < gameState.awayScore) {
+        titleEl.textContent = 'MAG\'LUBIYAT';
+        titleEl.className = 'sport-font text-3xl sm:text-4xl font-extrabold text-rose-400 mb-5';
+    } else {
+        titleEl.textContent = 'DURANG NATIJA 🤝';
+        titleEl.className = 'sport-font text-3xl sm:text-4xl font-extrabold text-amber-300 mb-5';
+    }
+
+    document.getElementById('endModal').classList.remove('hidden');
+}
+
+// ==========================================
+// 9. KONFETTI VA STADION VIZUAL EFFEKTLARI
+// ==========================================
+function spawnConfetti() {
+    confetti = [];
+    const homeT = TEAMS[selectedHomeKey];
+    const colors = [homeT.primary, homeT.secondary, '#fbbf24', '#38bdf8', '#f43f5e'];
+    for (let i = 0; i < 90; i++) {
+        confetti.push({
+            x: Math.random() * canvas.width,
+            y: -20 - Math.random() * 200,
+            vx: (Math.random() - 0.5) * 140,
+            vy: 120 + Math.random() * 180,
+            size: 5 + Math.random() * 6,
+            color: colors[Math.floor(Math.random() * colors.length)],
+            rot: Math.random() * Math.PI * 2
+        });
+    }
+}
+
+function updateConfetti(dt) {
+    for (const c of confetti) {
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        c.rot += dt * 5;
+    }
+}
+
+// ==========================================
+// 10. 3D PERSPEKTIVALI CHIZISH (RENDERING)
+// ==========================================
+function render() {
+    const W = canvas.width;
+    const H = canvas.height;
+    const now = performance.now() * 0.001;
+
+    // 1. Tungi stadion osmoni va projektor nurlari
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, H * 0.35);
+    skyGrad.addColorStop(0, '#050811');
+    skyGrad.addColorStop(1, '#111c33');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, W, H);
+
+    // Stadion projektor nurlari (Floodlights)
+    drawFloodlights(W, H);
+
+    // 2. Stadion tribunasi va jonli tomoshabinlar
+    drawStadiumAndCrowd(W, H, now);
+
+    // 3. Yashil futbol maydoni (3D perspektivali trapetsiya)
+    drawPitch(W, H);
+
+    // 4. Yuqori darvoza (Raqib darvozasi - o'yinchilardan orqada)
+    drawGoal(PITCH_L, true);
+
+    // 5. Barcha 22 o'yinchi va to'pni chuqurlik (Y) bo'yicha tartiblab chizish
+    const renderList = [];
+    for (const p of players) {
+        renderList.push({ type: 'player', y: p.y, obj: p });
+    }
+    renderList.push({ type: 'ball', y: ball.y, obj: ball });
+
+    // Uzoqdagilar (katta Y) birinchi chiziladi, yaqindagilar (kichik Y) ustidan chiziladi
+    renderList.sort((a, b) => b.y - a.y);
+
+    for (const item of renderList) {
+        if (item.type === 'player') {
+            drawPlayer3D(item.obj);
+        } else {
+            drawBall3D(item.obj);
+        }
+    }
+
+    // 6. Pastki darvoza (Sizning darvozangiz - ekranning eng pastki qismida yarim shaffof to'r bilan)
+    drawGoal(0, false);
+
+    // 7. Gol konfettisi
+    for (const c of confetti) {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.rot);
+        ctx.fillStyle = c.color;
+        ctx.fillRect(-c.size / 2, -c.size / 2, c.size, c.size * 0.6);
+        ctx.restore();
+    }
+}
+
+function drawFloodlights(W, H) {
+    const towers = [W * 0.14, W * 0.86];
+    for (const tx of towers) {
+        const ty = H * 0.05;
+        const beam = ctx.createRadialGradient(tx, ty, 5, tx, ty + H * 0.18, W * 0.35);
+        beam.addColorStop(0, 'rgba(255, 255, 240, 0.32)');
+        beam.addColorStop(0.4, 'rgba(186, 230, 253, 0.08)');
+        beam.addColorStop(1, 'rgba(186, 230, 253, 0)');
+        ctx.fillStyle = beam;
+        ctx.fillRect(0, 0, W, H * 0.5);
+
+        // Projektor ustuni
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(tx - 3, ty, 6, H * 0.14);
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 18;
+        ctx.fillRect(tx - 16, ty - 6, 32, 10);
+        ctx.shadowBlur = 0;
+    }
+}
+
+function drawStadiumAndCrowd(W, H, now) {
+    const topY = H * PERSP.topYRatio;
+    const bottomY = H * PERSP.bottomYRatio;
+    const topW = W * PERSP.topWidthRatio;
+    const bottomW = W * PERSP.bottomWidthRatio;
+
+    // Stadion beton kosasi (Stands background)
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.moveTo(W * 0.5 - topW * 0.72, topY - H * 0.13);
+    ctx.lineTo(W * 0.5 + topW * 0.72, topY - H * 0.13);
+    ctx.lineTo(W * 1.05, bottomY + H * 0.12);
+    ctx.lineTo(-W * 0.05, bottomY + H * 0.12);
+    ctx.closePath();
+    ctx.fill();
+
+    // LED Reklama bortlari maydon atrofida
+    const tl = project3D(-PITCH_W / 2 - 1.5, PITCH_L + 1.5);
+    const tr = project3D(PITCH_W / 2 + 1.5, PITCH_L + 1.5);
+    ctx.fillStyle = '#0284c7';
+    ctx.fillRect(tl.x, tl.y - 10, tr.x - tl.x, 10);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.font = 'bold 8px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText('SUPER LIGA 11v11  •  REAL MADRID  •  BARCELONA  •  MANCHESTER CITY', W * 0.5, tl.y - 2);
+
+    // Jonli tomoshabinlar (Spectators)
+    const excite = gameState.crowdExcitement;
+    for (const s of spectators) {
+        let sx = 0, sy = 0, size = 3;
+        const jump = Math.abs(Math.sin(now * s.speed + s.phase)) * (2 + excite * 7);
+
+        if (s.zone === 'top') {
+            const standLeft = W * 0.5 - topW * (0.56 + s.row * 0.025);
+            const standRight = W * 0.5 + topW * (0.56 + s.row * 0.025);
+            sx = standLeft + s.ratio * (standRight - standLeft);
+            sy = topY - 14 - s.row * 9 - jump;
+            size = 2.6 + s.row * 0.25;
+        } else if (s.zone === 'left') {
+            const t = s.ratio;
+            const pitchEdgeX = (W * 0.5 - bottomW * 0.5) + t * ((W * 0.5 - topW * 0.5) - (W * 0.5 - bottomW * 0.5));
+            const pitchEdgeY = bottomY - t * (bottomY - topY);
+            sx = pitchEdgeX - 18 - s.row * 14 * (1 - t * 0.45);
+            sy = pitchEdgeY - s.row * 6 * (1 - t * 0.45) - jump;
+            size = (4.2 - t * 1.8);
+        } else {
+            const t = s.ratio;
+            const pitchEdgeX = (W * 0.5 + bottomW * 0.5) + t * ((W * 0.5 + topW * 0.5) - (W * 0.5 + bottomW * 0.5));
+            const pitchEdgeY = bottomY - t * (bottomY - topY);
+            sx = pitchEdgeX + 18 + s.row * 14 * (1 - t * 0.45);
+            sy = pitchEdgeY - s.row * 6 * (1 - t * 0.45) - jump;
+            size = (4.2 - t * 1.8);
+        }
+
+        // Tomoshabin tanasi va boshi
+        ctx.fillStyle = s.color;
+        ctx.beginPath();
+        ctx.arc(sx, sy, size, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Bayroqcha yoki sharf silkitish
+        if (s.hasFlag && excite > 0.35) {
+            ctx.fillStyle = s.color;
+            ctx.fillRect(sx, sy - size * 2.5, size * 1.8, size * 1.1);
+        }
+    }
+}
+
+function drawPitch(W, H) {
+    // Tashqi yashil zona
+    const outTL = project3D(-PITCH_W / 2 - 4, PITCH_L + 3);
+    const outTR = project3D(PITCH_W / 2 + 4, PITCH_L + 3);
+    const outBR = project3D(PITCH_W / 2 + 4, -4);
+    const outBL = project3D(-PITCH_W / 2 - 4, -4);
+
+    ctx.fillStyle = '#14532d';
+    ctx.beginPath();
+    ctx.moveTo(outTL.x, outTL.y);
+    ctx.lineTo(outTR.x, outTR.y);
+    ctx.lineTo(outBR.x, outBR.y);
+    ctx.lineTo(outBL.x, outBL.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // Maydon maysasi yo'l-yo'l (stripes)
+    const numStripes = 14;
+    const stripeLen = PITCH_L / numStripes;
+    for (let i = 0; i < numStripes; i++) {
+        const y1 = i * stripeLen;
+        const y2 = (i + 1) * stripeLen;
+        const p1 = project3D(-PITCH_W / 2, y2);
+        const p2 = project3D(PITCH_W / 2, y2);
+        const p3 = project3D(PITCH_W / 2, y1);
+        const p4 = project3D(-PITCH_W / 2, y1);
+
+        ctx.fillStyle = i % 2 === 0 ? '#16a34a' : '#15803d';
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.lineTo(p3.x, p3.y);
+        ctx.lineTo(p4.x, p4.y);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    // Oq chiziqlar
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 2;
+
+    // Tashqi chegara
+    drawPitchQuad(-PITCH_W / 2, 0, PITCH_W / 2, PITCH_L);
+
+    // Markaziy chiziq
+    const midL = project3D(-PITCH_W / 2, PITCH_L / 2);
+    const midR = project3D(PITCH_W / 2, PITCH_L / 2);
+    ctx.beginPath();
+    ctx.moveTo(midL.x, midL.y);
+    ctx.lineTo(midR.x, midR.y);
+    ctx.stroke();
+
+    // Markaziy doira (3D ellips)
+    ctx.beginPath();
+    for (let a = 0; a <= 36; a++) {
+        const ang = (a / 36) * Math.PI * 2;
+        const pt = project3D(Math.cos(ang) * 9.15, PITCH_L / 2 + Math.sin(ang) * 9.15);
+        if (a === 0) ctx.moveTo(pt.x, pt.y);
+        else ctx.lineTo(pt.x, pt.y);
+    }
+    ctx.stroke();
+
+    // Pastki va yuqori jarima maydonchalari
+    drawPitchQuad(-20.15, 0, 20.15, 16.5);
+    drawPitchQuad(-9.15, 0, 9.15, 5.5);
+
+    drawPitchQuad(-20.15, PITCH_L - 16.5, 20.15, PITCH_L);
+    drawPitchQuad(-9.15, PITCH_L - 5.5, 9.15, PITCH_L);
+}
+
+function drawPitchQuad(x1, y1, x2, y2) {
+    const tl = project3D(x1, y2);
+    const tr = project3D(x2, y2);
+    const br = project3D(x2, y1);
+    const bl = project3D(x1, y1);
+    ctx.beginPath();
+    ctx.moveTo(tl.x, tl.y);
+    ctx.lineTo(tr.x, tr.y);
+    ctx.lineTo(br.x, br.y);
+    ctx.lineTo(bl.x, bl.y);
+    ctx.closePath();
+    ctx.stroke();
+}
+
+function drawGoal(goalY, isTop) {
+    const depth = isTop ? 2.4 : -2.2;
+    const bl = project3D(-GOAL_W / 2, goalY, 0);
+    const br = project3D(GOAL_W / 2, goalY, 0);
+    const tl = project3D(-GOAL_W / 2, goalY, GOAL_H);
+    const tr = project3D(GOAL_W / 2, goalY, GOAL_H);
+
+    const bbl = project3D(-GOAL_W / 2, goalY + depth, 0);
+    const bbr = project3D(GOAL_W / 2, goalY + depth, 0);
+    const btl = project3D(-GOAL_W / 2, goalY + depth, GOAL_H * 0.85);
+    const btr = project3D(GOAL_W / 2, goalY + depth, GOAL_H * 0.85);
+
+    // Darvoza to'ri (Net)
+    ctx.fillStyle = isTop ? 'rgba(255, 255, 255, 0.16)' : 'rgba(255, 255, 255, 0.08)';
+    ctx.beginPath();
+    ctx.moveTo(tl.x, tl.y);
+    ctx.lineTo(tr.x, tr.y);
+    ctx.lineTo(btr.x, btr.y);
+    ctx.lineTo(btl.x, btl.y);
+    ctx.closePath();
+    ctx.fill();
+
+    // To'r kataklari
+    ctx.strokeStyle = isTop ? 'rgba(255, 255, 255, 0.32)' : 'rgba(255, 255, 255, 0.16)';
+    ctx.lineWidth = 1;
+    const steps = 10;
+    for (let i = 1; i < steps; i++) {
+        const r = i / steps;
+        ctx.beginPath();
+        ctx.moveTo(tl.x + (tr.x - tl.x) * r, tl.y + (tr.y - tl.y) * r);
+        ctx.lineTo(bbl.x + (bbr.x - bbl.x) * r, bbl.y + (bbr.y - bbl.y) * r);
+        ctx.stroke();
+    }
+
+    // Oq ustunlar va to'sin (Posts & Crossbar)
+    ctx.strokeStyle = isTop ? '#ffffff' : 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = isTop ? 3.5 : 4.5;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(bl.x, bl.y);
+    ctx.lineTo(tl.x, tl.y);
+    ctx.lineTo(tr.x, tr.y);
+    ctx.lineTo(br.x, br.y);
+    ctx.stroke();
+}
+
+function drawPlayer3D(p) {
+    const pos = project3D(p.x, p.y, 0);
+    const s = pos.scale;
+    const teamCfg = p.team === 'home' ? TEAMS[selectedHomeKey] : TEAMS[selectedAwayKey];
+
+    // O'yinchi o'lchami perspektivaga mos ravishda
+    const bodyH = 1.78 * s;
+    const bodyW = 0.72 * s;
+
+    // 1. Yerdagi soya
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+    ctx.beginPath();
+    ctx.ellipse(pos.x, pos.y, bodyW * 0.75, bodyW * 0.32, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // 2. Boshqarilayotgan o'yinchi ostidagi yorqin halqa
+    if (p === controlledPlayer) {
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y, bodyW * 1.15, bodyW * 0.5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Tepasida kichik ko'rsatkich uchburchak
+        ctx.fillStyle = '#38bdf8';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y - bodyH - 8);
+        ctx.lineTo(pos.x - 5, pos.y - bodyH - 15);
+        ctx.lineTo(pos.x + 5, pos.y - bodyH - 15);
+        ctx.closePath();
+        ctx.fill();
+    }
+
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
+
+    // Darvozabon sakraganda og'ishi
+    if (p.diveTimer > 0) {
+        ctx.rotate(p.diveDir * 1.1);
+    }
+
+    // Yugurish animatsiyasi (oyoqlar)
+    const speed = Math.hypot(p.vx, p.vy);
+    const legSwing = speed > 0.5 ? Math.sin(p.runCycle) * (bodyH * 0.14) : 0;
+
+    // Chap va o'ng oyoqlar (shortik + getri)
+    ctx.fillStyle = teamCfg.shorts;
+    ctx.fillRect(-bodyW * 0.34, -bodyH * 0.45, bodyW * 0.28, bodyH * 0.22);
+    ctx.fillRect(bodyW * 0.06, -bodyH * 0.45, bodyW * 0.28, bodyH * 0.22);
+
+    ctx.fillStyle = teamCfg.socks;
+    ctx.fillRect(-bodyW * 0.30, -bodyH * 0.24 + legSwing * 0.5, bodyW * 0.22, bodyH * 0.22);
+    ctx.fillRect(bodyW * 0.08, -bodyH * 0.24 - legSwing * 0.5, bodyW * 0.22, bodyH * 0.22);
+
+    // Butsalar
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(-bodyW * 0.32, -bodyH * 0.04 + legSwing * 0.5, bodyW * 0.25, bodyH * 0.05);
+    ctx.fillRect(bodyW * 0.07, -bodyH * 0.04 - legSwing * 0.5, bodyW * 0.25, bodyH * 0.05);
+
+    // Futbolka (Jersey)
+    const jerseyColor = p.role === 'GK' ? teamCfg.gkColor : teamCfg.primary;
+    ctx.fillStyle = jerseyColor;
+    ctx.beginPath();
+    ctx.roundRect(-bodyW * 0.44, -bodyH * 0.80, bodyW * 0.88, bodyH * 0.38, 3);
+    ctx.fill();
+
+    // Barcelona uchun anorrang vertikal yo'llar
+    if (teamCfg.stripes && p.role !== 'GK') {
+        ctx.fillStyle = teamCfg.secondary;
+        ctx.fillRect(-bodyW * 0.26, -bodyH * 0.80, bodyW * 0.16, bodyH * 0.38);
+        ctx.fillRect(bodyW * 0.10, -bodyH * 0.80, bodyW * 0.16, bodyH * 0.38);
+    }
+
+    // Futbolka raqami
+    if (s > 6) {
+        ctx.fillStyle = p.role === 'GK' ? '#0f172a' : teamCfg.text;
+        ctx.font = `bold ${Math.max(8, Math.floor(bodyH * 0.20))}px Inter, sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(p.num, 0, -bodyH * 0.61);
+    }
+
+    // Bosh va soch
+    const headR = bodyW * 0.27;
+    ctx.fillStyle = '#f1c27d';
+    ctx.beginPath();
+    ctx.arc(0, -bodyH * 0.90, headR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(0, -bodyH * 0.93, headR * 0.95, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawBall3D(b) {
+    // To'p izi (kuchli zarbada yonib ko'rinadi)
+    for (let i = 0; i < b.trail.length; i++) {
+        const tr = b.trail[i];
+        const tp = project3D(tr.x, tr.y, tr.z);
+        const r = Math.max(1.5, 0.24 * tp.scale * (i / b.trail.length));
+        ctx.fillStyle = `rgba(251, 191, 36, ${tr.alpha * 0.45})`;
+        ctx.beginPath();
+        ctx.arc(tp.x, tp.y, r, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    // Yerdagi to'p soyasi (C tugmasi bilan tepadan oshirilganda soya yerdan ajralib turadi!)
+    const groundPos = project3D(b.x, b.y, 0);
+    const shadowScale = Math.max(0.45, 1 - b.z * 0.08);
+    const shadowR = Math.max(2.5, 0.28 * groundPos.scale * shadowScale);
+
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
+    ctx.beginPath();
+    ctx.ellipse(groundPos.x, groundPos.y, shadowR * 1.2, shadowR * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // To'pning o'zi (z balandlikda)
+    const airPos = project3D(b.x, b.y, b.z);
+    const ballR = Math.max(3.2, 0.28 * airPos.scale);
+
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(airPos.x, airPos.y - ballR * 0.5, ballR, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = '#0f172a';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    // To'p ustidagi qora beshburchak naqsh
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(airPos.x + ballR * 0.2, airPos.y - ballR * 0.6, ballR * 0.35, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// ==========================================
+// 11. UI VA HODISALARNI BOG'LASH
+// ==========================================
+function buildTeamSelectors() {
+    const homeGrid = document.getElementById('homeTeamGrid');
+    const awayGrid = document.getElementById('awayTeamGrid');
+    homeGrid.innerHTML = '';
+    awayGrid.innerHTML = '';
+
+    Object.values(TEAMS).forEach(team => {
+        // Uy jamoasi kartochkasi
+        const hCard = document.createElement('div');
+        hCard.className = `team-card rounded-2xl p-3 border-2 border-white/10 bg-slate-800/60 flex flex-col items-center text-center ${selectedHomeKey === team.id ? 'selected' : ''}`;
+        hCard.innerHTML = `
+            <div class="w-11 h-11 rounded-full border-2 border-white shadow-md flex items-center justify-center font-extrabold text-xs mb-2" style="background:${team.badgeBg}; color:${team.badgeText}">
+                ${team.short}
+            </div>
+            <div class="sport-font font-bold text-xs sm:text-sm leading-tight">${team.name}</div>
+        `;
+        hCard.onclick = () => {
+            selectedHomeKey = team.id;
+            if (selectedAwayKey === selectedHomeKey) {
+                selectedAwayKey = Object.keys(TEAMS).find(k => k !== selectedHomeKey);
+            }
+            buildTeamSelectors();
+        };
+        homeGrid.appendChild(hCard);
+
+        // Raqib jamoa kartochkasi
+        const aCard = document.createElement('div');
+        aCard.className = `team-card rounded-2xl p-3 border-2 border-white/10 bg-slate-800/60 flex flex-col items-center text-center ${selectedAwayKey === team.id ? 'selected-opp' : ''}`;
+        aCard.innerHTML = `
+            <div class="w-11 h-11 rounded-full border-2 border-white shadow-md flex items-center justify-center font-extrabold text-xs mb-2" style="background:${team.badgeBg}; color:${team.badgeText}">
+                ${team.short}
+            </div>
+            <div class="sport-font font-bold text-xs sm:text-sm leading-tight">${team.name}</div>
+        `;
+        aCard.onclick = () => {
+            selectedAwayKey = team.id;
+            if (selectedHomeKey === selectedAwayKey) {
+                selectedHomeKey = Object.keys(TEAMS).find(k => k !== selectedAwayKey);
+            }
+            buildTeamSelectors();
+        };
+        awayGrid.appendChild(aCard);
+    });
+}
+
+// O'yin tezligi tugmalari
+document.querySelectorAll('.speed-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.speed-btn').forEach(b => {
+            b.className = 'speed-btn px-2 py-2 rounded-xl border border-white/15 bg-slate-800/80 text-xs font-bold hover:border-sky-400 transition';
+        });
+        btn.className = 'speed-btn active px-2 py-2 rounded-xl border-2 border-sky-400 bg-sky-500/20 text-xs font-bold text-sky-300 transition';
+        matchRealDuration = parseInt(btn.dataset.duration, 10);
+    });
+});
+
+function startNewMatch() {
+    sound.init();
+    sound.playWhistle(false);
+
+    const homeT = TEAMS[selectedHomeKey];
+    const awayT = TEAMS[selectedAwayKey];
+
+    document.getElementById('hudHomeName').textContent = homeT.name;
+    document.getElementById('hudAwayName').textContent = awayT.name;
+
+    const hBadge = document.getElementById('hudHomeBadge');
+    hBadge.style.background = homeT.badgeBg;
+    hBadge.style.color = homeT.badgeText;
+    hBadge.textContent = homeT.short;
+
+    const aBadge = document.getElementById('hudAwayBadge');
+    aBadge.style.background = awayT.badgeBg;
+    aBadge.style.color = awayT.badgeText;
+    aBadge.textContent = awayT.short;
+
+    gameState.homeScore = 0;
+    gameState.awayScore = 0;
+    gameState.half = 1;
+    gameState.matchSeconds = 0;
+    gameState.goalCelebrationTimer = 0;
+    gameState.kickoffTeam = 'home';
+    gameState.running = true;
+    gameState.paused = false;
+
+    document.getElementById('hudHomeScore').textContent = '0';
+    document.getElementById('hudAwayScore').textContent = '0';
+    document.getElementById('eventBanner').classList.add('hidden');
+    document.getElementById('startModal').classList.add('hidden');
+    document.getElementById('endModal').classList.add('hidden');
+
+    document.getElementById('hudTop').classList.remove('hidden');
+    document.getElementById('hudBottom').classList.remove('hidden');
+    document.getElementById('hudControlsTop').classList.remove('hidden');
+
+    generateSpectators();
+    initPlayers('home');
+}
+
+document.getElementById('btnStartMatch').addEventListener('click', startNewMatch);
+document.getElementById('btnRematch').addEventListener('click', startNewMatch);
+document.getElementById('btnChangeTeams').addEventListener('click', () => {
+    document.getElementById('endModal').classList.add('hidden');
+    document.getElementById('startModal').classList.remove('hidden');
+});
+
+document.getElementById('btnMenu').addEventListener('click', () => {
+    gameState.running = false;
+    document.getElementById('hudTop').classList.add('hidden');
+    document.getElementById('hudBottom').classList.add('hidden');
+    document.getElementById('hudControlsTop').classList.add('hidden');
+    document.getElementById('startModal').classList.remove('hidden');
+});
+
+document.getElementById('btnSound').addEventListener('click', () => {
+    sound.init();
+    const isMuted = sound.toggleMute();
+    document.getElementById('iconSoundOn').classList.toggle('hidden', isMuted);
+    document.getElementById('iconSoundOff').classList.toggle('hidden', !isMuted);
+});
+
+// Klaviatura hodisalari: Yo'nalish tugmalari va A, B, C harflari
+window.addEventListener('keydown', (e) => {
+    if (e.code in keys) {
+        keys[e.code] = true;
+    }
+
+    if (!gameState.running || gameState.goalCelebrationTimer > 0) return;
+
+    // A harfi bosilganda -> Qattiq tepish
+    if (e.code === 'KeyA' || e.key === 'a' || e.key === 'A') {
+        e.preventDefault();
+        actionHardShot(controlledPlayer);
+    }
+    // B harfi bosilganda -> Pas berish
+    else if (e.code === 'KeyB' || e.key === 'b' || e.key === 'B') {
+        e.preventDefault();
+        actionGroundPass(controlledPlayer);
+    }
+    // C harfi bosilganda -> Raqib jamoa tepasidan sherigiga yetkazish
+    else if (e.code === 'KeyC' || e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        actionLoftedPass(controlledPlayer);
+    }
+});
+
+window.addEventListener('keyup', (e) => {
+    if (e.code in keys) {
+        keys[e.code] = false;
+    }
+});
+
+// Ekrandagi A, B, C tugmalari bosilganda ham ishlashi uchun
+document.getElementById('btnKeyA').addEventListener('click', () => actionHardShot(controlledPlayer));
+document.getElementById('btnKeyB').addEventListener('click', () => actionGroundPass(controlledPlayer));
+document.getElementById('btnKeyC').addEventListener('click', () => actionLoftedPass(controlledPlayer));
+
+// Canvas o'lchamini ekranga moslashtirish
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+
+// Asosiy animatsiya sikli
+let lastFrameTime = performance.now();
+function gameLoop(now) {
+    const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+    lastFrameTime = now;
+
+    updateGame(dt);
+    render();
+
+    requestAnimationFrame(gameLoop);
+}
+
+window.onload = function () {
+    resizeCanvas();
+    buildTeamSelectors();
+    generateSpectators();
+    initPlayers('home');
+    requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>

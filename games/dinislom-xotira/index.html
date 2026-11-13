@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Xotira kartalari</title>
+  <style>
+    body {
+      margin: 0; min-height: 100vh; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 14px;
+      font-family: Arial, sans-serif; color: #fff; user-select: none;
+      background: linear-gradient(135deg, #00b37e, #00a3d9);
+    }
+    h1 { margin: 0; font-size: 28px; }
+    .hud { display: flex; gap: 24px; font-size: 18px; }
+    .board {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
+      width: min(440px, 92vw, 70vh);
+    }
+    .card {
+      aspect-ratio: 1; border-radius: 14px; cursor: pointer; position: relative;
+      transform-style: preserve-3d; transition: transform 0.4s;
+    }
+    .card.open, .card.done { transform: rotateY(180deg); }
+    .card div {
+      position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden;
+      display: grid; place-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    .back { background: #ffffff33; border: 3px solid #ffffff88; font-size: 32px; }
+    .front { background: #fff; transform: rotateY(180deg); font-size: clamp(28px, 7vw, 48px); }
+    .card.done .front { background: #d6ffe9; }
+    button.again {
+      padding: 10px 24px; font-size: 18px; border: none; border-radius: 999px;
+      background: #ffcc00; color: #222; font-weight: bold; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h1>🃏 Xotira kartalari</h1>
+  <div class="hud">
+    <span>Yurishlar: <b id="moves">0</b></span>
+    <span>Topildi: <b id="found">0</b> / 8</span>
+    <span>⏱ <b id="time">0</b> s</span>
+  </div>
+  <div id="board" class="board"></div>
+  <button class="again" id="again">🔄 Yangi o'yin</button>
+
+  <script>
+    var EMOJIS = ["🐶", "🐱", "🦊", "🐼", "🐸", "🦁", "🐵", "🐧"];
+    var board = document.getElementById("board");
+    var first, second, lock, moves, found, seconds, timer;
+
+    // Massivni aralashtirish (Fisher–Yates)
+    function shuffle(arr) {
+      for (var i = arr.length - 1; i > 0; i--) {
+        var j = Math.floor(Math.random() * (i + 1));
+        var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+      }
+      return arr;
+    }
+
+    function newGame() {
+      first = second = null; lock = false; moves = 0; found = 0; seconds = 0;
+      clearInterval(timer); timer = null;
+      update();
+      board.innerHTML = "";
+      shuffle(EMOJIS.concat(EMOJIS)).forEach(function (emoji) {
+        var card = document.createElement("div");
+        card.className = "card";
+        card.dataset.emoji = emoji;
+        card.innerHTML = '<div class="back">❓</div><div class="front">' + emoji + "</div>";
+        card.addEventListener("click", function () { flip(card); });
+        board.appendChild(card);
+      });
+    }
+
+    function flip(card) {
+      if (lock || card === first || card.classList.contains("done")) return;
+      // Birinchi bosishda taymer boshlanadi
+      if (!timer) timer = setInterval(function () { seconds++; update(); }, 1000);
+
+      card.classList.add("open");
+      if (!first) { first = card; return; }
+
+      second = card;
+      moves++;
+      if (first.dataset.emoji === second.dataset.emoji) {
+        first.classList.add("done"); second.classList.add("done");
+        first = second = null;
+        found++;
+        if (found === 8) {
+          clearInterval(timer);
+          setTimeout(function () {
+            document.querySelector("h1").textContent = "🎉 Barakalla! " + moves + " yurishda";
+          }, 400);
+        }
+      } else {
+        lock = true;
+        setTimeout(function () {
+          first.classList.remove("open"); second.classList.remove("open");
+          first = second = null; lock = false;
+        }, 800);
+      }
+      update();
+    }
+
+    function update() {
+      document.getElementById("moves").textContent = moves;
+      document.getElementById("found").textContent = found;
+      document.getElementById("time").textContent = seconds;
+    }
+
+    document.getElementById("again").addEventListener("click", function () {
+      document.querySelector("h1").textContent = "🃏 Xotira kartalari";
+      newGame();
+    });
+    newGame();
+  </script>
+</body>
+</html>

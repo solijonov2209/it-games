@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Futbol 5v5 — O'zbekiston Chempionati</title>
+  <link rel="stylesheet" href="main.css">
+</head>
+<body>
+
+  <header id="scoreboard">
+    <div class="team home-team">
+      <span class="flag">🇺🇿</span>
+      <span class="team-name">O'ZBEKISTON</span>
+      <span id="score-home" class="score">0</span>
+    </div>
+
+    <div class="match-info">
+      <div id="timer">01:30</div>
+      <div id="half-label">1-TAYM</div>
+    </div>
+
+    <div class="team away-team">
+      <span id="score-away" class="score">0</span>
+      <span class="team-name">RAQIB</span>
+      <span class="flag">🚩</span>
+    </div>
+
+    <div class="header-actions">
+      <button id="toggle-controls-btn" class="header-btn" title="Ekrandagi tugmalarni ko'rsatish/yashirish">🎮 Tugmalar</button>
+      <button id="pause-btn" class="header-btn" title="Pauza">⏸</button>
+    </div>
+  </header>
+
+  <main id="game-container">
+    <canvas id="pitch"></canvas>
+
+    <div id="goal-banner" class="hidden">
+      <h1>GOOOOL!</h1>
+      <p id="goal-scorer-text">O'zbekiston hisobni ochdi!</p>
+    </div>
+
+    <div id="start-overlay" class="overlay">
+      <div class="modal">
+        <h1>⚽ FUTBOL 5v5</h1>
+        <p class="subtitle">O'zbekiston terma jamoasi bilan maydonga tushing!</p>
+
+        <div class="difficulty-select">
+          <label>Qiyinlik darajasi:</label>
+          <div class="diff-buttons">
+            <button class="diff-btn" data-diff="easy">Oson</button>
+            <button class="diff-btn active" data-diff="medium">O'rtacha</button>
+            <button class="diff-btn" data-diff="hard">Qiyin</button>
+          </div>
+        </div>
+
+        <div class="controls-guide">
+          <h3>Boshqaruv (Klaviatura va Ekrandagi tugmalar):</h3>
+          <ul>
+            <li><b>WASD / Strelkalar / Joystik:</b> Yugurish</li>
+            <li><b>Probel / Z / ZARBA:</b> Zarba / Podkat</li>
+            <li><b>X / PAS:</b> Pas</li>
+            <li><b>C / ALMASH:</b> Almashtirish</li>
+            <li><b>Shift / TEZ:</b> Tezlashish</li>
+          </ul>
+        </div>
+
+        <button id="start-btn" class="primary-btn">O'YINNI BOSHLASH</button>
+      </div>
+    </div>
+
+    <div id="end-overlay" class="overlay hidden">
+      <div class="modal">
+        <h1 id="end-title">O'YIN TUGADI!</h1>
+        <p id="end-score" class="final-score">O'zbekiston 0 - 0 Raqib</p>
+        <p id="end-message" class="subtitle"></p>
+        <div class="end-buttons">
+          <button id="resume-btn" class="secondary-btn hidden">DAVOM ETTIRISH</button>
+          <button id="restart-btn" class="primary-btn">QAYTA O'YNASH</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="touch-controls">
+      <div id="joystick-zone">
+        <div id="joystick-base">
+          <div id="joystick-stick"></div>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button id="btn-switch" class="action-btn small">ALMASH<span>[C]</span></button>
+        <button id="btn-sprint" class="action-btn small">TEZ<span>[Shift]</span></button>
+        <button id="btn-pass" class="action-btn">PAS<span>[X]</span></button>
+        <button id="btn-shoot" class="action-btn shoot">ZARBA<span>[Space]</span></button>
+      </div>
+    </div>
+  </main>
+
+  <script src="main.js"></script>
+</body>
+</html>

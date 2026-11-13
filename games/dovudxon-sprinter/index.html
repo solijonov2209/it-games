@@ -1,0 +1,1743 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SPRINTER - 2.5D Realistik Yugurish O'yini</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:ital,wght@0,700;0,900;1,900&family=Inter:wght@500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #0b0f19;
+            font-family: 'Inter', sans-serif;
+        }
+
+        #appRoot {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            outline: none;
+        }
+
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* SPRINTER Logo */
+        .sprinter-logo {
+            font-family: 'Montserrat', sans-serif;
+            font-weight: 900;
+            font-style: italic;
+            letter-spacing: 0.03em;
+            line-height: 1;
+            display: inline-block;
+            position: relative;
+            background: linear-gradient(180deg, #43d9ff 0%, #98f0ff 48%, #ffffff 55%, #e6f9ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            filter: drop-shadow(0 4px 0 #071936)
+                    drop-shadow(0 8px 16px rgba(0, 0, 0, 0.6));
+        }
+
+        .sprinter-logo::before {
+            content: attr(data-text);
+            position: absolute;
+            left: 0;
+            top: 0;
+            z-index: -1;
+            -webkit-text-stroke: clamp(6px, 1.1vw, 10px) #092147;
+            color: #092147;
+        }
+
+        /* Stride Control Buttons (CHAP / O'NG) */
+        .stride-btn {
+            position: relative;
+            border: 2px solid rgba(255, 255, 255, 0.25);
+            box-shadow: 0 8px 0 rgba(9, 25, 54, 0.9), 0 14px 24px rgba(0, 0, 0, 0.55);
+            transition: transform 0.06s ease, box-shadow 0.06s ease, filter 0.06s ease, border-color 0.1s ease;
+            cursor: pointer;
+        }
+
+        .stride-btn:active,
+        .stride-btn.pressed {
+            transform: translateY(6px) scale(0.97);
+            box-shadow: 0 2px 0 rgba(9, 25, 54, 0.95), 0 5px 12px rgba(0, 0, 0, 0.5);
+            border-color: #ffffff;
+            filter: brightness(1.22);
+        }
+
+        .stride-btn.expected-next {
+            box-shadow: 0 8px 0 rgba(9, 25, 54, 0.9), 0 0 24px rgba(67, 217, 255, 0.75);
+            border-color: #67e8f9;
+        }
+
+        .key-badge {
+            background: rgba(7, 25, 54, 0.75);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+        }
+
+        .pulse-cta {
+            animation: pulseGlow 1.5s infinite ease-in-out;
+        }
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(7, 12, 24, 0.8);
+            backdrop-filter: blur(6px);
+            z-index: 60;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+    </style>
+</head>
+<body>
+
+<div id="appRoot" tabindex="0">
+    <!-- Full-screen 2.5D Stadium Canvas -->
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- Top Header HUD -->
+    <div class="pointer-events-none absolute top-0 left-0 right-0 z-20 flex items-start justify-between p-3 sm:p-5">
+        <!-- Left: Distance & Timer Telemetry -->
+        <div class="pointer-events-auto flex flex-wrap items-center gap-2">
+            <div class="rounded-2xl border border-white/20 bg-[#091936]/85 px-3.5 py-2 text-white shadow-xl backdrop-blur-md">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-cyan-300">Masofa</div>
+                <div class="flex items-baseline gap-1">
+                    <span id="distDisplay" class="font-mono text-xl sm:text-2xl font-black text-white">0.0</span>
+                    <span class="text-xs font-bold text-slate-300">/ <span id="targetDistLabel">100</span>m</span>
+                </div>
+            </div>
+
+            <div class="rounded-2xl border border-white/20 bg-[#091936]/85 px-3.5 py-2 text-white shadow-xl backdrop-blur-md">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-amber-300">Vaqt</div>
+                <div id="timeDisplay" class="font-mono text-xl sm:text-2xl font-black text-white">0.00s</div>
+            </div>
+
+            <div class="hidden md:block rounded-2xl border border-white/20 bg-[#091936]/85 px-3.5 py-2 text-white shadow-xl backdrop-blur-md">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-pink-300">O'rin</div>
+                <div id="rankDisplay" class="text-xl sm:text-2xl font-black text-white">1 / 7</div>
+            </div>
+        </div>
+
+        <!-- Center: SPRINTER Title -->
+        <div class="hidden sm:flex flex-col items-center">
+            <h1 class="sprinter-logo text-3xl md:text-5xl" data-text="SPRINTER">SPRINTER</h1>
+            <div class="mt-1.5 flex items-center gap-1.5 rounded-full border border-white/15 bg-[#091936]/80 px-3 py-0.5 text-[11px] font-bold text-cyan-200 backdrop-blur-sm">
+                <span id="speedKmhDisplay">0.0 km/soat</span>
+                <span class="text-white/30">•</span>
+                <span id="rhythmDisplay" class="text-emerald-300">Ritm: Tayyor</span>
+            </div>
+        </div>
+
+        <!-- Right: Distance Switch, Sound Toggle & Info Button -->
+        <div class="pointer-events-auto flex items-center gap-2">
+            <button id="distModeBtn" class="rounded-full border border-white/20 bg-[#091936]/85 px-3 py-2 text-xs font-extrabold text-cyan-300 shadow-lg backdrop-blur-md transition hover:bg-[#112a59]" title="Masofani tanlash">
+                100M
+            </button>
+
+            <button id="soundToggleBtn" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/20 bg-[#091936]/85 text-base text-white shadow-lg backdrop-blur-md transition hover:bg-[#112a59]" title="Ovozni yoqish/o'chirish">
+                🔊
+            </button>
+
+            <button id="infoBtn" class="flex h-10 w-10 items-center justify-center rounded-full bg-white text-lg font-black text-[#1e3a8a] shadow-lg transition hover:scale-105 active:scale-95" title="Boshqaruv va rasm yuklash">
+                i
+            </button>
+        </div>
+    </div>
+
+    <!-- Center Countdown / Start / Finish Overlay -->
+    <div id="centerBanner" class="pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center px-4 text-center">
+        <!-- Start Card -->
+        <div id="startCard" class="pointer-events-auto max-w-md rounded-3xl border-2 border-cyan-400/50 bg-[#091936]/92 p-6 text-white shadow-2xl backdrop-blur-lg">
+            <div class="mb-1 inline-block rounded-full bg-cyan-500/20 px-3 py-1 text-xs font-extrabold uppercase tracking-widest text-cyan-300">
+                Olimpiya Stadioni • Final
+            </div>
+            <h2 class="sprinter-logo my-2 text-4xl sm:text-5xl" data-text="SPRINTER">SPRINTER</h2>
+            <p class="mt-2 text-sm text-slate-200 leading-relaxed">
+                Start o'qidan so'ng <strong class="text-cyan-300">CHAP (← / A)</strong> va <strong class="text-pink-400">O'NG (→ / D)</strong> tugmalarini navbatma-navbat tez bosing!
+            </p>
+            <button id="startRaceBtn" class="pulse-cta mt-5 w-full rounded-2xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 py-3.5 px-6 text-base font-black uppercase tracking-wider text-slate-950 shadow-xl transition hover:brightness-110 active:scale-95">
+                🏁 Poygani Boshlash (Enter / Space)
+            </button>
+            <div class="mt-3 text-[11px] font-semibold text-slate-400">
+                Yoki hoziroq klaviaturada <span class="text-white">Enter</span> / <span class="text-white">Space</span> bosing
+            </div>
+        </div>
+
+        <!-- Countdown Text (TAYYORLANING / DIQQAT / START!) -->
+        <div id="countdownText" class="hidden">
+            <div id="countdownMain" class="sprinter-logo text-5xl sm:text-7xl uppercase" data-text="TAYYORLANING">TAYYORLANING</div>
+            <div id="countdownSub" class="mt-2 rounded-full bg-black/60 px-4 py-1 text-xs sm:text-sm font-bold text-amber-300 backdrop-blur-sm">
+                To'pponcha ovozini kuting — erta bossangiz FALSTART!
+            </div>
+        </div>
+
+        <!-- False Start Banner -->
+        <div id="falseStartCard" class="pointer-events-auto hidden max-w-sm rounded-3xl border-2 border-rose-500 bg-[#1f0912]/95 p-6 text-white shadow-2xl backdrop-blur-lg">
+            <div class="text-4xl mb-2">🚫</div>
+            <h3 class="text-2xl font-black uppercase tracking-wide text-rose-400">FALSTART!</h3>
+            <p class="mt-1.5 text-sm text-slate-300">Siz start to'pponchasi otilishidan oldin yugurdingiz.</p>
+            <button id="retryFalseStartBtn" class="mt-4 w-full rounded-xl bg-rose-500 py-3 px-5 text-sm font-black uppercase text-white shadow-lg transition hover:bg-rose-400">
+                Qayta Urinish (Enter / Space)
+            </button>
+        </div>
+
+        <!-- Finish Podium Results Card -->
+        <div id="finishCard" class="pointer-events-auto hidden w-full max-w-md rounded-3xl border-2 border-amber-400/60 bg-[#091936]/95 p-5 sm:p-6 text-white shadow-2xl backdrop-blur-xl">
+            <div id="finishMedal" class="text-4xl sm:text-5xl mb-1">🥇</div>
+            <h3 id="finishHeadline" class="text-2xl sm:text-3xl font-black uppercase tracking-tight text-amber-300">1-O'RIN! CHEMPION!</h3>
+            <div class="mt-2 flex items-center justify-center gap-4 rounded-2xl bg-white/10 py-2.5 px-4">
+                <div>
+                    <div class="text-[10px] font-bold uppercase text-slate-300">Sizning Vaqtingiz</div>
+                    <div id="finalTimeVal" class="font-mono text-2xl font-black text-cyan-300">9.78s</div>
+                </div>
+                <div class="h-8 w-px bg-white/20"></div>
+                <div>
+                    <div class="text-[10px] font-bold uppercase text-slate-300">Maks Tezlik</div>
+                    <div id="finalTopSpeedVal" class="font-mono text-2xl font-black text-pink-400">41.2 km/s</div>
+                </div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div id="leaderboardList" class="mt-3 max-h-40 overflow-y-auto space-y-1.5 text-left text-xs"></div>
+
+            <button id="playAgainBtn" class="mt-4 w-full rounded-2xl bg-gradient-to-r from-emerald-400 to-cyan-400 py-3.5 px-6 text-sm sm:text-base font-black uppercase tracking-wider text-slate-950 shadow-xl transition hover:brightness-110 active:scale-95">
+                🔄 Yana Yugurish (Enter / Space)
+            </button>
+        </div>
+    </div>
+
+    <!-- Bottom Interactive Controls: CHAP & O'NG Stride Buttons -->
+    <div class="pointer-events-none absolute bottom-3 sm:bottom-5 left-0 right-0 z-20 flex flex-col items-center px-3 sm:px-6">
+        <!-- Speed / Stamina Bar -->
+        <div class="mb-2.5 flex w-full max-w-md items-center gap-2 rounded-full border border-white/20 bg-[#091936]/85 px-3 py-1.5 shadow-lg backdrop-blur-md">
+            <span class="text-[10px] font-black uppercase tracking-wider text-cyan-300">TEZLIK</span>
+            <div class="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
+                <div id="speedBarFill" class="h-full w-0 rounded-full bg-gradient-to-r from-cyan-400 via-blue-500 to-pink-500 transition-all duration-75"></div>
+            </div>
+            <span id="keyboardStatusPill" class="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                ⌨️ Klaviatura Tayyor
+            </span>
+        </div>
+
+        <!-- Big Tactile Left & Right Buttons -->
+        <div class="pointer-events-auto grid w-full max-w-xl grid-cols-2 gap-3 sm:gap-5">
+            <button id="btnLeftStride" type="button" class="stride-btn flex flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-cyan-500 to-blue-700 py-3.5 sm:py-4 px-4 text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl sm:text-2xl font-black">⬅ CHAP</span>
+                </div>
+                <div class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-cyan-100">
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">←</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">A</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">Z</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">Q</span>
+                </div>
+            </button>
+
+            <button id="btnRightStride" type="button" class="stride-btn flex flex-col items-center justify-center rounded-2xl bg-gradient-to-b from-pink-500 to-rose-700 py-3.5 sm:py-4 px-4 text-white">
+                <div class="flex items-center gap-2">
+                    <span class="text-xl sm:text-2xl font-black">O'NG ➡</span>
+                </div>
+                <div class="mt-1 flex items-center gap-1.5 text-[11px] font-bold text-pink-100">
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">→</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">D</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">X</span>
+                    <span class="key-badge rounded px-1.5 py-0.5 font-mono">P</span>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Info & Custom Runner Sprite Modal -->
+<div id="infoModal" class="modal-backdrop">
+    <div class="w-full max-w-md rounded-3xl border border-slate-700 bg-[#111827] p-6 text-slate-100 shadow-2xl">
+        <div class="mb-4 flex items-center justify-between">
+            <h3 class="text-lg font-black text-white">🏃 SPRINTER — Qoidalar va Sozlamalar</h3>
+            <button id="closeModalBtn" class="flex h-8 w-8 items-center justify-center rounded-lg bg-slate-800 font-bold text-slate-300 hover:bg-slate-700">✕</button>
+        </div>
+
+        <ul class="mb-4 space-y-2 text-xs sm:text-sm text-slate-300">
+            <li class="flex items-start gap-2">
+                <span class="font-bold text-cyan-400">1.</span>
+                <span><strong>Navbatma-navbat bosing:</strong> Chap oyoq (<code>← / A / Z / Q</code>) va O'ng oyoq (<code>→ / D / X / P</code>) tugmalarini birin-ketin tez bosing.</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="font-bold text-amber-400">2.</span>
+                <span><strong>Start signali:</strong> "DIQQAT" dan keyin to'pponcha ovozi eshitilishi bilan bosing. Oldin bossangiz falstart bo'ladi.</span>
+            </li>
+            <li class="flex items-start gap-2">
+                <span class="font-bold text-pink-400">3.</span>
+                <span><strong>Tez qayta boshlash:</strong> Istalgan vaqtda <code>Enter</code> yoki <code>Space</code> tugmasini bosing.</span>
+            </li>
+        </ul>
+
+        <div class="border-t border-slate-800 pt-4">
+            <label class="mb-2 block text-xs font-extrabold uppercase tracking-wider text-slate-400">
+                O'zingizning yuguruvchi rasmingizni yuklash
+            </label>
+            <div class="flex items-center gap-2">
+                <label class="flex-1 cursor-pointer rounded-xl border border-slate-600 bg-slate-800 py-2.5 px-3 text-center text-xs font-bold text-white transition hover:bg-slate-700">
+                    📁 Rasm tanlash (PNG/JPG)
+                    <input type="file" id="customSpriteInput" accept="image/*" class="hidden">
+                </label>
+                <button id="resetSpriteBtn" class="rounded-xl border border-slate-700 bg-slate-800 py-2.5 px-3 text-xs font-bold text-rose-300 transition hover:bg-rose-950/50">
+                    Asliga qaytarish
+                </button>
+            </div>
+            <p id="uploadStatus" class="mt-1.5 hidden text-xs font-semibold text-emerald-400">✓ Maxsus sprinter rasmi o'rnatildi!</p>
+        </div>
+
+        <button id="modalResumeBtn" class="mt-5 w-full rounded-xl bg-cyan-400 py-3 text-sm font-black uppercase text-slate-950 transition hover:bg-cyan-300">
+            O'yinga Qaytish
+        </button>
+    </div>
+</div>
+
+<script>
+/**
+ * ============================================================================
+ * SPRINTER 2.5D REALISTIC TRACK & FIELD ENGINE
+ * - Guaranteed immediate keyboard responsiveness (auto-focus + window & document listeners)
+ * - Web Audio API synthesized stadium sounds (crowd, gunshot, footsteps, wind, fanfare)
+ * - Full 100m / 200m race lifecycle: Start Blocks -> Countdown -> Sprint -> Finish Tape
+ * ============================================================================
+ */
+
+const appRoot = document.getElementById('appRoot');
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+// UI Elements
+const distDisplay = document.getElementById('distDisplay');
+const targetDistLabel = document.getElementById('targetDistLabel');
+const timeDisplay = document.getElementById('timeDisplay');
+const rankDisplay = document.getElementById('rankDisplay');
+const speedKmhDisplay = document.getElementById('speedKmhDisplay');
+const rhythmDisplay = document.getElementById('rhythmDisplay');
+const speedBarFill = document.getElementById('speedBarFill');
+const distModeBtn = document.getElementById('distModeBtn');
+const soundToggleBtn = document.getElementById('soundToggleBtn');
+const infoBtn = document.getElementById('infoBtn');
+const infoModal = document.getElementById('infoModal');
+const closeModalBtn = document.getElementById('closeModalBtn');
+const modalResumeBtn = document.getElementById('modalResumeBtn');
+const customSpriteInput = document.getElementById('customSpriteInput');
+const resetSpriteBtn = document.getElementById('resetSpriteBtn');
+const uploadStatus = document.getElementById('uploadStatus');
+
+const startCard = document.getElementById('startCard');
+const startRaceBtn = document.getElementById('startRaceBtn');
+const countdownText = document.getElementById('countdownText');
+const countdownMain = document.getElementById('countdownMain');
+const countdownSub = document.getElementById('countdownSub');
+const falseStartCard = document.getElementById('falseStartCard');
+const retryFalseStartBtn = document.getElementById('retryFalseStartBtn');
+const finishCard = document.getElementById('finishCard');
+const finishMedal = document.getElementById('finishMedal');
+const finishHeadline = document.getElementById('finishHeadline');
+const finalTimeVal = document.getElementById('finalTimeVal');
+const finalTopSpeedVal = document.getElementById('finalTopSpeedVal');
+const leaderboardList = document.getElementById('leaderboardList');
+const playAgainBtn = document.getElementById('playAgainBtn');
+
+const btnLeftStride = document.getElementById('btnLeftStride');
+const btnRightStride = document.getElementById('btnRightStride');
+
+// Force keyboard focus so arrow keys and letters work immediately without extra clicks
+function ensureKeyboardFocus() {
+    try {
+        window.focus();
+        if (document.activeElement !== appRoot && !infoModal.classList.contains('active')) {
+            appRoot.focus({ preventScroll: true });
+        }
+    } catch (e) {}
+}
+
+window.addEventListener('load', ensureKeyboardFocus);
+window.addEventListener('pointerdown', ensureKeyboardFocus);
+setTimeout(ensureKeyboardFocus, 100);
+
+// ============================================================================
+// SYNTHESIZED STADIUM AUDIO ENGINE (WEB AUDIO API)
+// ============================================================================
+class StadiumAudio {
+    constructor() {
+        this.ctx = null;
+        this.enabled = true;
+        this.crowdGain = null;
+        this.windGain = null;
+        this.windFilter = null;
+    }
+
+    init() {
+        if (!this.enabled) return;
+        if (!this.ctx) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (!AudioCtx) return;
+            this.ctx = new AudioCtx();
+            this.setupAmbientCrowdAndWind();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+            this.ctx.resume();
+        }
+    }
+
+    setupAmbientCrowdAndWind() {
+        if (!this.ctx) return;
+        // Generate pink-ish noise buffer for stadium crowd murmur & wind rush
+        const bufferSize = this.ctx.sampleRate * 3;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+        for (let i = 0; i < bufferSize; i++) {
+            const white = Math.random() * 2 - 1;
+            b0 = 0.99886 * b0 + white * 0.0555179;
+            b1 = 0.99332 * b1 + white * 0.0750759;
+            b2 = 0.96900 * b2 + white * 0.1538520;
+            b3 = 0.86650 * b3 + white * 0.3104856;
+            b4 = 0.55000 * b4 + white * 0.5329522;
+            b5 = -0.7616 * b5 - white * 0.0168980;
+            output[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + white * 0.5362) * 0.05;
+            b6 = white * 0.115926;
+        }
+
+        // Crowd loop
+        const crowdSource = this.ctx.createBufferSource();
+        crowdSource.buffer = noiseBuffer;
+        crowdSource.loop = true;
+
+        const crowdFilter = this.ctx.createBiquadFilter();
+        crowdFilter.type = 'bandpass';
+        crowdFilter.frequency.value = 520;
+        crowdFilter.Q.value = 0.7;
+
+        this.crowdGain = this.ctx.createGain();
+        this.crowdGain.gain.value = 0.12;
+
+        crowdSource.connect(crowdFilter);
+        crowdFilter.connect(this.crowdGain);
+        this.crowdGain.connect(this.ctx.destination);
+        crowdSource.start();
+
+        // Wind rush loop
+        const windSource = this.ctx.createBufferSource();
+        windSource.buffer = noiseBuffer;
+        windSource.loop = true;
+
+        this.windFilter = this.ctx.createBiquadFilter();
+        this.windFilter.type = 'lowpass';
+        this.windFilter.frequency.value = 300;
+
+        this.windGain = this.ctx.createGain();
+        this.windGain.gain.value = 0.0;
+
+        windSource.connect(this.windFilter);
+        this.windFilter.connect(this.windGain);
+        this.windGain.connect(this.ctx.destination);
+        windSource.start();
+    }
+
+    updateDynamicAmbience(speedRatio, excitement) {
+        if (!this.ctx || !this.enabled) return;
+        const now = this.ctx.currentTime;
+        if (this.crowdGain) {
+            const targetCrowd = 0.1 + excitement * 0.35;
+            this.crowdGain.gain.setTargetAtTime(targetCrowd, now, 0.15);
+        }
+        if (this.windGain && this.windFilter) {
+            const targetWind = Math.max(0, (speedRatio - 0.35)) * 0.28;
+            this.windGain.gain.setTargetAtTime(targetWind, now, 0.1);
+            this.windFilter.frequency.setTargetAtTime(280 + speedRatio * 900, now, 0.1);
+        }
+    }
+
+    playBeep(freq = 540, duration = 0.14) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, now);
+        gain.gain.setValueAtTime(0.18, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + duration);
+    }
+
+    playGunshot() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        // Sharp crack + low boom
+        const len = Math.floor(this.ctx.sampleRate * 0.55);
+        const buf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
+        const data = buf.getChannelData(0);
+        for (let i = 0; i < len; i++) {
+            const env = Math.exp(-i / (this.ctx.sampleRate * 0.08));
+            data[i] = (Math.random() * 2 - 1) * env;
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buf;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(2400, now);
+        filter.frequency.exponentialRampToValueAtTime(180, now + 0.45);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.65, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.52);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+
+        // Sub punch
+        const osc = this.ctx.createOscillator();
+        const oscGain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.exponentialRampToValueAtTime(38, now + 0.22);
+        oscGain.gain.setValueAtTime(0.5, now);
+        oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+        osc.connect(oscGain);
+        oscGain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.26);
+    }
+
+    playFootstep(side, intensity = 0.8) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+
+        // Tartan rubber track thud + spike crunch
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        const baseFreq = side === 'left' ? 98 : 108;
+        osc.frequency.setValueAtTime(baseFreq + intensity * 25, now);
+        osc.frequency.exponentialRampToValueAtTime(42, now + 0.075);
+
+        gain.gain.setValueAtTime(0.16 + intensity * 0.14, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.085);
+    }
+
+    playFalseStartBuzzer() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        [140, 148].forEach(f => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(f, now);
+            gain.gain.setValueAtTime(0.22, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(now);
+            osc.stop(now + 0.46);
+        });
+    }
+
+    playVictoryFanfare() {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        const now = this.ctx.currentTime;
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, idx) => {
+            const osc = this.ctx.createOscillator();
+            const gain = this.ctx.createGain();
+            osc.type = 'triangle';
+            const t = now + idx * 0.11;
+            osc.frequency.setValueAtTime(freq, t);
+            gain.gain.setValueAtTime(0.24, t);
+            gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+            osc.connect(gain);
+            gain.connect(this.ctx.destination);
+            osc.start(t);
+            osc.stop(t + 0.46);
+        });
+    }
+}
+
+const audio = new StadiumAudio();
+
+soundToggleBtn.addEventListener('click', () => {
+    audio.enabled = !audio.enabled;
+    soundToggleBtn.textContent = audio.enabled ? '🔊' : '🔇';
+    if (audio.enabled) {
+        audio.init();
+    } else if (audio.ctx) {
+        audio.ctx.suspend();
+    }
+});
+
+// ============================================================================
+// GAME STATE & TRACK CONFIGURATION
+// ============================================================================
+const TRACK_ANGLE = 0.49; // ~28 degrees isometric diagonal
+const COS_A = Math.cos(TRACK_ANGLE);
+const SIN_A = Math.sin(TRACK_ANGLE);
+const PX_PER_METER = 26; // Scale: 1 meter = 26 track pixels
+
+let targetMeters = 100;
+let gameState = 'IDLE'; // 'IDLE' | 'SET' | 'RACING' | 'FALSE_START' | 'FINISHED'
+let countdownTimers = [];
+let raceElapsed = 0;
+let cameraMeters = 0;
+let tapeBroken = false;
+let tapeBreakTime = 0;
+let customPlayerImg = null;
+
+// Stride control state
+let expectedStride = null; // null (any first), 'left', or 'right'
+let lastStrideTime = 0;
+let playerVelocity = 0; // meters per second
+let playerTopSpeed = 0;
+let screenShake = 0;
+
+// Particles & Confetti
+let particles = [];
+let confetti = [];
+
+// 7 Competitors in 7 Lanes (Player is Lane 4 in Pink jersey)
+const runners = [
+    {
+        id: 'r1', name: 'A. Karimov', lane: 0, meters: 0, vel: 0, maxVel: 9.75, accel: 4.1,
+        phase: 0, finished: false, finishTime: 0,
+        skin: '#f2c6a0', hair: '#1c1c1e', ponytail: true, cap: null,
+        shirt: '#f8fafc', shorts: '#1d4ed8', shoes: '#e619e6'
+    },
+    {
+        id: 'r2', name: 'M. Tursunov', lane: 1, meters: 0, vel: 0, maxVel: 10.05, accel: 4.3,
+        phase: 0.5, finished: false, finishTime: 0,
+        skin: '#5a3219', hair: '#141414', ponytail: false, cap: null,
+        shirt: '#facc15', shorts: '#16a34a', shoes: '#22c55e'
+    },
+    {
+        id: 'r3', name: 'D. Alimov', lane: 2, meters: 0, vel: 0, maxVel: 9.9, accel: 4.2,
+        phase: 1.1, finished: false, finishTime: 0,
+        skin: '#f2c6a0', hair: '#222222', ponytail: false, cap: '#ef4444',
+        shirt: '#ffffff', shorts: '#cbd5e1', shoes: '#ffffff'
+    },
+    {
+        id: 'player', name: 'SIZ (Pushti)', lane: 3, meters: 0, vel: 0, maxVel: 11.4, accel: 5.0,
+        phase: 0, finished: false, finishTime: 0, isPlayer: true,
+        skin: '#f0c09c', hair: '#1f1d20', ponytail: false, cap: null,
+        shirt: '#ec4899', shorts: '#2563eb', shoes: '#22c55e'
+    },
+    {
+        id: 'r5', name: 'S. Rahimov', lane: 4, meters: 0, vel: 0, maxVel: 10.22, accel: 4.45,
+        phase: 0.8, finished: false, finishTime: 0,
+        skin: '#f2c6a0', hair: '#1c1c1e', ponytail: true, cap: null,
+        shirt: '#f8fafc', shorts: '#1d4ed8', shoes: '#e619e6'
+    },
+    {
+        id: 'r6', name: 'J. Usmonov', lane: 5, meters: 0, vel: 0, maxVel: 9.85, accel: 4.15,
+        phase: 1.7, finished: false, finishTime: 0,
+        skin: '#f2c6a0', hair: '#222222', ponytail: false, cap: '#ef4444',
+        shirt: '#f8fafc', shorts: '#e2e8f0', shoes: '#f8fafc'
+    },
+    {
+        id: 'r7', name: 'B. Qodirov', lane: 6, meters: 0, vel: 0, maxVel: 10.12, accel: 4.35,
+        phase: 2.3, finished: false, finishTime: 0,
+        skin: '#5a3219', hair: '#141414', ponytail: false, cap: null,
+        shirt: '#facc15', shorts: '#16a34a', shoes: '#22c55e'
+    }
+];
+
+function getPlayer() {
+    return runners.find(r => r.isPlayer);
+}
+
+// ============================================================================
+// CANVAS RESIZING & COORDINATE PROJECTION
+// ============================================================================
+let viewW = 1280;
+let viewH = 720;
+
+function resizeCanvas() {
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    viewW = window.innerWidth;
+    viewH = window.innerHeight;
+    canvas.width = viewW * dpr;
+    canvas.height = viewH * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+/**
+ * Converts track coordinates (metersAlong, laneIndexFloat) into screen (x, y)
+ * dynamically centered around cameraMeters.
+ */
+function trackToScreen(metersAlong, laneFloat) {
+    const relPx = (metersAlong - cameraMeters) * PX_PER_METER;
+    const laneSpacing = Math.max(36, Math.min(54, viewH * 0.068));
+    const laneOffset = laneFloat * laneSpacing;
+
+    // Anchor camera focus point slightly left-of-center so runner has clear view ahead
+    const anchorX = viewW * 0.36;
+    const anchorY = viewH * 0.62;
+
+    // Along-track vector (down-right)
+    const dx = COS_A;
+    const dy = SIN_A;
+
+    // Cross-track vector (up-right across lanes)
+    const px = SIN_A;
+    const py = -COS_A;
+
+    // Offset relative to middle lane (lane 3)
+    const centeredLaneOffset = laneOffset - 3 * laneSpacing;
+
+    return {
+        x: anchorX + relPx * dx + centeredLaneOffset * px,
+        y: anchorY + relPx * dy + centeredLaneOffset * py
+    };
+}
+
+// ============================================================================
+// RACE LIFECYCLE & COUNTDOWN
+// ============================================================================
+function clearCountdownTimers() {
+    countdownTimers.forEach(id => clearTimeout(id));
+    countdownTimers = [];
+}
+
+function resetRaceToIdle() {
+    clearCountdownTimers();
+    gameState = 'IDLE';
+    raceElapsed = 0;
+    cameraMeters = 0;
+    tapeBroken = false;
+    tapeBreakTime = 0;
+    expectedStride = null;
+    playerVelocity = 0;
+    playerTopSpeed = 0;
+    particles = [];
+    confetti = [];
+
+    runners.forEach((r, idx) => {
+        r.meters = 0;
+        r.vel = 0;
+        r.phase = idx * 0.4;
+        r.finished = false;
+        r.finishTime = 0;
+        // Slight realistic variation per race for AI runners
+        if (!r.isPlayer) {
+            r.raceMaxVel = r.maxVel * (0.96 + Math.random() * 0.08);
+            r.reactionDelay = 0.14 + Math.random() * 0.16;
+        }
+    });
+
+    startCard.classList.remove('hidden');
+    countdownText.classList.add('hidden');
+    falseStartCard.classList.add('hidden');
+    finishCard.classList.add('hidden');
+    updateStrideButtonHighlights();
+    updateHUD();
+}
+
+function beginStartSequence() {
+    audio.init();
+    clearCountdownTimers();
+    resetRaceToIdle();
+
+    startCard.classList.add('hidden');
+    falseStartCard.classList.add('hidden');
+    finishCard.classList.add('hidden');
+    countdownText.classList.remove('hidden');
+
+    gameState = 'SET';
+    countdownMain.textContent = 'TAYYORLANING...';
+    countdownMain.setAttribute('data-text', 'TAYYORLANING...');
+    countdownSub.textContent = 'Start bloklariga joylashing';
+    audio.playBeep(480, 0.15);
+
+    const t1 = setTimeout(() => {
+        if (gameState !== 'SET') return;
+        countdownMain.textContent = 'DIQQAT...';
+        countdownMain.setAttribute('data-text', 'DIQQAT...');
+        countdownSub.textContent = "To'pponcha ovozini kuting!";
+        audio.playBeep(660, 0.18);
+    }, 1150);
+
+    const randomGunDelay = 2150 + Math.random() * 950;
+    const t2 = setTimeout(() => {
+        if (gameState !== 'SET') return;
+        gameState = 'RACING';
+        raceElapsed = 0;
+        screenShake = 8;
+        audio.playGunshot();
+
+        countdownMain.textContent = 'START! 🔥';
+        countdownMain.setAttribute('data-text', 'START! 🔥');
+        countdownSub.textContent = "CHAP va O'NG tugmalarini tez bosing!";
+
+        // Initial small burst off the blocks for visual feedback
+        spawnSmokeBurst(0, 3);
+
+        const t3 = setTimeout(() => {
+            countdownText.classList.add('hidden');
+        }, 700);
+        countdownTimers.push(t3);
+    }, randomGunDelay);
+
+    countdownTimers.push(t1, t2);
+    ensureKeyboardFocus();
+}
+
+function triggerFalseStart() {
+    clearCountdownTimers();
+    gameState = 'FALSE_START';
+    screenShake = 10;
+    audio.playFalseStartBuzzer();
+    countdownText.classList.add('hidden');
+    falseStartCard.classList.remove('hidden');
+}
+
+// ============================================================================
+// STRIDE INPUT HANDLING (KEYBOARD + TOUCH + MOUSE)
+// ============================================================================
+function handleStrideInput(side) {
+    audio.init();
+
+    // Visual button press animation
+    const btn = side === 'left' ? btnLeftStride : btnRightStride;
+    btn.classList.add('pressed');
+    setTimeout(() => btn.classList.remove('pressed'), 110);
+
+    // If on start screen, pressing Left/Right starts the countdown!
+    if (gameState === 'IDLE') {
+        beginStartSequence();
+        return;
+    }
+
+    // Pressing before gunshot triggers False Start
+    if (gameState === 'SET') {
+        triggerFalseStart();
+        return;
+    }
+
+    if (gameState !== 'RACING') return;
+
+    const player = getPlayer();
+    const now = performance.now();
+    const dtTap = (now - lastStrideTime) / 1000;
+    lastStrideTime = now;
+
+    // Alternating left -> right -> left gives maximum acceleration!
+    const isAlternating = (expectedStride === null || expectedStride === side);
+
+    if (isAlternating) {
+        // Optimal cadence bonus (fast alternating taps between 0.07s and 0.35s)
+        const cadenceBonus = dtTap < 0.25 ? 1.45 : 1.15;
+        playerVelocity = Math.min(player.maxVel, playerVelocity + 1.35 * cadenceBonus);
+        expectedStride = side === 'left' ? 'right' : 'left';
+        rhythmDisplay.textContent = 'Ritm: Zo‘r! ⚡';
+        rhythmDisplay.className = 'text-emerald-300 font-extrabold';
+    } else {
+        // Pressing same foot twice in a row stumbles slightly
+        playerVelocity = Math.max(2.0, playerVelocity * 0.86);
+        rhythmDisplay.textContent = 'Almashtirib bosing!';
+        rhythmDisplay.className = 'text-amber-300 font-extrabold';
+    }
+
+    player.vel = playerVelocity;
+    if (playerVelocity > playerTopSpeed) {
+        playerTopSpeed = playerVelocity;
+    }
+
+    // Footstep sound & dust particles
+    const intensity = Math.min(1, playerVelocity / player.maxVel);
+    audio.playFootstep(side, intensity);
+    spawnTrackDust(player.meters, player.lane, intensity);
+
+    updateStrideButtonHighlights();
+}
+
+function updateStrideButtonHighlights() {
+    btnLeftStride.classList.remove('expected-next');
+    btnRightStride.classList.remove('expected-next');
+    if (gameState === 'RACING') {
+        if (expectedStride === 'left') btnLeftStride.classList.add('expected-next');
+        if (expectedStride === 'right') btnRightStride.classList.add('expected-next');
+    }
+}
+
+// Key mappings for Left & Right strides
+const LEFT_KEYS = new Set(['ArrowLeft', 'KeyA', 'KeyZ', 'KeyQ']);
+const RIGHT_KEYS = new Set(['ArrowRight', 'KeyD', 'KeyX', 'KeyP']);
+const heldKeys = new Set();
+
+function onGlobalKeyDown(e) {
+    // Allow typing inside inputs if any, otherwise capture game keys immediately
+    if (infoModal.classList.contains('active')) {
+        if (e.code === 'Escape') infoModal.classList.remove('active');
+        return;
+    }
+
+    if (LEFT_KEYS.has(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!heldKeys.has(e.code)) {
+            heldKeys.add(e.code);
+            handleStrideInput('left');
+        }
+        return;
+    }
+
+    if (RIGHT_KEYS.has(e.code)) {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!heldKeys.has(e.code)) {
+            heldKeys.add(e.code);
+            handleStrideInput('right');
+        }
+        return;
+    }
+
+    if (e.code === 'Enter' || e.code === 'Space') {
+        e.preventDefault();
+        e.stopPropagation();
+        if (gameState === 'IDLE' || gameState === 'FALSE_START' || gameState === 'FINISHED') {
+            beginStartSequence();
+        }
+        return;
+    }
+
+    if (e.code === 'KeyR') {
+        e.preventDefault();
+        beginStartSequence();
+    }
+}
+
+function onGlobalKeyUp(e) {
+    heldKeys.delete(e.code);
+}
+
+// Attach listeners to BOTH window and document in capture phase so nothing blocks them
+window.addEventListener('keydown', onGlobalKeyDown, { capture: true, passive: false });
+document.addEventListener('keydown', onGlobalKeyDown, { capture: true, passive: false });
+window.addEventListener('keyup', onGlobalKeyUp, { capture: true });
+document.addEventListener('keyup', onGlobalKeyUp, { capture: true });
+
+// Pointer / Touch events on CHAP & O'NG buttons
+btnLeftStride.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleStrideInput('left');
+});
+
+btnRightStride.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    handleStrideInput('right');
+});
+
+// UI Button Events
+startRaceBtn.addEventListener('click', beginStartSequence);
+retryFalseStartBtn.addEventListener('click', beginStartSequence);
+playAgainBtn.addEventListener('click', beginStartSequence);
+
+distModeBtn.addEventListener('click', () => {
+    targetMeters = targetMeters === 100 ? 200 : 100;
+    distModeBtn.textContent = `${targetMeters}M`;
+    targetDistLabel.textContent = targetMeters;
+    resetRaceToIdle();
+});
+
+infoBtn.addEventListener('click', () => infoModal.classList.add('active'));
+closeModalBtn.addEventListener('click', () => {
+    infoModal.classList.remove('active');
+    ensureKeyboardFocus();
+});
+modalResumeBtn.addEventListener('click', () => {
+    infoModal.classList.remove('active');
+    ensureKeyboardFocus();
+});
+
+customSpriteInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        const img = new Image();
+        img.onload = () => {
+            customPlayerImg = img;
+            uploadStatus.classList.remove('hidden');
+        };
+        img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+});
+
+resetSpriteBtn.addEventListener('click', () => {
+    customPlayerImg = null;
+    customSpriteInput.value = '';
+    uploadStatus.classList.add('hidden');
+});
+
+// ============================================================================
+// PARTICLE & CONFETTI EFFECTS
+// ============================================================================
+function spawnTrackDust(meters, lane, intensity) {
+    const pos = trackToScreen(meters, lane);
+    const count = 3 + Math.floor(intensity * 4);
+    for (let i = 0; i < count; i++) {
+        particles.push({
+            x: pos.x - 6 + (Math.random() - 0.5) * 10,
+            y: pos.y + 2 + (Math.random() - 0.5) * 6,
+            vx: (-45 - Math.random() * 55) * COS_A + (Math.random() - 0.5) * 24,
+            vy: (-45 - Math.random() * 55) * SIN_A - 18 - Math.random() * 20,
+            size: 2.5 + Math.random() * 3.5,
+            alpha: 0.75,
+            color: Math.random() > 0.35 ? '#fca5a5' : '#ffffff'
+        });
+    }
+}
+
+function spawnSmokeBurst(meters, lane) {
+    const pos = trackToScreen(meters, lane);
+    for (let i = 0; i < 16; i++) {
+        particles.push({
+            x: pos.x,
+            y: pos.y - 10,
+            vx: (Math.random() - 0.5) * 80,
+            vy: -25 - Math.random() * 55,
+            size: 5 + Math.random() * 7,
+            alpha: 0.85,
+            color: '#f8fafc'
+        });
+    }
+}
+
+function spawnFinishConfetti() {
+    const colors = ['#38bdf8', '#f472b6', '#facc15', '#4ade80', '#ffffff', '#fb7185'];
+    for (let i = 0; i < 95; i++) {
+        confetti.push({
+            x: viewW * 0.2 + Math.random() * viewW * 0.6,
+            y: -20 - Math.random() * 140,
+            vx: (Math.random() - 0.5) * 140,
+            vy: 90 + Math.random() * 170,
+            w: 6 + Math.random() * 6,
+            h: 4 + Math.random() * 5,
+            rot: Math.random() * Math.PI * 2,
+            vrot: (Math.random() - 0.5) * 8,
+            color: colors[i % colors.length]
+        });
+    }
+}
+
+// ============================================================================
+// SIMULATION UPDATE LOOP
+// ============================================================================
+function updateSimulation(dt) {
+    if (screenShake > 0) {
+        screenShake = Math.max(0, screenShake - dt * 32);
+    }
+
+    // Update dust particles
+    for (let i = particles.length - 1; i >= 0; i--) {
+        const p = particles[i];
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.vy += 65 * dt;
+        p.alpha -= dt * 1.65;
+        if (p.alpha <= 0) particles.splice(i, 1);
+    }
+
+    // Update victory confetti
+    for (let i = confetti.length - 1; i >= 0; i--) {
+        const c = confetti[i];
+        c.x += c.vx * dt;
+        c.y += c.vy * dt;
+        c.rot += c.vrot * dt;
+        if (c.y > viewH + 30) confetti.splice(i, 1);
+    }
+
+    if (gameState !== 'RACING') {
+        audio.updateDynamicAmbience(0, gameState === 'FINISHED' ? 0.8 : 0.15);
+        return;
+    }
+
+    raceElapsed += dt;
+    const player = getPlayer();
+
+    // Natural aerodynamic & ground friction deceleration when player stops tapping
+    playerVelocity = Math.max(0, playerVelocity - dt * 3.15);
+    player.vel = playerVelocity;
+
+    // Update all runners
+    runners.forEach(r => {
+        if (!r.isPlayer) {
+            if (raceElapsed >= r.reactionDelay) {
+                // Smooth AI sprint curve with slight mid-race surge
+                const targetAiVel = r.raceMaxVel * (0.94 + 0.06 * Math.sin(raceElapsed * 1.6 + r.lane));
+                r.vel += (targetAiVel - r.vel) * Math.min(1, dt * r.accel * 0.55);
+            }
+        }
+
+        // Advance distance (post-finish deceleration)
+        const activeVel = r.finished ? r.vel * 0.65 : r.vel;
+        r.meters += activeVel * dt;
+        r.phase += activeVel * 2.15 * dt;
+
+        // Check finish line crossing
+        if (!r.finished && r.meters >= targetMeters) {
+            r.finished = true;
+            r.finishTime = raceElapsed;
+
+            if (!tapeBroken) {
+                tapeBroken = true;
+                tapeBreakTime = performance.now();
+            }
+
+            if (r.isPlayer) {
+                completePlayerRace();
+            }
+        }
+    });
+
+    // Smooth camera follows the player runner
+    cameraMeters += (player.meters - cameraMeters) * Math.min(1, dt * 8.5);
+
+    // Update dynamic audio wind & crowd roar
+    const speedRatio = player.vel / player.maxVel;
+    const excitement = Math.min(1, (player.meters / targetMeters) * 0.7 + speedRatio * 0.4);
+    audio.updateDynamicAmbience(speedRatio, excitement);
+
+    updateHUD();
+}
+
+function completePlayerRace() {
+    gameState = 'FINISHED';
+    const player = getPlayer();
+
+    // Estimate final times for any AI runners still just behind the line
+    const standings = runners.map(r => {
+        if (r.finished) {
+            return { ...r, finalTime: r.finishTime };
+        }
+        const rem = Math.max(0, targetMeters - r.meters);
+        const est = raceElapsed + rem / Math.max(6.5, r.vel);
+        return { ...r, finalTime: est };
+    }).sort((a, b) => a.finalTime - b.finalTime);
+
+    const playerRank = standings.findIndex(s => s.isPlayer) + 1;
+
+    if (playerRank === 1) {
+        finishMedal.textContent = '🥇';
+        finishHeadline.textContent = "1-O'RIN! G'OLIB!";
+        finishHeadline.className = 'text-2xl sm:text-3xl font-black uppercase tracking-tight text-amber-300';
+        audio.playVictoryFanfare();
+        spawnFinishConfetti();
+    } else if (playerRank === 2) {
+        finishMedal.textContent = '🥈';
+        finishHeadline.textContent = "2-O'RIN! KUMUSH MEDAL!";
+        finishHeadline.className = 'text-2xl sm:text-3xl font-black uppercase tracking-tight text-slate-200';
+        audio.playVictoryFanfare();
+        spawnFinishConfetti();
+    } else if (playerRank === 3) {
+        finishMedal.textContent = '🥉';
+        finishHeadline.textContent = "3-O'RIN! BRONZA MEDAL!";
+        finishHeadline.className = 'text-2xl sm:text-3xl font-black uppercase tracking-tight text-amber-500';
+        audio.playVictoryFanfare();
+    } else {
+        finishMedal.textContent = '🏁';
+        finishHeadline.textContent = `${playerRank}-O'RIN! MARRA!`;
+        finishHeadline.className = 'text-2xl sm:text-3xl font-black uppercase tracking-tight text-cyan-300';
+    }
+
+    finalTimeVal.textContent = `${player.finishTime.toFixed(2)}s`;
+    finalTopSpeedVal.textContent = `${(playerTopSpeed * 3.6).toFixed(1)} km/s`;
+
+    // Build Leaderboard rows
+    leaderboardList.innerHTML = standings.map((s, idx) => {
+        const badge = idx === 0 ? '🥇' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : `${idx + 1}.`;
+        const highlight = s.isPlayer
+            ? 'bg-pink-500/25 border-pink-400/60 text-white font-extrabold'
+            : 'bg-white/5 border-white/10 text-slate-300';
+        return `
+            <div class="flex items-center justify-between rounded-xl border px-3 py-1.5 ${highlight}">
+                <div class="flex items-center gap-2">
+                    <span class="w-5 text-center font-black">${badge}</span>
+                    <span>${s.name}</span>
+                </div>
+                <span class="font-mono font-bold">${s.finalTime.toFixed(2)}s</span>
+            </div>
+        `;
+    }).join('');
+
+    finishCard.classList.remove('hidden');
+    updateStrideButtonHighlights();
+    updateHUD();
+}
+
+function updateHUD() {
+    const player = getPlayer();
+    const shownMeters = Math.min(targetMeters, player.meters);
+    distDisplay.textContent = shownMeters.toFixed(1);
+    timeDisplay.textContent = `${raceElapsed.toFixed(2)}s`;
+
+    const kmh = player.vel * 3.6;
+    speedKmhDisplay.textContent = `${kmh.toFixed(1)} km/soat`;
+    speedBarFill.style.width = `${Math.min(100, (player.vel / player.maxVel) * 100)}%`;
+
+    // Live rank calculation
+    const aheadCount = runners.filter(r => !r.isPlayer && r.meters > player.meters).length;
+    rankDisplay.textContent = `${aheadCount + 1} / ${runners.length}`;
+}
+
+// ============================================================================
+// 2.5D STADIUM RENDERING
+// ============================================================================
+function renderScene() {
+    ctx.save();
+
+    if (screenShake > 0.1) {
+        const sx = (Math.random() - 0.5) * screenShake;
+        const sy = (Math.random() - 0.5) * screenShake;
+        ctx.translate(sx, sy);
+    }
+
+    // 1. Rich Tartan Red Track Base
+    const trackGrad = ctx.createLinearGradient(0, 0, viewW, viewH);
+    trackGrad.addColorStop(0, '#9e0800');
+    trackGrad.addColorStop(0.5, '#c81002');
+    trackGrad.addColorStop(1, '#960700');
+    ctx.fillStyle = trackGrad;
+    ctx.fillRect(-20, -20, viewW + 40, viewH + 40);
+
+    // 2. Top-Right Blue Stadium Outer Apron
+    const blueEdgeStart = trackToScreen(-25, 6.55);
+    const blueEdgeEnd = trackToScreen(targetMeters + 45, 6.55);
+    ctx.fillStyle = '#6c7fd8';
+    ctx.beginPath();
+    ctx.moveTo(blueEdgeStart.x, blueEdgeStart.y);
+    ctx.lineTo(blueEdgeEnd.x, blueEdgeEnd.y);
+    ctx.lineTo(viewW + 400, -400);
+    ctx.closePath();
+    ctx.fill();
+
+    // White outer border line
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(blueEdgeStart.x, blueEdgeStart.y);
+    ctx.lineTo(blueEdgeEnd.x, blueEdgeEnd.y);
+    ctx.stroke();
+
+    // 3. Bottom-Left Green Infield Grass
+    const grassStart = trackToScreen(-25, -0.55);
+    const grassEnd = trackToScreen(targetMeters + 45, -0.55);
+
+    const grassGrad = ctx.createLinearGradient(0, viewH * 0.4, viewW * 0.4, viewH);
+    grassGrad.addColorStop(0, '#369908');
+    grassGrad.addColorStop(1, '#236e02');
+    ctx.fillStyle = grassGrad;
+    ctx.beginPath();
+    ctx.moveTo(grassStart.x, grassStart.y);
+    ctx.lineTo(grassEnd.x, grassEnd.y);
+    ctx.lineTo(grassEnd.x, viewH + 500);
+    ctx.lineTo(-400, viewH + 500);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner white track kerb
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4.5;
+    ctx.beginPath();
+    ctx.moveTo(grassStart.x, grassStart.y);
+    ctx.lineTo(grassEnd.x, grassEnd.y);
+    ctx.stroke();
+
+    // 4. White Lane Divider Lines (7 lanes)
+    for (let i = 0; i <= 7; i++) {
+        const lanePos = i - 0.5;
+        const p1 = trackToScreen(-25, lanePos);
+        const p2 = trackToScreen(targetMeters + 45, lanePos);
+
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.88)';
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+    }
+
+    // 5. Distance Meter Markings on Track (0m, 10m, 20m ... 100m/200m)
+    for (let m = 0; m <= targetMeters; m += 10) {
+        const lineA = trackToScreen(m, -0.5);
+        const lineB = trackToScreen(m, 6.5);
+
+        ctx.strokeStyle = m === 0 || m === targetMeters
+            ? 'rgba(255, 255, 255, 0.95)'
+            : 'rgba(255, 255, 255, 0.28)';
+        ctx.lineWidth = m === 0 || m === targetMeters ? 5 : 2;
+        ctx.beginPath();
+        ctx.moveTo(lineA.x, lineA.y);
+        ctx.lineTo(lineB.x, lineB.y);
+        ctx.stroke();
+
+        // Painted meter number on Lane 4 & Lane 1
+        if (m > 0 && m < targetMeters) {
+            const labelPos = trackToScreen(m - 0.6, 3.0);
+            ctx.save();
+            ctx.translate(labelPos.x, labelPos.y);
+            ctx.rotate(TRACK_ANGLE);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+            ctx.font = '900 18px Montserrat, sans-serif';
+            ctx.fillText(`${m}m`, 0, 0);
+            ctx.restore();
+        }
+    }
+
+    // 6. Starting Blocks at 0m
+    for (let lane = 0; lane < 7; lane++) {
+        const bPos = trackToScreen(-0.35, lane);
+        ctx.save();
+        ctx.translate(bPos.x, bPos.y);
+        ctx.rotate(TRACK_ANGLE);
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(-10, -4, 16, 8);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(-6, -3, 5, 6);
+        ctx.restore();
+    }
+
+    // 7. Infield Stadium Props (Yellow Floodlights & Seated Spectators along the grass)
+    for (let m = -5; m <= targetMeters + 15; m += 24) {
+        const lightPos = trackToScreen(m, -1.25);
+        if (lightPos.x > -120 && lightPos.x < viewW + 120) {
+            drawFloodlightPole(lightPos.x, lightPos.y);
+        }
+
+        // Group of 3 red-shirted spectators every 24m
+        for (let s = 0; s < 3; s++) {
+            const specPos = trackToScreen(m + 4 + s * 3.2, -1.05);
+            if (specPos.x > -80 && specPos.x < viewW + 80) {
+                drawSpectator(specPos.x, specPos.y, s);
+            }
+        }
+    }
+
+    // 8. Finish Line Posts & Ribbon Tape at targetMeters
+    drawFinishPostsAndTape();
+
+    // 9. Track Dust Particles
+    particles.forEach(p => {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, p.alpha);
+        ctx.fillStyle = p.color;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    // 10. Sort Runners Back-to-Front by Screen Y for Proper 2.5D Depth
+    const sortedRunners = [...runners].sort((a, b) => {
+        const pa = trackToScreen(a.meters, a.lane);
+        const pb = trackToScreen(b.meters, b.lane);
+        return pa.y - pb.y;
+    });
+
+    sortedRunners.forEach(drawRunner);
+
+    // 11. Victory Confetti
+    confetti.forEach(c => {
+        ctx.save();
+        ctx.translate(c.x, c.y);
+        ctx.rotate(c.rot);
+        ctx.fillStyle = c.color;
+        ctx.fillRect(-c.w / 2, -c.h / 2, c.w, c.h);
+        ctx.restore();
+    });
+
+    ctx.restore();
+}
+
+function drawFloodlightPole(x, y) {
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x + 10, y + 2, 16, 6, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    const topY = y - 195;
+    const grad = ctx.createLinearGradient(x - 3, 0, x + 4, 0);
+    grad.addColorStop(0, '#94a3b8');
+    grad.addColorStop(0.5, '#f8fafc');
+    grad.addColorStop(1, '#64748b');
+    ctx.fillStyle = grad;
+    ctx.fillRect(x - 3, topY, 6, y - topY);
+
+    ctx.translate(x, topY);
+    ctx.fillStyle = '#ca8a04';
+    ctx.beginPath();
+    ctx.moveTo(-16, -12);
+    ctx.lineTo(22, -23);
+    ctx.lineTo(32, -14);
+    ctx.lineTo(-12, 12);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(-18, -14);
+    ctx.lineTo(20, -25);
+    ctx.lineTo(32, -16);
+    ctx.lineTo(-12, -3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+}
+
+function drawSpectator(x, y, idx) {
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Cheer bounce when player is sprinting fast
+    const player = getPlayer();
+    const cheer = player.vel > 6 ? Math.abs(Math.sin(performance.now() * 0.01 + idx)) * 4 : 0;
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
+    ctx.beginPath();
+    ctx.ellipse(5, 14, 20, 8, 0.35, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Folding chair
+    ctx.strokeStyle = '#27272a';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.moveTo(-12, -12);
+    ctx.lineTo(-8, 12);
+    ctx.moveTo(4, 2);
+    ctx.lineTo(2, 18);
+    ctx.stroke();
+
+    // Dark pants
+    ctx.strokeStyle = '#1f2937';
+    ctx.lineWidth = 6.5;
+    ctx.beginPath();
+    ctx.moveTo(-1, 2);
+    ctx.lineTo(14, 4);
+    ctx.lineTo(19, 16);
+    ctx.stroke();
+
+    // White shoes
+    ctx.fillStyle = '#f8fafc';
+    ctx.beginPath();
+    ctx.ellipse(21, 18, 4.5, 2.5, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(0, -cheer);
+
+    // Red t-shirt
+    ctx.fillStyle = '#dc2626';
+    ctx.beginPath();
+    ctx.roundRect(-9, -20, 15, 22, 4);
+    ctx.fill();
+
+    // Head
+    ctx.fillStyle = '#eab696';
+    ctx.beginPath();
+    ctx.arc(-1, -27, 7.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Red cap
+    ctx.fillStyle = '#ef4444';
+    ctx.beginPath();
+    ctx.arc(-2, -29, 7.5, Math.PI * 0.9, Math.PI * 2.15);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.ellipse(5, -28, 6, 2.6, 0.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+}
+
+function drawFinishPostsAndTape() {
+    const postLeft = trackToScreen(targetMeters, -0.55);
+    const postRight = trackToScreen(targetMeters, 6.55);
+
+    // Finish Posts
+    [postLeft, postRight].forEach(p => {
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(p.x - 4, p.y - 68, 8, 68);
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(p.x - 5, p.y - 74, 10, 10);
+    });
+
+    // White/Cyan Finish Ribbon Tape
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 5;
+    if (!tapeBroken) {
+        ctx.beginPath();
+        ctx.moveTo(postLeft.x, postLeft.y - 38);
+        ctx.lineTo(postRight.x, postRight.y - 38);
+        ctx.stroke();
+    } else {
+        const flutter = Math.sin(performance.now() * 0.015) * 8;
+        const midX = (postLeft.x + postRight.x) * 0.5;
+        const midY = (postLeft.y + postRight.y) * 0.5 - 32;
+        ctx.beginPath();
+        ctx.moveTo(postLeft.x, postLeft.y - 38);
+        ctx.quadraticCurveTo(midX - 30, midY + flutter, midX - 10, midY + 18);
+        ctx.moveTo(postRight.x, postRight.y - 38);
+        ctx.quadraticCurveTo(midX + 30, midY - flutter, midX + 10, midY + 18);
+        ctx.stroke();
+    }
+    ctx.restore();
+}
+
+function drawRunner(r) {
+    const pos = trackToScreen(r.meters, r.lane);
+    const x = pos.x;
+    const y = pos.y;
+
+    const isMoving = r.vel > 0.25;
+    const stride = isMoving ? Math.sin(r.phase) : 0;
+    const bounce = isMoving ? Math.abs(Math.cos(r.phase)) * 4.5 : 0;
+    const crouchOffset = gameState === 'SET' ? 8 : 0;
+
+    ctx.save();
+    ctx.translate(x, y);
+
+    // Custom Sprite Image if uploaded by user
+    if (r.isPlayer && customPlayerImg) {
+        ctx.fillStyle = 'rgba(0,0,0,0.35)';
+        ctx.beginPath();
+        ctx.ellipse(0, 2, 18, 8, TRACK_ANGLE, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.translate(0, -34 - bounce + crouchOffset);
+        ctx.rotate(stride * 0.08);
+        ctx.drawImage(customPlayerImg, -26, -26, 52, 52);
+        ctx.restore();
+        ctx.restore();
+        return;
+    }
+
+    // Speed motion trail for player at high speed
+    if (r.isPlayer && r.vel > 6.5) {
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.translate(-12 * COS_A, -12 * SIN_A - bounce);
+        ctx.fillStyle = r.shirt;
+        ctx.beginPath();
+        ctx.roundRect(-10, -48, 20, 24, 5);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Contact Shadow
+    ctx.fillStyle = 'rgba(40, 0, 0, 0.4)';
+    ctx.beginPath();
+    ctx.ellipse(2, 2, 20 - bounce * 0.4, 8.5, TRACK_ANGLE * 0.7, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(0, -bounce + crouchOffset);
+
+    // Back Arm
+    const backArmSwing = -stride * 14;
+    drawLimb(-4, -44, -10 - backArmSwing * 0.6, -34, -18 - backArmSwing, -26, r.skin, r.shirt, 5.2);
+
+    // Back Leg
+    const backLegSwing = stride * 16;
+    drawLeg(-3, -24, -8 - backLegSwing * 0.7, -11, -16 - backLegSwing, -2 - Math.max(0, -stride) * 7, r.skin, r.shorts, r.shoes);
+
+    // Front Leg
+    const frontLegSwing = -stride * 16;
+    drawLeg(4, -23, 10 - frontLegSwing * 0.7, -10, 14 - frontLegSwing, -1 - Math.max(0, stride) * 7, r.skin, r.shorts, r.shoes);
+
+    // Torso
+    ctx.save();
+    ctx.translate(0, -35);
+    ctx.rotate(gameState === 'SET' ? 0.48 : 0.24);
+    ctx.fillStyle = r.shorts;
+    ctx.beginPath();
+    ctx.roundRect(-9, 6, 18, 10, 4);
+    ctx.fill();
+
+    ctx.fillStyle = r.shirt;
+    ctx.beginPath();
+    ctx.roundRect(-10, -14, 20, 22, 5);
+    ctx.fill();
+    ctx.restore();
+
+    // Head, Hair & Optional Cap
+    ctx.save();
+    ctx.translate(gameState === 'SET' ? 8 : 4, -55);
+    ctx.fillStyle = r.skin;
+    ctx.fillRect(-3, 4, 6, 6);
+    ctx.beginPath();
+    ctx.arc(0, 0, 8.2, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = r.hair;
+    ctx.beginPath();
+    ctx.arc(-1, -1, 8.4, Math.PI * 0.75, Math.PI * 2.05);
+    ctx.fill();
+
+    if (r.ponytail) {
+        ctx.beginPath();
+        ctx.ellipse(-7, 2 + stride * 1.5, 3.2, 6.5, 0.35, 0, Math.PI * 2);
+        ctx.fill();
+    }
+
+    if (r.cap) {
+        ctx.fillStyle = r.cap;
+        ctx.beginPath();
+        ctx.arc(-1, -2.5, 8.5, Math.PI * 0.9, Math.PI * 2.15);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.ellipse(7, -1.5, 6.5, 2.8, 0.25, 0, Math.PI * 2);
+        ctx.fill();
+    }
+    ctx.restore();
+
+    // Front Arm
+    const frontArmSwing = stride * 14;
+    drawLimb(6, -44, 12 + frontArmSwing * 0.5, -34, 17 + frontArmSwing, -42, r.skin, r.shirt, 5.2);
+
+    // Player Indicator Arrow & Tag
+    if (r.isPlayer) {
+        ctx.save();
+        ctx.translate(3, -74 - Math.sin(performance.now() * 0.008) * 3);
+        ctx.fillStyle = '#38bdf8';
+        ctx.strokeStyle = '#092147';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, 7);
+        ctx.lineTo(-6, -1);
+        ctx.lineTo(6, -1);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+    }
+
+    ctx.restore();
+}
+
+function drawLimb(x1, y1, x2, y2, x3, y3, skinColor, sleeveColor, width) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = width;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.stroke();
+
+    ctx.strokeStyle = sleeveColor;
+    ctx.lineWidth = width + 1.8;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + (x2 - x1) * 0.45, y1 + (y2 - y1) * 0.45);
+    ctx.stroke();
+}
+
+function drawLeg(x1, y1, x2, y2, x3, y3, skinColor, shortsColor, shoeColor) {
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.strokeStyle = skinColor;
+    ctx.lineWidth = 6.2;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+    ctx.lineTo(x3, y3);
+    ctx.stroke();
+
+    ctx.strokeStyle = shortsColor;
+    ctx.lineWidth = 7.6;
+    ctx.beginPath();
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x1 + (x2 - x1) * 0.5, y1 + (y2 - y1) * 0.5);
+    ctx.stroke();
+
+    ctx.fillStyle = shoeColor;
+    ctx.beginPath();
+    ctx.ellipse(x3 + 3, y3 + 1, 6.2, 3.2, 0.25, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+// ============================================================================
+// MAIN ANIMATION LOOP
+// ============================================================================
+let lastFrameTime = 0;
+
+function gameLoop(timestamp) {
+    if (!lastFrameTime) lastFrameTime = timestamp;
+    const dt = Math.min((timestamp - lastFrameTime) / 1000, 0.05);
+    lastFrameTime = timestamp;
+
+    updateSimulation(dt);
+    renderScene();
+
+    requestAnimationFrame(gameLoop);
+}
+
+window.onload = function () {
+    resizeCanvas();
+    resetRaceToIdle();
+    ensureKeyboardFocus();
+    requestAnimationFrame(gameLoop);
+};
+</script>
+</body>
+</html>

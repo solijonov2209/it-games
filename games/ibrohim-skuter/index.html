@@ -1,0 +1,1880 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SKUTERLA POYGASI — Realistik 3D Shahar Poygasi</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            user-select: none;
+            -webkit-user-select: none;
+            background: #090d16;
+            margin: 0;
+            padding: 0;
+        }
+        .racing-font {
+            font-family: 'Orbitron', sans-serif;
+        }
+        /* Karbon va shisha (Glassmorphism) dizayn */
+        .carbon-glass {
+            background: linear-gradient(145deg, rgba(15, 23, 42, 0.85), rgba(9, 13, 22, 0.92));
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.65);
+        }
+        .card-glass {
+            background: rgba(15, 23, 42, 0.72);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        ::-webkit-scrollbar {
+            height: 6px;
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: linear-gradient(90deg, #f59e0b, #ef4444);
+            border-radius: 10px;
+        }
+        .btn-press {
+            transition: transform 0.1s ease, filter 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn-press:active {
+            transform: scale(0.95);
+        }
+        @keyframes pulseSpeed {
+            0%, 100% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.45); }
+            50% { box-shadow: 0 0 36px rgba(245, 158, 11, 0.85); }
+        }
+        .glow-cta {
+            animation: pulseSpeed 2.2s infinite;
+        }
+        /* Yuqori tezlikda shamol/tezlik chiziqlari effekti */
+        #speedLinesOverlay {
+            background: radial-gradient(circle at center, transparent 58%, rgba(255, 255, 255, 0.08) 88%, rgba(56, 189, 248, 0.18) 100%);
+            transition: opacity 0.2s ease;
+        }
+    </style>
+</head>
+<body class="text-white h-screen w-screen relative overflow-hidden">
+
+    <!-- 3D WebGL Sahna Konteyneri -->
+    <div id="canvasContainer" class="fixed inset-0 w-full h-full z-0"></div>
+
+    <!-- Yuqori tezlik effekti (Motion Vignette) -->
+    <div id="speedLinesOverlay" class="fixed inset-0 pointer-events-none z-10 opacity-0"></div>
+
+    <!-- Bildirishnoma (Toast) -->
+    <div id="toastBox" class="fixed top-20 left-1/2 -translate-x-1/2 z-50 pointer-events-none opacity-0 transition-all duration-300 -translate-y-4">
+        <div class="carbon-glass border border-amber-400/60 px-5 py-2.5 rounded-2xl shadow-2xl flex items-center gap-2.5 text-sm sm:text-base font-bold text-amber-300">
+            <span id="toastIcon">🏁</span>
+            <span id="toastText">Xabar</span>
+        </div>
+    </div>
+
+    <!-- YUQORI HEADER (Do'kon / Avtosalon rejimida) -->
+    <header id="mainHeader" class="fixed top-0 left-0 right-0 z-30 p-3 sm:p-5 flex items-center justify-between pointer-events-none">
+        <div class="flex items-center gap-3 pointer-events-auto">
+            <div class="w-11 h-11 sm:w-13 sm:h-13 rounded-2xl bg-gradient-to-br from-amber-500 via-orange-500 to-red-600 flex items-center justify-center shadow-lg border border-amber-300/40">
+                <span class="text-2xl sm:text-3xl">🛵</span>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="racing-font text-lg sm:text-2xl md:text-3xl font-black tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white via-amber-200 to-amber-500 drop-shadow">
+                        SKUTERLA POYGASI
+                    </h1>
+                    <span class="hidden sm:inline-block px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-widest rounded bg-amber-500/20 text-amber-300 border border-amber-400/30">3D PRO</span>
+                </div>
+                <p class="text-[11px] sm:text-xs text-slate-300 font-medium">Realistik Shahar Poygasi • 5 Skuter • 50 km/soat</p>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2.5 sm:gap-3 pointer-events-auto">
+            <!-- O'yin Puli Balansi -->
+            <div class="carbon-glass px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-2xl flex items-center gap-2.5 border border-emerald-400/30">
+                <div class="w-8 h-8 rounded-xl bg-emerald-500/20 flex items-center justify-center text-emerald-400 font-bold text-lg">$</div>
+                <div>
+                    <div class="text-[10px] uppercase tracking-wider text-slate-400 font-bold">O'yin puli</div>
+                    <div id="moneyDisplay" class="racing-font text-base sm:text-xl font-black text-emerald-400 leading-none">$0</div>
+                </div>
+            </div>
+
+            <!-- Ovoz tugmasi -->
+            <button id="soundToggleBtn" title="Ovozni yoqish/o'chirish" class="carbon-glass w-11 h-11 sm:w-12 sm:h-12 rounded-2xl flex items-center justify-center text-lg sm:text-xl hover:bg-slate-800 btn-press border border-white/15">
+                🔊
+            </button>
+        </div>
+    </header>
+
+    <!-- 1. GARAJ VA 10 TA SKUTER DO'KONI (Orqa fonda jonli 3D skuter aylanadi) -->
+    <section id="garageOverlay" class="fixed inset-0 z-20 flex flex-col justify-between pt-20 pb-3 px-3 sm:px-6 pointer-events-none">
+        
+        <!-- Tanlangan skuterning texnik xususiyatlari (Chap/Yuqori panel) -->
+        <div class="max-w-6xl w-full mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-3 pointer-events-auto">
+            <div class="carbon-glass rounded-3xl p-4 sm:p-5 w-full md:w-96 border border-white/15">
+                <div class="flex items-center justify-between gap-2 mb-1">
+                    <span id="scooterTierBadge" class="px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wider rounded-full bg-sky-500/20 text-sky-300 border border-sky-400/30">
+                        Klassik Model
+                    </span>
+                    <span id="scooterStatusBadge" class="text-xs font-extrabold text-emerald-400">
+                        ✅ OCHIQ
+                    </span>
+                </div>
+                <h2 id="scooterTitle" class="racing-font text-xl sm:text-2xl font-black text-white tracking-wide">
+                    Urban Commuter 50
+                </h2>
+                <p id="scooterDesc" class="text-xs text-slate-300 mt-0.5 mb-3">
+                    Shahar ko'chalari uchun qulay va ishonchli boshlang'ich skuter.
+                </p>
+
+                <!-- 3 ta Texnik ko'rsatkich -->
+                <div class="space-y-2.5">
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-semibold">Maksimal Tezlik</span>
+                            <span id="statSpeedVal" class="racing-font font-bold text-amber-400">45 km/soat</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="statSpeedBar" class="h-full bg-gradient-to-r from-amber-500 to-red-500 rounded-full transition-all duration-300" style="width: 82%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-semibold">Tezlanish (Dinamika)</span>
+                            <span id="statAccelVal" class="racing-font font-bold text-sky-400">72%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="statAccelBar" class="h-full bg-gradient-to-r from-sky-400 to-indigo-500 rounded-full transition-all duration-300" style="width: 72%"></div>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="flex justify-between text-xs mb-1">
+                            <span class="text-slate-300 font-semibold">Boshqaruv (Muvozanat)</span>
+                            <span id="statHandleVal" class="racing-font font-bold text-emerald-400">75%</span>
+                        </div>
+                        <div class="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+                            <div id="statHandleBar" class="h-full bg-gradient-to-r from-emerald-400 to-teal-500 rounded-full transition-all duration-300" style="width: 75%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- O'ng tomonda Mukofot va Poyga Boshlash Tugmasi -->
+            <div class="carbon-glass rounded-3xl p-4 sm:p-5 w-full md:w-80 border border-amber-400/25 flex flex-col justify-between gap-3">
+                <div class="flex items-center justify-between bg-slate-900/80 p-3 rounded-2xl border border-white/10">
+                    <div>
+                        <div class="text-[11px] text-slate-400 font-semibold">1-O'RIN MUKOFOTI</div>
+                        <div class="racing-font text-2xl font-black text-amber-400">+$200</div>
+                        <div class="text-[10px] text-slate-400">Haqiqiy emas, o'yin puli</div>
+                    </div>
+                    <div class="text-right text-xs text-slate-300 space-y-0.5">
+                        <div>⏱️ Vaqt: <strong class="text-white">40 soniya</strong></div>
+                        <div>🛵 Raqiblar: <strong class="text-white">5 skuter</strong></div>
+                        <div>🏁 Finish: <strong class="text-emerald-400">Shahar shohko'chasi</strong></div>
+                    </div>
+                </div>
+
+                <button id="actionBtn" class="w-full py-3.5 px-5 rounded-2xl racing-font font-extrabold text-sm sm:text-base tracking-wider uppercase btn-press flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-slate-950 shadow-xl glow-cta">
+                    <span>🏁 POYGANI BOSHLASH</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Pastki qism: 10 ta Skuterlar Karuseli -->
+        <div class="max-w-6xl w-full mx-auto pointer-events-auto">
+            <div class="flex items-center justify-between mb-1.5 px-1">
+                <span class="text-xs sm:text-sm font-bold text-slate-200 flex items-center gap-1.5">
+                    <span>🏪 AVTOSALON — 10 TA SKUTER MODELI</span>
+                </span>
+                <span class="text-[11px] text-slate-400 hidden sm:inline">3D ko'rinishni aylantirish uchun ekranni suring</span>
+            </div>
+
+            <div id="scooterCarousel" class="flex gap-2.5 overflow-x-auto pb-2 pt-1 px-0.5">
+                <!-- JS orqali 10 ta skuter kartochkasi joylanadi -->
+            </div>
+        </div>
+    </section>
+
+    <!-- 2. POYGA JARAYONI HUD (Realistik Spidometr, Vaqt, O'rin, Finish) -->
+    <section id="raceHud" class="fixed inset-0 z-20 pointer-events-none hidden flex-col justify-between p-3 sm:p-5">
+        
+        <!-- Yuqori Telemetry Paneli -->
+        <div class="max-w-6xl w-full mx-auto flex items-start justify-between gap-2 sm:gap-4">
+            <!-- O'rin ko'rsatkichi -->
+            <div class="carbon-glass px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-amber-400/30">
+                <div class="text-[10px] font-bold uppercase tracking-widest text-slate-400">O'rin</div>
+                <div class="flex items-baseline gap-1">
+                    <span id="hudRank" class="racing-font text-2xl sm:text-4xl font-black text-amber-400">1</span>
+                    <span class="racing-font text-sm sm:text-base font-bold text-slate-400">/5</span>
+                </div>
+            </div>
+
+            <!-- Markaziy Vaqt (40.0s) va Finish chizig'i progressi -->
+            <div class="carbon-glass px-4 py-2.5 sm:px-6 sm:py-3 rounded-2xl border border-white/15 flex-1 max-w-lg">
+                <div class="flex items-center justify-between mb-1.5">
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-sm sm:text-base">⏱️</span>
+                        <span class="text-xs font-bold text-slate-300 uppercase">Vaqt:</span>
+                        <span id="hudTimer" class="racing-font text-lg sm:text-2xl font-black text-white">40.0</span>
+                        <span class="text-xs font-bold text-slate-400">s</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <span class="text-xs font-bold text-emerald-400">🏁 FINISH:</span>
+                        <span id="hudProgressPct" class="racing-font text-sm sm:text-base font-extrabold text-white">0%</span>
+                    </div>
+                </div>
+                <div class="w-full h-2.5 bg-slate-900 rounded-full overflow-hidden border border-white/10 p-0.5">
+                    <div id="hudProgressFill" class="h-full bg-gradient-to-r from-sky-400 via-amber-400 to-emerald-400 rounded-full transition-all duration-75" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <!-- Realistik Raqamli + Shkalali Spidometr (50 km/soat) -->
+            <div class="carbon-glass px-4 py-2.5 sm:px-5 sm:py-3 rounded-2xl border border-sky-400/30 text-right min-w-[105px] sm:min-w-[135px]">
+                <div class="text-[10px] font-bold uppercase tracking-widest text-sky-300">Tezlik</div>
+                <div class="flex items-baseline justify-end gap-1">
+                    <span id="hudSpeed" class="racing-font text-2xl sm:text-4xl font-black text-white">0</span>
+                    <span class="text-[10px] sm:text-xs font-bold text-slate-400">KM/S</span>
+                </div>
+                <!-- Mini RPM/Speed bar -->
+                <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden mt-1">
+                    <div id="hudSpeedGauge" class="h-full bg-gradient-to-r from-emerald-400 via-amber-400 to-red-500 transition-all duration-75" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Start oldidan 3 - 2 - 1 - OLG'A! -->
+        <div id="countdownLayer" class="fixed inset-0 flex items-center justify-center pointer-events-none z-30">
+            <div id="countdownNumber" class="racing-font text-7xl sm:text-9xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-300 to-red-500 drop-shadow-[0_10px_30px_rgba(0,0,0,0.9)]">
+                3
+            </div>
+        </div>
+
+        <!-- Pastki Boshqaruv Tugmalari (Kompyuter klaviaturasi va Mobil sensor uchun) -->
+        <div class="max-w-6xl w-full mx-auto flex items-end justify-between pb-1 pointer-events-auto">
+            <!-- Chap va O'ng burilish -->
+            <div class="flex gap-3">
+                <button id="ctrlLeft" class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl carbon-glass border-2 border-white/20 active:border-amber-400 active:bg-amber-500/30 flex items-center justify-center text-2xl sm:text-3xl shadow-2xl">
+                    ◀
+                </button>
+                <button id="ctrlRight" class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl carbon-glass border-2 border-white/20 active:border-amber-400 active:bg-amber-500/30 flex items-center justify-center text-2xl sm:text-3xl shadow-2xl">
+                    ▶
+                </button>
+            </div>
+
+            <div class="hidden lg:block carbon-glass px-4 py-2 rounded-2xl text-xs text-slate-300 border border-white/10">
+                Klaviatura: <strong class="text-white">W / ⬆️</strong> Gaz • <strong class="text-white">S / ⬇️</strong> Tormoz • <strong class="text-white">A D / ⬅️ ➡️</strong> Rul
+            </div>
+
+            <!-- Tormoz va Gaz pedallari -->
+            <div class="flex gap-3">
+                <button id="ctrlBrake" class="w-16 h-16 sm:w-20 sm:h-20 rounded-3xl carbon-glass border-2 border-red-500/40 active:bg-red-600/40 flex flex-col items-center justify-center shadow-2xl">
+                    <span class="text-lg sm:text-xl">🛑</span>
+                    <span class="text-[10px] font-extrabold tracking-wider text-red-300 mt-0.5">TORMOZ</span>
+                </button>
+                <button id="ctrlGas" class="w-20 h-20 sm:w-24 sm:h-24 rounded-3xl bg-gradient-to-t from-emerald-600/90 to-emerald-400/90 border-2 border-emerald-200 active:scale-95 flex flex-col items-center justify-center shadow-2xl">
+                    <span class="text-2xl sm:text-3xl">⚡</span>
+                    <span class="racing-font text-xs font-black tracking-wider text-slate-950 mt-0.5">GAZ</span>
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. POYGA YAKUNI VA PODIUM NATIJALARI -->
+    <section id="resultsOverlay" class="fixed inset-0 z-40 hidden items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="carbon-glass max-w-md w-full rounded-3xl p-5 sm:p-6 border border-amber-400/35 text-center shadow-2xl">
+            <div id="resTrophy" class="text-5xl sm:text-6xl mb-2">🏆</div>
+            <h2 id="resTitle" class="racing-font text-2xl sm:text-3xl font-black text-white tracking-wide">1-O'RIN! G'ALABA!</h2>
+            <p id="resSubtitle" class="text-xs sm:text-sm text-slate-300 mt-1">Marraga birinchi bo'lib yetib keldingiz!</p>
+
+            <!-- Mukofot bloki -->
+            <div class="my-4 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-500/20 via-amber-500/20 to-emerald-500/20 border border-amber-400/40">
+                <div class="text-[11px] font-bold uppercase tracking-widest text-amber-300">Mukofot (O'yin Puli)</div>
+                <div id="resPrize" class="racing-font text-3xl sm:text-4xl font-black text-emerald-400 mt-0.5">+$200</div>
+                <div class="text-[10px] text-slate-300 mt-0.5">Haqiqiy pul emas — skuterlarni ochish uchun ishlatiladi</div>
+            </div>
+
+            <!-- 5 ta Skuter Natijalari Jadvali -->
+            <div class="bg-slate-950/75 rounded-2xl p-3 border border-white/10 text-left mb-5">
+                <div class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2 px-1">Poyga Jadvali (5 Skuter)</div>
+                <div id="resLeaderboard" class="space-y-1.5">
+                    <!-- JS tomonidan to'ldiriladi -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <button id="btnGarage" class="py-3 px-4 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm btn-press border border-white/15">
+                    🏪 Skuterlar Do'koni
+                </button>
+                <button id="btnRestart" class="py-3 px-4 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-slate-950 racing-font font-extrabold text-xs sm:text-sm btn-press shadow-lg">
+                    🔄 Yana Poyga
+                </button>
+            </div>
+        </div>
+    </section>
+
+    <script>
+        // =========================================================================
+        // 1. 10 TA REALISTIK SKUTER MA'LUMOTLARI VA O'YIN HOLATI
+        // =========================================================================
+        const SCOOTER_CATALOG = [
+            {
+                id: 0,
+                name: "Urban Commuter 50",
+                tier: "Boshlang'ich",
+                price: 0,
+                maxSpeed: 45.5,
+                accel: 19,
+                handling: 1.0,
+                bodyHex: 0x0284c7,
+                trimHex: 0xe2e8f0,
+                jacketHex: 0xf97316,
+                helmetHex: 0xffffff,
+                desc: "Shahar ko'chalari uchun qulay va tejamkor boshlang'ich skuter."
+            },
+            {
+                id: 1,
+                name: "Vespa Classic 125",
+                tier: "Retro Klassik",
+                price: 200,
+                maxSpeed: 46.5,
+                accel: 20.5,
+                handling: 1.05,
+                bodyHex: 0x16a34a,
+                trimHex: 0xfef08a,
+                jacketHex: 0x1e293b,
+                helmetHex: 0xfacc15,
+                desc: "Italiya uslubidagi nafis va chaqqon shahar skuteri."
+            },
+            {
+                id: 2,
+                name: "City Sport S",
+                tier: "Sport",
+                price: 400,
+                maxSpeed: 47.2,
+                accel: 22,
+                handling: 1.08,
+                bodyHex: 0xeab308,
+                trimHex: 0x0f172a,
+                jacketHex: 0x0f172a,
+                helmetHex: 0xeab308,
+                desc: "Tezkor start va yorqin sport dizayniga ega model."
+            },
+            {
+                id: 3,
+                name: "AeroX 155",
+                tier: "Sport+",
+                price: 600,
+                maxSpeed: 47.8,
+                accel: 23.5,
+                handling: 1.12,
+                bodyHex: 0xdc2626,
+                trimHex: 0x1e293b,
+                jacketHex: 0xffffff,
+                helmetHex: 0xdc2626,
+                desc: "Aerodinamik korpus va kuchaytirilgan dvigatel."
+            },
+            {
+                id: 4,
+                name: "NMAX Touring",
+                tier: "Komfort",
+                price: 850,
+                maxSpeed: 48.3,
+                accel: 24.5,
+                handling: 1.15,
+                bodyHex: 0x7c3aed,
+                trimHex: 0x38bdf8,
+                jacketHex: 0x38bdf8,
+                helmetHex: 0xf8fafc,
+                desc: "Keng g'ildiraklar va yuqori barqarorlikka ega skuter."
+            },
+            {
+                id: 5,
+                name: "PCX Hybrid",
+                tier: "Gibrid Turbo",
+                price: 1100,
+                maxSpeed: 48.8,
+                accel: 26,
+                handling: 1.18,
+                bodyHex: 0x0891b2,
+                trimHex: 0xf43f5e,
+                jacketHex: 0xf43f5e,
+                helmetHex: 0x0f172a,
+                desc: "Elektr yordamchi motori bilan tezlikni bir zumda oladi."
+            },
+            {
+                id: 6,
+                name: "Forza GT 300",
+                tier: "Grand Tourer",
+                price: 1400,
+                maxSpeed: 49.2,
+                accel: 27.5,
+                handling: 1.22,
+                bodyHex: 0xea580c,
+                trimHex: 0x090d16,
+                jacketHex: 0x0f172a,
+                helmetHex: 0xfb923c,
+                desc: "Katta shohko'chalar uchun mo'ljallangan qudratli GT skuter."
+            },
+            {
+                id: 7,
+                name: "TMAX Tech",
+                tier: "Pro Racing",
+                price: 1800,
+                maxSpeed: 49.6,
+                accel: 29,
+                handling: 1.25,
+                bodyHex: 0xdb2777,
+                trimHex: 0xfef08a,
+                jacketHex: 0xfef08a,
+                helmetHex: 0xffffff,
+                desc: "Professional poygachilar tanlovi — o'ta keskin burilishlar."
+            },
+            {
+                id: 8,
+                name: "BMW C400 X",
+                tier: "Premium Elita",
+                price: 2200,
+                maxSpeed: 49.9,
+                accel: 30.5,
+                handling: 1.28,
+                bodyHex: 0x1e293b,
+                trimHex: 0xef4444,
+                jacketHex: 0xef4444,
+                helmetHex: 0x090d16,
+                desc: "Nemis muhandisligi va karbon korpusli super skuter."
+            },
+            {
+                id: 9,
+                name: "Cyber Hyper-Scooter X",
+                tier: "Afsonaviy 50 KM/S",
+                price: 3000,
+                maxSpeed: 50.0,
+                accel: 33,
+                handling: 1.35,
+                bodyHex: 0xf59e0b,
+                trimHex: 0x38bdf8,
+                jacketHex: 0x6d28d9,
+                helmetHex: 0xfef08a,
+                desc: "Eng yuqori 50 km/soat tezlik va chaqmoqdek tezlanish!"
+            }
+        ];
+
+        const AI_DRIVERS = [
+            { name: "Jasur", bodyHex: 0xe11d48, trimHex: 0xffffff, jacketHex: 0x0284c7, helmetHex: 0xffffff },
+            { name: "Madina", bodyHex: 0x9333ea, trimHex: 0xfde047, jacketHex: 0xfacc15, helmetHex: 0xf472b6 },
+            { name: "Sardor", bodyHex: 0x059669, trimHex: 0x0f172a, jacketHex: 0xf97316, helmetHex: 0x1e293b },
+            { name: "Aziza", bodyHex: 0x2563eb, trimHex: 0xfef08a, jacketHex: 0xf43f5e, helmetHex: 0xfef08a }
+        ];
+
+        let saveState = {
+            money: 0,
+            unlocked: [0],
+            selected: 0
+        };
+
+        function loadGameData() {
+            try {
+                const raw = localStorage.getItem("skuterla_poygasi_3d_v1");
+                if (raw) {
+                    const data = JSON.parse(raw);
+                    if (typeof data.money === "number") saveState.money = data.money;
+                    if (Array.isArray(data.unlocked) && data.unlocked.length) saveState.unlocked = data.unlocked;
+                    if (typeof data.selected === "number") saveState.selected = data.selected;
+                }
+            } catch (e) {}
+        }
+
+        function saveGameData() {
+            try {
+                localStorage.setItem("skuterla_poygasi_3d_v1", JSON.stringify(saveState));
+            } catch (e) {}
+        }
+
+        // =========================================================================
+        // 2. WEB AUDIO OVOZ SINTEZATORI (Realistik dvigatel ovozi va effektlar)
+        // =========================================================================
+        let audioCtx = null;
+        let soundMuted = false;
+        let motorOsc = null;
+        let motorGain = null;
+        let motorFilter = null;
+
+        function ensureAudio() {
+            if (!audioCtx) {
+                const AC = window.AudioContext || window.webkitAudioContext;
+                audioCtx = new AC();
+            }
+            if (audioCtx.state === "suspended") audioCtx.resume();
+        }
+
+        function playBeepSound(freq, dur = 0.18, type = "sine", vol = 0.15, delay = 0) {
+            if (soundMuted) return;
+            try {
+                ensureAudio();
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = type;
+                osc.frequency.setValueAtTime(freq, audioCtx.currentTime + delay);
+                gain.gain.setValueAtTime(vol, audioCtx.currentTime + delay);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + delay + dur);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start(audioCtx.currentTime + delay);
+                osc.stop(audioCtx.currentTime + delay + dur);
+            } catch (e) {}
+        }
+
+        function startMotorAudio() {
+            if (soundMuted) return;
+            try {
+                ensureAudio();
+                stopMotorAudio();
+                motorOsc = audioCtx.createOscillator();
+                motorFilter = audioCtx.createBiquadFilter();
+                motorGain = audioCtx.createGain();
+
+                motorOsc.type = "sawtooth";
+                motorOsc.frequency.setValueAtTime(52, audioCtx.currentTime);
+
+                motorFilter.type = "lowpass";
+                motorFilter.frequency.setValueAtTime(220, audioCtx.currentTime);
+
+                motorGain.gain.setValueAtTime(0.04, audioCtx.currentTime);
+
+                motorOsc.connect(motorFilter);
+                motorFilter.connect(motorGain);
+                motorGain.connect(audioCtx.destination);
+                motorOsc.start();
+            } catch (e) {}
+        }
+
+        function updateMotorAudio(speedKmh) {
+            if (!motorOsc || !motorGain || soundMuted) return;
+            try {
+                const ratio = Math.min(1, speedKmh / 50);
+                motorOsc.frequency.setTargetAtTime(48 + ratio * 115, audioCtx.currentTime, 0.05);
+                motorFilter.frequency.setTargetAtTime(200 + ratio * 480, audioCtx.currentTime, 0.05);
+                motorGain.gain.setTargetAtTime(0.035 + ratio * 0.055, audioCtx.currentTime, 0.05);
+            } catch (e) {}
+        }
+
+        function stopMotorAudio() {
+            if (motorOsc) {
+                try {
+                    motorOsc.stop();
+                    motorOsc.disconnect();
+                } catch (e) {}
+                motorOsc = null;
+            }
+        }
+
+        // =========================================================================
+        // 3. PROSEDURAL YUQORI SIFATLI 3D TEKSTURALAR (Asfalt, Binolar, Finish)
+        // =========================================================================
+        function createAsphaltTexture() {
+            const c = document.createElement("canvas");
+            c.width = 512;
+            c.height = 512;
+            const ctx = c.getContext("2d");
+
+            // Asfalt asosi
+            ctx.fillStyle = "#1e242b";
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Realistik asfalt donadorligi (shovqin)
+            for (let i = 0; i < 14000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const shade = 22 + Math.floor(Math.random() * 28);
+                ctx.fillStyle = `rgb(${shade},${shade + 2},${shade + 5})`;
+                ctx.fillRect(x, y, 2, 2);
+            }
+
+            // Chetki sariq/oq chiziqlar
+            ctx.fillStyle = "#f59e0b";
+            ctx.fillRect(14, 0, 8, 512);
+            ctx.fillRect(490, 0, 8, 512);
+
+            // 4 ta yo'lakni ajratuvchi oq uzuq chiziqlar
+            ctx.fillStyle = "rgba(255, 255, 255, 0.78)";
+            [134, 256, 378].forEach((lx) => {
+                for (let y = 20; y < 512; y += 128) {
+                    ctx.fillRect(lx - 4, y, 8, 68);
+                }
+            });
+
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(1, 55);
+            tex.anisotropy = 8;
+            return tex;
+        }
+
+        function createSidewalkTexture() {
+            const c = document.createElement("canvas");
+            c.width = 256;
+            c.height = 256;
+            const ctx = c.getContext("2d");
+            ctx.fillStyle = "#94a3b8";
+            ctx.fillRect(0, 0, 256, 256);
+
+            ctx.strokeStyle = "#64748b";
+            ctx.lineWidth = 3;
+            for (let x = 0; x <= 256; x += 64) {
+                ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 256); ctx.stroke();
+            }
+            for (let y = 0; y <= 256; y += 64) {
+                ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(256, y); ctx.stroke();
+            }
+
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(4, 140);
+            return tex;
+        }
+
+        function createBuildingFacadeTexture(baseColor, glassColor) {
+            const c = document.createElement("canvas");
+            c.width = 256;
+            c.height = 512;
+            const ctx = c.getContext("2d");
+
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 256, 512);
+
+            // Zamonaviy shisha derazalar
+            const cols = 4;
+            const rows = 10;
+            const padX = 16;
+            const padY = 14;
+            const w = (256 - padX * (cols + 1)) / cols;
+            const h = (512 - padY * (rows + 1)) / rows;
+
+            for (let r = 0; r < rows; r++) {
+                for (let col = 0; col < cols; col++) {
+                    const wx = padX + col * (w + padX);
+                    const wy = padY + r * (h + padY);
+                    const lit = Math.random() > 0.35;
+                    ctx.fillStyle = lit ? glassColor : "#1e293b";
+                    ctx.fillRect(wx, wy, w, h);
+
+                    // Oyna yaltirashi (reflection)
+                    ctx.fillStyle = "rgba(255,255,255,0.22)";
+                    ctx.beginPath();
+                    ctx.moveTo(wx, wy);
+                    ctx.lineTo(wx + w * 0.6, wy);
+                    ctx.lineTo(wx, wy + h * 0.6);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(c);
+            tex.anisotropy = 4;
+            return tex;
+        }
+
+        function createFinishBannerTexture() {
+            const c = document.createElement("canvas");
+            c.width = 1024;
+            c.height = 256;
+            const ctx = c.getContext("2d");
+
+            // Qora-oltin fon
+            const grad = ctx.createLinearGradient(0, 0, 1024, 0);
+            grad.addColorStop(0, "#090d16");
+            grad.addColorStop(0.5, "#1e293b");
+            grad.addColorStop(1, "#090d16");
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 1024, 256);
+
+            // Shaxmat bayroq naqshlari (chap va o'ngda)
+            const sq = 32;
+            for (let row = 0; row < 8; row++) {
+                for (let col = 0; col < 5; col++) {
+                    ctx.fillStyle = (row + col) % 2 === 0 ? "#ffffff" : "#000000";
+                    ctx.fillRect(col * sq, row * sq, sq, sq);
+                    ctx.fillRect(1024 - (col + 1) * sq, row * sq, sq, sq);
+                }
+            }
+
+            // Oltin hoshiya
+            ctx.strokeStyle = "#f59e0b";
+            ctx.lineWidth = 10;
+            ctx.strokeRect(5, 5, 1014, 246);
+
+            // FINISH yozuvi
+            ctx.fillStyle = "#fbbf24";
+            ctx.font = "900 110px Orbitron, sans-serif";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText("FINISH", 512, 132);
+
+            return new THREE.CanvasTexture(c);
+        }
+
+        // =========================================================================
+        // 4. THREE.JS 3D SAHNA, YORUG'LIK, 3D SKUTER VA ODAMLAR YARATISH
+        // =========================================================================
+        const container = document.getElementById("canvasContainer");
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x7dd3fc);
+        scene.fog = new THREE.FogExp2(0x93c5fd, 0.0055);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.12;
+        container.appendChild(renderer.domElement);
+
+        // Yorug'lik tizimi (Quyosh + Osmon nuri)
+        const hemiLight = new THREE.HemisphereLight(0xe0f2fe, 0x334155, 0.85);
+        scene.add(hemiLight);
+
+        const sunLight = new THREE.DirectionalLight(0xfffbeb, 1.35);
+        sunLight.position.set(45, 85, -35);
+        sunLight.castShadow = true;
+        sunLight.shadow.mapSize.width = 2048;
+        sunLight.shadow.mapSize.height = 2048;
+        sunLight.shadow.camera.near = 10;
+        sunLight.shadow.camera.far = 250;
+        const d = 45;
+        sunLight.shadow.camera.left = -d;
+        sunLight.shadow.camera.right = d;
+        sunLight.shadow.camera.top = d;
+        sunLight.shadow.camera.bottom = -d;
+        scene.add(sunLight);
+        scene.add(sunLight.target);
+
+        // Quyosh diski osmonda
+        const sunMesh = new THREE.Mesh(
+            new THREE.SphereGeometry(14, 24, 24),
+            new THREE.MeshBasicMaterial({ color: 0xfef08a })
+        );
+        sunMesh.position.set(110, 145, -320);
+        scene.add(sunMesh);
+
+        // =========================================================================
+        // REALISTIK 3D SKUTER VA UNGA MINGAN ODAM MODELI (Builder)
+        // =========================================================================
+        function buildRealisticScooterWithRider(spec) {
+            const root = new THREE.Group();
+            const leanGroup = new THREE.Group(); // Burilishda egiladigan qism
+            root.add(leanGroup);
+
+            const bodyMat = new THREE.MeshStandardMaterial({
+                color: spec.bodyHex,
+                metalness: 0.55,
+                roughness: 0.25
+            });
+            const trimMat = new THREE.MeshStandardMaterial({
+                color: spec.trimHex,
+                metalness: 0.4,
+                roughness: 0.4
+            });
+            const darkMetalMat = new THREE.MeshStandardMaterial({
+                color: 0x1e293b,
+                metalness: 0.7,
+                roughness: 0.35
+            });
+            const tireMat = new THREE.MeshStandardMaterial({
+                color: 0x0f172a,
+                roughness: 0.85
+            });
+            const chromeMat = new THREE.MeshStandardMaterial({
+                color: 0xe2e8f0,
+                metalness: 0.9,
+                roughness: 0.15
+            });
+
+            // 1. G'ILDIRAKLAR (Old va Orqa)
+            function createWheel() {
+                const wGroup = new THREE.Group();
+                const tire = new THREE.Mesh(new THREE.TorusGeometry(0.28, 0.09, 14, 28), tireMat);
+                tire.rotation.y = Math.PI / 2;
+                tire.castShadow = true;
+                wGroup.add(tire);
+
+                const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.2, 0.2, 0.12, 16), chromeMat);
+                rim.rotation.z = Math.PI / 2;
+                wGroup.add(rim);
+
+                // Spitsalar (aylanish ko'rinishi uchun)
+                const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.36, 0.04), darkMetalMat);
+                wGroup.add(spoke);
+                return wGroup;
+            }
+
+            const frontWheel = createWheel();
+            frontWheel.position.set(0, 0.36, -0.78);
+            leanGroup.add(frontWheel);
+
+            const rearWheel = createWheel();
+            rearWheel.position.set(0, 0.36, 0.72);
+            leanGroup.add(rearWheel);
+
+            // 2. SKUTER KORPUSI VA POLI
+            // Pastki oyoq qo'ygich platforma
+            const deck = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.1, 0.85), darkMetalMat);
+            deck.position.set(0, 0.36, -0.05);
+            deck.castShadow = true;
+            leanGroup.add(deck);
+
+            // Orqa kuzov (aerodinamik korpus)
+            const rearBody = new THREE.Mesh(new THREE.BoxGeometry(0.52, 0.42, 0.88), bodyMat);
+            rearBody.position.set(0, 0.62, 0.48);
+            rearBody.castShadow = true;
+            leanGroup.add(rearBody);
+
+            // Yon sport chiziqlari
+            const sideTrimL = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.1, 0.78), trimMat);
+            sideTrimL.position.set(0, 0.64, 0.46);
+            leanGroup.add(sideTrimL);
+
+            // O'rindiq (Charm o'rindiq)
+            const seatMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.7 });
+            const seat = new THREE.Mesh(new THREE.BoxGeometry(0.44, 0.14, 0.76), seatMat);
+            seat.position.set(0, 0.88, 0.44);
+            seat.castShadow = true;
+            leanGroup.add(seat);
+
+            // Old qalqon (Shield)
+            const frontShield = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.72, 0.24), bodyMat);
+            frontShield.position.set(0, 0.76, -0.58);
+            frontShield.rotation.x = -0.22;
+            frontShield.castShadow = true;
+            leanGroup.add(frontShield);
+
+            // Old fara (Yorqin LED chiroq)
+            const headlight = new THREE.Mesh(
+                new THREE.BoxGeometry(0.24, 0.12, 0.06),
+                new THREE.MeshBasicMaterial({ color: 0xfef9c3 })
+            );
+            headlight.position.set(0, 0.88, -0.71);
+            leanGroup.add(headlight);
+
+            // Orqa stop-chiroq (Tormoz bosilganda yorqin qizil yonadi)
+            const brakeLightMat = new THREE.MeshStandardMaterial({
+                color: 0xdc2626,
+                emissive: 0x991b1b,
+                emissiveIntensity: 0.8
+            });
+            const brakeLight = new THREE.Mesh(new THREE.BoxGeometry(0.28, 0.1, 0.06), brakeLightMat);
+            brakeLight.position.set(0, 0.78, 0.93);
+            leanGroup.add(brakeLight);
+
+            // Glushitel (Egzoz trubasi)
+            const exhaust = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.065, 0.55, 12), chromeMat);
+            exhaust.rotation.x = Math.PI / 2 - 0.15;
+            exhaust.position.set(0.3, 0.42, 0.65);
+            leanGroup.add(exhaust);
+
+            // Rul va Ko'zgular
+            const handlebar = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.76, 12), chromeMat);
+            handlebar.rotation.z = Math.PI / 2;
+            handlebar.position.set(0, 1.15, -0.52);
+            leanGroup.add(handlebar);
+
+            [-0.36, 0.36].forEach((sideX) => {
+                // Tutqich (Grip)
+                const grip = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.14, 10), darkMetalMat);
+                grip.rotation.z = Math.PI / 2;
+                grip.position.set(sideX, 1.15, -0.52);
+                leanGroup.add(grip);
+
+                // Ko'zgu tayoqchasi va oynasi
+                const stalk = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.2, 8), darkMetalMat);
+                stalk.position.set(sideX * 0.9, 1.24, -0.52);
+                stalk.rotation.z = sideX > 0 ? -0.35 : 0.35;
+                leanGroup.add(stalk);
+
+                const mirror = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.08, 0.03), chromeMat);
+                mirror.position.set(sideX * 1.05, 1.33, -0.52);
+                leanGroup.add(mirror);
+            });
+
+            // 3. SKUTERGA MINGAN REALISTIK 3D ODAM (HAYDOVCHI)
+            const riderGroup = new THREE.Group();
+            leanGroup.add(riderGroup);
+
+            const jacketMat = new THREE.MeshStandardMaterial({ color: spec.jacketHex, roughness: 0.55 });
+            const jeansMat = new THREE.MeshStandardMaterial({ color: 0x1e3a8a, roughness: 0.8 });
+            const shoeMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, roughness: 0.6 });
+            const helmetMat = new THREE.MeshStandardMaterial({
+                color: spec.helmetHex,
+                metalness: 0.5,
+                roughness: 0.2
+            });
+            const visorMat = new THREE.MeshStandardMaterial({
+                color: 0x0284c7,
+                metalness: 0.9,
+                roughness: 0.1
+            });
+
+            // Haydovchi tanasi (Kurtka)
+            const torso = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.56, 0.26), jacketMat);
+            torso.position.set(0, 1.22, 0.24);
+            torso.rotation.x = 0.22; // Oldinga biroz engashgan sport holati
+            torso.castShadow = true;
+            riderGroup.add(torso);
+
+            // Oyoqlar (Son va boldirlar — oyoq qo'ygichda turibdi)
+            [-0.16, 0.16].forEach((lx) => {
+                // Son
+                const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.065, 0.42, 10), jeansMat);
+                thigh.position.set(lx, 0.9, 0.04);
+                thigh.rotation.x = Math.PI / 2 - 0.15;
+                thigh.castShadow = true;
+                riderGroup.add(thigh);
+
+                // Boldir
+                const shin = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.05, 0.44, 10), jeansMat);
+                shin.position.set(lx, 0.64, -0.18);
+                shin.rotation.x = -0.15;
+                shin.castShadow = true;
+                riderGroup.add(shin);
+
+                // Krossovka (Oyoq kiyim)
+                const shoe = new THREE.Mesh(new THREE.BoxGeometry(0.11, 0.09, 0.22), shoeMat);
+                shoe.position.set(lx, 0.44, -0.22);
+                riderGroup.add(shoe);
+            });
+
+            // Qo'llar (Rulni ushlab turgan holatda)
+            [-0.26, 0.26].forEach((ax) => {
+                const arm = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.048, 0.58, 10), jacketMat);
+                arm.position.set(ax * 1.12, 1.28, -0.14);
+                arm.rotation.x = Math.PI / 2 - 0.35;
+                arm.rotation.z = ax > 0 ? 0.18 : -0.18;
+                arm.castShadow = true;
+                riderGroup.add(arm);
+
+                // Qo'lqop
+                const glove = new THREE.Mesh(new THREE.SphereGeometry(0.055, 10, 10), darkMetalMat);
+                glove.position.set(ax * 1.35, 1.15, -0.5);
+                riderGroup.add(glove);
+            });
+
+            // Bosh va Himoya Shlemi
+            const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.18, 20, 20), helmetMat);
+            helmet.position.set(0, 1.64, 0.15);
+            helmet.castShadow = true;
+            riderGroup.add(helmet);
+
+            // Shlem old oynasi (Visor)
+            const visor = new THREE.Mesh(new THREE.CylinderGeometry(0.185, 0.185, 0.11, 16, 1, true, Math.PI * 0.65, Math.PI * 0.7), visorMat);
+            visor.position.set(0, 1.64, 0.15);
+            riderGroup.add(visor);
+
+            return {
+                root,
+                leanGroup,
+                frontWheel,
+                rearWheel,
+                brakeLightMat,
+                exhaustPos: new THREE.Vector3(0.3, 0.42, 0.9)
+            };
+        }
+
+        // =========================================================================
+        // 5. SHAHAR MUHITI (YO'L, BINOLAR, DARAXTLAR, PIYODA ODAMLAR, FINISH)
+        // =========================================================================
+        const TRACK_DISTANCE = 485; // ~36-39 soniyada 50 km/soat tezlik bilan finishga yetish masofasi
+        const RACE_SECONDS = 40.0;
+
+        // Keng 4-polosali shahar shohko'chasi
+        const roadWidth = 13.5;
+        const roadLength = TRACK_DISTANCE + 260;
+        const roadMesh = new THREE.Mesh(
+            new THREE.PlaneGeometry(roadWidth, roadLength),
+            new THREE.MeshStandardMaterial({
+                map: createAsphaltTexture(),
+                roughness: 0.78,
+                metalness: 0.08
+            })
+        );
+        roadMesh.rotation.x = -Math.PI / 2;
+        roadMesh.position.set(0, 0, -roadLength / 2 + 40);
+        roadMesh.receiveShadow = true;
+        scene.add(roadMesh);
+
+        // Chap va o'ng piyodalar yo'lagi (Trotoar)
+        const sidewalkTex = createSidewalkTexture();
+        const sidewalkMat = new THREE.MeshStandardMaterial({ map: sidewalkTex, roughness: 0.85 });
+        [-1, 1].forEach((side) => {
+            const sw = new THREE.Mesh(new THREE.BoxGeometry(7, 0.24, roadLength), sidewalkMat);
+            sw.position.set(side * (roadWidth / 2 + 3.5), 0.12, -roadLength / 2 + 40);
+            sw.receiveShadow = true;
+            scene.add(sw);
+        });
+
+        // Shahar tashqarisidagi yashil maydon (pol)
+        const groundPlane = new THREE.Mesh(
+            new THREE.PlaneGeometry(500, roadLength + 200),
+            new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.95 })
+        );
+        groundPlane.rotation.x = -Math.PI / 2;
+        groundPlane.position.set(0, -0.02, -roadLength / 2 + 40);
+        scene.add(groundPlane);
+
+        // Shahar binolari, daraxtlar va yoritgich ustunlari
+        const buildingPalettes = [
+            ["#334155", "#bae6fd"],
+            ["#1e3a8a", "#fef08a"],
+            ["#475569", "#e0f2fe"],
+            ["#7c2d12", "#fde68a"],
+            ["#0f766e", "#ccfbf1"],
+            ["#312e81", "#ddd6fe"]
+        ];
+        const facadeTextures = buildingPalettes.map((p) => createBuildingFacadeTexture(p[0], p[1]));
+
+        const trunkMat = new THREE.MeshStandardMaterial({ color: 0x78350f, roughness: 0.9 });
+        const leavesMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+        const poleMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7, roughness: 0.3 });
+        const lampBulbMat = new THREE.MeshBasicMaterial({ color: 0xfef9c3 });
+
+        for (let z = 20; z > -(TRACK_DISTANCE + 160); z -= 18) {
+            [-1, 1].forEach((side) => {
+                // Osmono'par va shahar binolari
+                const bw = 9 + Math.random() * 5;
+                const bh = 16 + Math.random() * 28;
+                const bd = 13 + Math.random() * 4;
+                const tex = facadeTextures[Math.floor(Math.random() * facadeTextures.length)];
+                const bMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(bw, bh, bd),
+                    new THREE.MeshStandardMaterial({ map: tex, roughness: 0.4, metalness: 0.2 })
+                );
+                bMesh.position.set(side * (roadWidth / 2 + 7 + bw / 2 + 0.5), bh / 2, z);
+                bMesh.castShadow = true;
+                bMesh.receiveShadow = true;
+                scene.add(bMesh);
+
+                // Yo'lak chetidagi daraxtlar
+                const treeGroup = new THREE.Group();
+                const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.25, 2.4, 8), trunkMat);
+                trunk.position.y = 1.2;
+                trunk.castShadow = true;
+                treeGroup.add(trunk);
+
+                const crown = new THREE.Mesh(new THREE.DodecahedronGeometry(1.45, 1), leavesMat);
+                crown.position.y = 3.1;
+                crown.castShadow = true;
+                treeGroup.add(crown);
+
+                treeGroup.position.set(side * (roadWidth / 2 + 1.4), 0.24, z + 5);
+                scene.add(treeGroup);
+
+                // Ko'cha chirog'i ustuni
+                if (Math.abs(z) % 36 < 18) {
+                    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 6.5, 8), poleMat);
+                    pole.position.set(side * (roadWidth / 2 + 0.6), 3.45, z - 4);
+                    scene.add(pole);
+
+                    const arm = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.08, 0.08), poleMat);
+                    arm.position.set(side * (roadWidth / 2 - 0.1), 6.65, z - 4);
+                    scene.add(arm);
+
+                    const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.08, 0.2), lampBulbMat);
+                    bulb.position.set(side * (roadWidth / 2 - 0.7), 6.58, z - 4);
+                    scene.add(bulb);
+                }
+            });
+        }
+
+        // FINISH ARKASI VA CHIZIG'I (3D Gantry Banner)
+        const finishZ = -TRACK_DISTANCE;
+        const finishGroup = new THREE.Group();
+        finishGroup.position.set(0, 0, finishZ);
+
+        // Ikki yon metall ustunlar
+        const gantryMat = new THREE.MeshStandardMaterial({ color: 0xf59e0b, metalness: 0.7, roughness: 0.25 });
+        [-roadWidth / 2 - 0.4, roadWidth / 2 + 0.4].forEach((px) => {
+            const pillar = new THREE.Mesh(new THREE.CylinderGeometry(0.32, 0.38, 7.2, 16), gantryMat);
+            pillar.position.set(px, 3.6, 0);
+            pillar.castShadow = true;
+            finishGroup.add(pillar);
+        });
+
+        // Yuqori FINISH banneri
+        const bannerMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(roadWidth + 1.6, 1.85, 0.45),
+            new THREE.MeshBasicMaterial({ map: createFinishBannerTexture() })
+        );
+        bannerMesh.position.set(0, 6.4, 0);
+        finishGroup.add(bannerMesh);
+
+        // Yerdagi shaxmat finish chizig'i
+        const finishStrip = new THREE.Mesh(
+            new THREE.PlaneGeometry(roadWidth, 2.2),
+            new THREE.MeshBasicMaterial({ map: createFinishBannerTexture() })
+        );
+        finishStrip.rotation.x = -Math.PI / 2;
+        finishStrip.position.set(0, 0.03, 0);
+        finishGroup.add(finishStrip);
+        scene.add(finishGroup);
+
+        // =========================================================================
+        // 6. YO'LAKLARDAGI REALISTIK 3D PIYODA ODAMLAR (Yuradigan va Olqishlaydigan)
+        // =========================================================================
+        const pedestrianList = [];
+        const pedShirts = [0xf43f5e, 0x38bdf8, 0xfacc15, 0x4ade80, 0xc084fc, 0xfb923c, 0xffffff, 0xec4899];
+        const skinMat = new THREE.MeshStandardMaterial({ color: 0xfed7aa, roughness: 0.6 });
+
+        function spawnPedestrians() {
+            const pGroup = new THREE.Group();
+            const shirtColor = pedShirts[Math.floor(Math.random() * pedShirts.length)];
+            const shirtMat = new THREE.MeshStandardMaterial({ color: shirtColor, roughness: 0.7 });
+            const pantsMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.8 });
+
+            // Tana
+            const body = new THREE.Mesh(new THREE.BoxGeometry(0.42, 0.65, 0.24), shirtMat);
+            body.position.y = 1.05;
+            body.castShadow = true;
+            pGroup.add(body);
+
+            // Bosh
+            const head = new THREE.Mesh(new THREE.SphereGeometry(0.16, 14, 14), skinMat);
+            head.position.y = 1.56;
+            head.castShadow = true;
+            pGroup.add(head);
+
+            // Oyoqlar
+            const legL = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.68, 0.16), pantsMat);
+            legL.position.set(-0.11, 0.36, 0);
+            legL.castShadow = true;
+            pGroup.add(legL);
+
+            const legR = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.68, 0.16), pantsMat);
+            legR.position.set(0.11, 0.36, 0);
+            legR.castShadow = true;
+            pGroup.add(legR);
+
+            // Qo'llar
+            const armL = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.56, 0.12), shirtMat);
+            armL.position.set(-0.29, 1.06, 0);
+            pGroup.add(armL);
+
+            const armR = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.56, 0.12), shirtMat);
+            armR.position.set(0.29, 1.06, 0);
+            pGroup.add(armR);
+
+            return { group: pGroup, legL, legR, armL, armR };
+        }
+
+        // Yo'laklar bo'ylab 65 nafar piyoda odamlarni joylashtirish
+        for (let i = 0; i < 65; i++) {
+            const side = i % 2 === 0 ? -1 : 1;
+            const zPos = 10 - (i * ((TRACK_DISTANCE + 40) / 65)) + (Math.random() * 6 - 3);
+            const xOffset = side * (roadWidth / 2 + 2.2 + Math.random() * 2.5);
+            const ped = spawnPedestrians();
+            ped.group.position.set(xOffset, 0.24, zPos);
+
+            const isCheering = Math.random() > 0.45;
+            if (isCheering) {
+                // Poygachilarga qarab turadi
+                ped.group.rotation.y = side === -1 ? Math.PI / 2 : -Math.PI / 2;
+            } else {
+                ped.group.rotation.y = Math.random() > 0.5 ? 0 : Math.PI;
+            }
+
+            scene.add(ped.group);
+            pedestrianList.push({
+                ...ped,
+                walkDir: ped.group.rotation.y === 0 ? -1 : 1,
+                speed: isCheering ? 0 : 1.1 + Math.random() * 0.8,
+                phase: Math.random() * Math.PI * 2,
+                cheering: isCheering
+            });
+        }
+
+        // =========================================================================
+        // 7. TUTUN ZARRALARI (Exhaust Smoke) TIZIMI
+        // =========================================================================
+        const smokeParticles = [];
+        const smokeGeo = new THREE.SphereGeometry(0.11, 8, 8);
+        const smokeMat = new THREE.MeshBasicMaterial({
+            color: 0xe2e8f0,
+            transparent: true,
+            opacity: 0.45
+        });
+
+        function spawnSmoke(worldPos) {
+            const mesh = new THREE.Mesh(smokeGeo, smokeMat.clone());
+            mesh.position.copy(worldPos);
+            mesh.position.x += (Math.random() - 0.5) * 0.08;
+            mesh.position.y += (Math.random() - 0.5) * 0.08;
+            scene.add(mesh);
+            smokeParticles.push({
+                mesh,
+                life: 0.45,
+                maxLife: 0.45,
+                vy: 0.5 + Math.random() * 0.4
+            });
+        }
+
+        // =========================================================================
+        // 8. O'YIN HOLATLARI (SHOWROOM / POYGA / NATIJALAR)
+        // =========================================================================
+        let mode = "GARAGE"; // GARAGE, COUNTDOWN, RACING, FINISHED
+        let previewId = 0;
+        let showroomGroup = new THREE.Group();
+        scene.add(showroomGroup);
+        let showroomPedestal = null;
+        let showroomModel = null;
+        let showroomAngle = 0.55;
+        let isDraggingShowroom = false;
+        let prevPointerX = 0;
+
+        // Showroom aylantirish (sichqoncha va barmoq bilan)
+        container.addEventListener("pointerdown", (e) => {
+            if (mode === "GARAGE") {
+                isDraggingShowroom = true;
+                prevPointerX = e.clientX;
+            }
+        });
+        window.addEventListener("pointermove", (e) => {
+            if (isDraggingShowroom && mode === "GARAGE") {
+                const dx = e.clientX - prevPointerX;
+                prevPointerX = e.clientX;
+                showroomAngle += dx * 0.012;
+            }
+        });
+        window.addEventListener("pointerup", () => { isDraggingShowroom = false; });
+
+        function buildShowroomPreview(scooterId) {
+            while (showroomGroup.children.length > 0) {
+                showroomGroup.remove(showroomGroup.children[0]);
+            }
+
+            // Podium platforma
+            showroomPedestal = new THREE.Mesh(
+                new THREE.CylinderGeometry(1.85, 2.05, 0.18, 36),
+                new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.8, roughness: 0.2 })
+            );
+            showroomPedestal.position.set(0, 0.09, 0);
+            showroomPedestal.receiveShadow = true;
+            showroomGroup.add(showroomPedestal);
+
+            const ring = new THREE.Mesh(
+                new THREE.TorusGeometry(1.9, 0.035, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0xf59e0b })
+            );
+            ring.rotation.x = Math.PI / 2;
+            ring.position.y = 0.18;
+            showroomGroup.add(ring);
+
+            const spec = SCOOTER_CATALOG[scooterId];
+            showroomModel = buildRealisticScooterWithRider(spec);
+            showroomModel.root.position.set(0, 0.18, 0);
+            showroomGroup.add(showroomModel.root);
+            showroomGroup.position.set(0, 0, 4);
+        }
+
+        // 5 ta Poygachi obyektlari
+        let activeRacers = [];
+        let timeLeft = RACE_SECONDS;
+        let lastFrameTime = 0;
+
+        // Klaviatura va Sensor boshqaruv
+        const inputState = { gas: false, brake: false, left: false, right: false };
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") inputState.gas = true;
+            if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") inputState.brake = true;
+            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputState.left = true;
+            if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputState.right = true;
+        });
+        window.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") inputState.gas = false;
+            if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") inputState.brake = false;
+            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputState.left = false;
+            if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputState.right = false;
+        });
+
+        function attachControlBtn(elId, prop) {
+            const btn = document.getElementById(elId);
+            const on = (e) => { e.preventDefault(); inputState[prop] = true; };
+            const off = (e) => { e.preventDefault(); inputState[prop] = false; };
+            btn.addEventListener("touchstart", on, { passive: false });
+            btn.addEventListener("touchend", off, { passive: false });
+            btn.addEventListener("mousedown", on);
+            btn.addEventListener("mouseup", off);
+            btn.addEventListener("mouseleave", off);
+        }
+        attachControlBtn("ctrlLeft", "left");
+        attachControlBtn("ctrlRight", "right");
+        attachControlBtn("ctrlGas", "gas");
+        attachControlBtn("ctrlBrake", "brake");
+
+        // =========================================================================
+        // 9. GARAGE / DO'KON INTERFEYSINI CHIZISH
+        // =========================================================================
+        function showToast(msg, icon = "🏁") {
+            const box = document.getElementById("toastBox");
+            document.getElementById("toastText").textContent = msg;
+            document.getElementById("toastIcon").textContent = icon;
+            box.classList.remove("opacity-0", "-translate-y-4");
+            box.classList.add("opacity-100", "translate-y-0");
+            clearTimeout(window._toastTimer);
+            window._toastTimer = setTimeout(() => {
+                box.classList.add("opacity-0", "-translate-y-4");
+                box.classList.remove("opacity-100", "translate-y-0");
+            }, 2500);
+        }
+
+        function refreshGarageUI() {
+            document.getElementById("moneyDisplay").textContent = `$${saveState.money}`;
+            const item = SCOOTER_CATALOG[previewId];
+            const isUnlocked = saveState.unlocked.includes(item.id);
+
+            document.getElementById("scooterTierBadge").textContent = item.tier;
+            document.getElementById("scooterTitle").textContent = item.name;
+            document.getElementById("scooterDesc").textContent = item.desc;
+
+            // Stats
+            document.getElementById("statSpeedVal").textContent = `${item.maxSpeed.toFixed(1)} km/soat`;
+            document.getElementById("statSpeedBar").style.width = `${(item.maxSpeed / 50) * 100}%`;
+
+            const accelPct = Math.min(100, Math.round(((item.accel - 12) / 21) * 100));
+            document.getElementById("statAccelVal").textContent = `${accelPct}%`;
+            document.getElementById("statAccelBar").style.width = `${accelPct}%`;
+
+            const handlePct = Math.min(100, Math.round(((item.handling - 0.7) / 0.65) * 100));
+            document.getElementById("statHandleVal").textContent = `${handlePct}%`;
+            document.getElementById("statHandleBar").style.width = `${handlePct}%`;
+
+            const actionBtn = document.getElementById("actionBtn");
+            const statusBadge = document.getElementById("scooterStatusBadge");
+
+            if (isUnlocked) {
+                statusBadge.textContent = saveState.selected === item.id ? "✅ TANLANGAN" : "🔓 OCHIQ";
+                statusBadge.className = "text-xs font-extrabold text-emerald-400";
+                actionBtn.innerHTML = `<span>🏁 POYGANI BOSHLASH</span>`;
+                actionBtn.className = "w-full py-3.5 px-5 rounded-2xl racing-font font-extrabold text-sm sm:text-base tracking-wider uppercase btn-press flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 text-slate-950 shadow-xl glow-cta";
+            } else {
+                statusBadge.textContent = `🔒 $${item.price}`;
+                statusBadge.className = "text-xs font-extrabold text-amber-400";
+                const canBuy = saveState.money >= item.price;
+                actionBtn.innerHTML = `<span>🔓 OCHISH — $${item.price}</span>`;
+                actionBtn.className = canBuy
+                    ? "w-full py-3.5 px-5 rounded-2xl racing-font font-extrabold text-sm sm:text-base tracking-wider uppercase btn-press flex items-center justify-center gap-2 bg-gradient-to-r from-amber-400 via-orange-500 to-red-500 text-slate-950 shadow-xl"
+                    : "w-full py-3.5 px-5 rounded-2xl racing-font font-extrabold text-sm sm:text-base tracking-wider uppercase flex items-center justify-center gap-2 bg-slate-800 text-slate-400 border border-white/10 cursor-not-allowed";
+            }
+
+            // 10 ta skuter karuseli
+            const carousel = document.getElementById("scooterCarousel");
+            carousel.innerHTML = "";
+            SCOOTER_CATALOG.forEach((sc) => {
+                const unlocked = saveState.unlocked.includes(sc.id);
+                const active = previewId === sc.id;
+                const colorHexStr = "#" + sc.bodyHex.toString(16).padStart(6, "0");
+
+                const card = document.createElement("button");
+                card.className = `shrink-0 w-36 sm:w-44 p-3 rounded-2xl text-left transition-all btn-press border ${
+                    active
+                        ? "carbon-glass border-amber-400 ring-2 ring-amber-400/50"
+                        : "card-glass border-white/10 hover:border-white/30"
+                }`;
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between mb-1.5">
+                        <span class="w-4 h-4 rounded-full border border-white/40 inline-block" style="background:${colorHexStr}"></span>
+                        <span class="text-[11px] font-black ${unlocked ? "text-emerald-400" : "text-amber-400"}">
+                            ${unlocked ? "OCHIQ" : "$" + sc.price}
+                        </span>
+                    </div>
+                    <div class="font-bold text-xs sm:text-sm text-white truncate">${sc.id + 1}. ${sc.name}</div>
+                    <div class="flex items-center justify-between text-[10px] text-slate-400 mt-1">
+                        <span>⚡ ${sc.maxSpeed} km/s</span>
+                        <span>${unlocked ? "✅" : "🔒"}</span>
+                    </div>
+                `;
+
+                card.addEventListener("click", () => {
+                    previewId = sc.id;
+                    if (unlocked) {
+                        saveState.selected = sc.id;
+                        saveGameData();
+                    }
+                    buildShowroomPreview(sc.id);
+                    playBeepSound(640, 0.08, "sine", 0.1);
+                    refreshGarageUI();
+                });
+
+                carousel.appendChild(card);
+            });
+        }
+
+        document.getElementById("actionBtn").addEventListener("click", () => {
+            const item = SCOOTER_CATALOG[previewId];
+            if (saveState.unlocked.includes(item.id)) {
+                saveState.selected = item.id;
+                saveGameData();
+                beginRace();
+            } else if (saveState.money >= item.price) {
+                saveState.money -= item.price;
+                saveState.unlocked.push(item.id);
+                saveState.selected = item.id;
+                saveGameData();
+                playBeepSound(880, 0.12, "triangle", 0.18, 0);
+                playBeepSound(1174, 0.22, "triangle", 0.18, 0.09);
+                showToast(`Tabriklaymiz! "${item.name}" ochildi!`, "🎉");
+                refreshGarageUI();
+            } else {
+                playBeepSound(190, 0.2, "sawtooth", 0.14);
+                showToast("Pul yetarli emas! 1-o'rin olib $200 yuting!", "💵");
+            }
+        });
+
+        // =========================================================================
+        // 10. POYGANI BOSHLASH VA 5 TA 3D SKUTERNI JOYLASHTIRISH
+        // =========================================================================
+        function clearActiveRacers() {
+            activeRacers.forEach((r) => scene.remove(r.model.root));
+            activeRacers = [];
+        }
+
+        function beginRace() {
+            ensureAudio();
+            clearActiveRacers();
+            showroomGroup.visible = false;
+
+            const chosen = SCOOTER_CATALOG[saveState.selected];
+            const startLanes = [-4.6, -2.3, 0, 2.3, 4.6];
+
+            // 1. O'yinchi (Markazda)
+            const pModel = buildRealisticScooterWithRider(chosen);
+            pModel.root.position.set(0, 0, 0);
+            scene.add(pModel.root);
+
+            activeRacers.push({
+                isPlayer: true,
+                name: `Siz (${chosen.name})`,
+                colorStr: "#" + chosen.bodyHex.toString(16).padStart(6, "0"),
+                model: pModel,
+                x: 0,
+                z: 0,
+                speed: 0,
+                maxSpeed: chosen.maxSpeed,
+                accel: chosen.accel,
+                handling: chosen.handling,
+                lean: 0,
+                finished: false,
+                finishTime: null,
+                smokeTimer: 0
+            });
+
+            // 2. 4 ta Aqlli AI Raqiblar (Jami 5 skuter)
+            const aiSlots = [-4.6, -2.3, 2.3, 4.6];
+            AI_DRIVERS.forEach((ai, idx) => {
+                const aiSpec = {
+                    bodyHex: ai.bodyHex,
+                    trimHex: ai.trimHex,
+                    jacketHex: ai.jacketHex,
+                    helmetHex: ai.helmetHex
+                };
+                const m = buildRealisticScooterWithRider(aiSpec);
+                m.root.position.set(aiSlots[idx], 0, 0);
+                scene.add(m.root);
+
+                activeRacers.push({
+                    isPlayer: false,
+                    name: ai.name,
+                    colorStr: "#" + ai.bodyHex.toString(16).padStart(6, "0"),
+                    model: m,
+                    x: aiSlots[idx],
+                    z: 0,
+                    speed: 0,
+                    maxSpeed: Math.min(49.8, 44.5 + idx * 1.3 + Math.random() * 1.1),
+                    accel: 18.5 + idx * 2.1,
+                    handling: 1.05,
+                    lean: 0,
+                    finished: false,
+                    finishTime: null,
+                    targetX: aiSlots[idx],
+                    aiTimer: 1.2 + Math.random() * 1.5,
+                    smokeTimer: 0
+                });
+            });
+
+            timeLeft = RACE_SECONDS;
+            mode = "COUNTDOWN";
+
+            // UI ni poyga rejimiga o'tkazish
+            document.getElementById("garageOverlay").classList.add("hidden");
+            document.getElementById("mainHeader").classList.add("hidden");
+            document.getElementById("resultsOverlay").classList.add("hidden");
+            document.getElementById("resultsOverlay").classList.remove("flex");
+            document.getElementById("raceHud").classList.remove("hidden");
+            document.getElementById("raceHud").classList.add("flex");
+
+            const cdLayer = document.getElementById("countdownLayer");
+            const cdNum = document.getElementById("countdownNumber");
+            cdLayer.classList.remove("hidden");
+            cdNum.textContent = "3";
+            playBeepSound(440, 0.2, "triangle", 0.2);
+
+            let count = 3;
+            const timer = setInterval(() => {
+                count--;
+                if (count > 0) {
+                    cdNum.textContent = count;
+                    playBeepSound(440, 0.2, "triangle", 0.2);
+                } else if (count === 0) {
+                    cdNum.textContent = "OLG'A!";
+                    playBeepSound(880, 0.3, "triangle", 0.24);
+                    mode = "RACING";
+                    startMotorAudio();
+                } else {
+                    cdLayer.classList.add("hidden");
+                    clearInterval(timer);
+                }
+            }, 850);
+        }
+
+        // =========================================================================
+        // 11. POYGA FIZIKASI VA 3D ANIMATSIYA TSIKLI
+        // =========================================================================
+        function stepRacePhysics(dt) {
+            if (mode !== "RACING") return;
+
+            timeLeft -= dt;
+            if (timeLeft <= 0) {
+                timeLeft = 0;
+                concludeRace(true);
+                return;
+            }
+
+            const elapsed = RACE_SECONDS - timeLeft;
+
+            activeRacers.forEach((r) => {
+                if (r.isPlayer) {
+                    if (inputState.gas) {
+                        r.speed += r.accel * dt;
+                        r.model.brakeLightMat.emissiveIntensity = 0.5;
+                    } else if (inputState.brake) {
+                        r.speed -= 38 * dt;
+                        r.model.brakeLightMat.emissiveIntensity = 3.0;
+                    } else {
+                        r.speed -= 7.5 * dt;
+                        r.model.brakeLightMat.emissiveIntensity = 0.5;
+                    }
+
+                    r.speed = Math.max(0, Math.min(r.maxSpeed, r.speed));
+
+                    const steerRate = 6.2 * r.handling;
+                    if (inputState.left) {
+                        r.x -= steerRate * dt;
+                        r.lean = Math.min(0.28, r.lean + 2.2 * dt);
+                    } else if (inputState.right) {
+                        r.x += steerRate * dt;
+                        r.lean = Math.max(-0.28, r.lean - 2.2 * dt);
+                    } else {
+                        r.lean *= Math.pow(0.02, dt);
+                    }
+
+                    // Yo'l bordyuridan chiqib ketmaslik
+                    const maxRoadX = roadWidth / 2 - 0.7;
+                    if (r.x < -maxRoadX) { r.x = -maxRoadX; r.speed *= 0.985; }
+                    if (r.x > maxRoadX) { r.x = maxRoadX; r.speed *= 0.985; }
+
+                    updateMotorAudio(r.speed);
+
+                    // Tezlik effekti (40 km/s dan oshganda)
+                    const speedOverlay = document.getElementById("speedLinesOverlay");
+                    speedOverlay.style.opacity = r.speed > 38 ? ((r.speed - 38) / 12) * 0.85 : 0;
+                } else {
+                    // AI boshqaruvi
+                    const desiredSpeed = r.finished
+                        ? r.maxSpeed * 0.55
+                        : r.maxSpeed * (0.93 + Math.sin(elapsed * 1.4 + r.maxSpeed) * 0.07);
+
+                    if (r.speed < desiredSpeed) r.speed += r.accel * dt;
+                    else r.speed -= 12 * dt;
+                    r.speed = Math.max(0, Math.min(r.maxSpeed, r.speed));
+
+                    r.aiTimer -= dt;
+                    if (r.aiTimer <= 0) {
+                        r.aiTimer = 1.6 + Math.random() * 2.2;
+                        const lanes = [-4.8, -2.4, 0, 2.4, 4.8];
+                        r.targetX = lanes[Math.floor(Math.random() * lanes.length)];
+                    }
+
+                    const diffX = r.targetX - r.x;
+                    r.x += diffX * 2.4 * dt;
+                    r.lean = Math.max(-0.25, Math.min(0.25, -diffX * 0.14));
+                }
+
+                // Skuterlar o'zaro to'qnashganda yumshoq itarilish
+                activeRacers.forEach((other) => {
+                    if (r === other) return;
+                    const dz = Math.abs(r.z - other.z);
+                    const dx = r.x - other.x;
+                    if (dz < 1.55 && Math.abs(dx) < 0.85) {
+                        const push = (0.85 - Math.abs(dx)) * 0.5;
+                        r.x += dx >= 0 ? push : -push;
+                        other.x -= dx >= 0 ? push : -push;
+                    }
+                });
+
+                // Harakat tezligi: km/soat -> m/s (50 km/s = 13.89 m/s)
+                const mps = r.speed * (1000 / 3600);
+                r.z -= mps * dt; // 3D sahnada -Z yo'nalishi oldinga
+
+                // 3D model pozitsiyasi, egilishi va g'ildiraklar aylanishi
+                r.model.root.position.set(r.x, 0, r.z);
+                r.model.leanGroup.rotation.z = r.lean;
+                const wheelSpin = mps * dt * 3.4;
+                r.model.frontWheel.rotation.x -= wheelSpin;
+                r.model.rearWheel.rotation.x -= wheelSpin;
+
+                // Egzoz tutuni zarralari
+                r.smokeTimer -= dt;
+                if (r.speed > 5 && r.smokeTimer <= 0) {
+                    r.smokeTimer = 0.08;
+                    const exhaustWorld = r.model.exhaustPos.clone().applyMatrix4(r.model.root.matrixWorld);
+                    spawnSmoke(exhaustWorld);
+                }
+
+                // Finish chizig'ini kesib o'tish
+                const coveredDist = -r.z;
+                if (!r.finished && coveredDist >= TRACK_DISTANCE) {
+                    r.finished = true;
+                    r.finishTime = elapsed;
+                    if (r.isPlayer) {
+                        setTimeout(() => {
+                            if (mode === "RACING") concludeRace(false);
+                        }, 600);
+                    }
+                }
+            });
+
+            // HUD ni yangilash
+            const player = activeRacers[0];
+            const ranking = getRankings();
+            const playerPos = ranking.findIndex((x) => x.isPlayer) + 1;
+
+            document.getElementById("hudRank").textContent = playerPos;
+            document.getElementById("hudTimer").textContent = timeLeft.toFixed(1);
+            document.getElementById("hudSpeed").textContent = Math.round(player.speed);
+            document.getElementById("hudSpeedGauge").style.width = `${(player.speed / 50) * 100}%`;
+
+            const pct = Math.min(100, Math.max(0, Math.round((-player.z / TRACK_DISTANCE) * 100)));
+            document.getElementById("hudProgressPct").textContent = `${pct}%`;
+            document.getElementById("hudProgressFill").style.width = `${pct}%`;
+        }
+
+        function getRankings() {
+            return [...activeRacers].sort((a, b) => {
+                if (a.finished && b.finished) return a.finishTime - b.finishTime;
+                if (a.finished) return -1;
+                if (b.finished) return 1;
+                return a.z - b.z; // -Z katta bo'lsa oldinda
+            });
+        }
+
+        function concludeRace(isTimeOut) {
+            if (mode === "FINISHED") return;
+            mode = "FINISHED";
+            stopMotorAudio();
+            document.getElementById("speedLinesOverlay").style.opacity = 0;
+
+            const ranked = getRankings();
+            const myPlace = ranked.findIndex((r) => r.isPlayer) + 1;
+
+            // 1-o'ringa $200 o'yin puli!
+            let reward = 20;
+            if (myPlace === 1) reward = 200;
+            else if (myPlace === 2) reward = 100;
+            else if (myPlace === 3) reward = 50;
+
+            saveState.money += reward;
+            saveGameData();
+
+            if (myPlace === 1) {
+                [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => playBeepSound(f, 0.26, "triangle", 0.2, i * 0.1));
+            } else {
+                playBeepSound(660, 0.2, "sine", 0.18);
+            }
+
+            document.getElementById("resTrophy").textContent = myPlace === 1 ? "🏆" : myPlace === 2 ? "🥈" : myPlace === 3 ? "🥉" : "🏁";
+            document.getElementById("resTitle").textContent = myPlace === 1 ? "1-O'RIN! G'ALABA!" : `${myPlace}-O'RINNI OLDINGIZ`;
+            document.getElementById("resSubtitle").textContent = isTimeOut
+                ? "40 soniya vaqt yakunlandi!"
+                : "Finish chizig'ini muvaffaqiyatli kesib o'tdingiz!";
+            document.getElementById("resPrize").textContent = `+$${reward}`;
+
+            const board = document.getElementById("resLeaderboard");
+            board.innerHTML = "";
+            ranked.forEach((r, idx) => {
+                const place = idx + 1;
+                const badge = place === 1 ? "🥇" : place === 2 ? "🥈" : place === 3 ? "🥉" : `${place}.`;
+                const metric = r.finished
+                    ? `${r.finishTime.toFixed(1)} s`
+                    : `${Math.min(100, Math.round((-r.z / TRACK_DISTANCE) * 100))}%`;
+
+                const row = document.createElement("div");
+                row.className = `flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm ${
+                    r.isPlayer
+                        ? "bg-amber-500/20 border border-amber-400/50 font-bold text-white"
+                        : "bg-slate-900/80 text-slate-300"
+                }`;
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 text-center font-bold">${badge}</span>
+                        <span class="w-3 h-3 rounded-full" style="background:${r.colorStr}"></span>
+                        <span>${r.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2.5">
+                        <span class="text-xs text-slate-400">${metric}</span>
+                        ${place === 1 ? `<span class="text-emerald-400 font-extrabold">+$200</span>` : ""}
+                    </div>
+                `;
+                board.appendChild(row);
+            });
+
+            document.getElementById("raceHud").classList.add("hidden");
+            document.getElementById("raceHud").classList.remove("flex");
+            const resOverlay = document.getElementById("resultsOverlay");
+            resOverlay.classList.remove("hidden");
+            resOverlay.classList.add("flex");
+        }
+
+        // =========================================================================
+        // 12. ASOSIY RENDER VA KAMERA HARAKATI
+        // =========================================================================
+        function animate(now) {
+            requestAnimationFrame(animate);
+            if (!lastFrameTime) lastFrameTime = now;
+            const dt = Math.min(0.05, (now - lastFrameTime) / 1000);
+            lastFrameTime = now;
+
+            // Piyoda odamlarni animatsiya qilish
+            pedestrianList.forEach((p) => {
+                p.phase += 6.5 * dt;
+                if (p.cheering) {
+                    p.armL.rotation.z = 2.6 + Math.sin(p.phase * 1.4) * 0.35;
+                    p.armR.rotation.z = -2.6 - Math.sin(p.phase * 1.4) * 0.35;
+                } else {
+                    p.group.position.z += p.walkDir * p.speed * dt;
+                    const swing = Math.sin(p.phase) * 0.55;
+                    p.legL.rotation.x = swing;
+                    p.legR.rotation.x = -swing;
+                    p.armL.rotation.x = -swing * 0.7;
+                    p.armR.rotation.x = swing * 0.7;
+                }
+            });
+
+            // Tutun zarralarini yangilash
+            for (let i = smokeParticles.length - 1; i >= 0; i--) {
+                const sp = smokeParticles[i];
+                sp.life -= dt;
+                if (sp.life <= 0) {
+                    scene.remove(sp.mesh);
+                    smokeParticles.splice(i, 1);
+                } else {
+                    sp.mesh.position.y += sp.vy * dt;
+                    sp.mesh.scale.addScalar(2.4 * dt);
+                    sp.mesh.material.opacity = (sp.life / sp.maxLife) * 0.4;
+                }
+            }
+
+            if (mode === "GARAGE") {
+                if (!isDraggingShowroom) showroomAngle += 0.55 * dt;
+                showroomGroup.rotation.y = showroomAngle;
+
+                // Avtosalon kamerasi
+                camera.position.lerp(new THREE.Vector3(0, 2.25, 8.2), 0.1);
+                camera.lookAt(0, 1.05, 4);
+                sunLight.position.set(15, 30, 20);
+                sunLight.target.position.set(0, 0, 4);
+            } else {
+                if (mode === "RACING") {
+                    stepRacePhysics(dt);
+                }
+
+                // Dinamik poyga kamerasi (Chase Cam + Tezlikka qarab FOV o'zgarishi)
+                const player = activeRacers[0];
+                if (player) {
+                    const speedRatio = player.speed / 50;
+                    const targetFov = 60 + speedRatio * 14;
+                    camera.fov += (targetFov - camera.fov) * 0.1;
+                    camera.updateProjectionMatrix();
+
+                    const camTargetPos = new THREE.Vector3(
+                        player.x * 0.78,
+                        2.35 - speedRatio * 0.2,
+                        player.z + 4.3 + speedRatio * 0.55
+                    );
+                    camera.position.lerp(camTargetPos, 0.18);
+                    camera.lookAt(player.x * 0.55, 1.15, player.z - 8);
+
+                    // Quyosh soyasi o'yinchini kuzatib boradi
+                    sunLight.position.set(player.x + 25, 55, player.z + 15);
+                    sunLight.target.position.set(player.x, 0, player.z - 20);
+                }
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Tugmalar va oyna o'lchami hodisalari
+        document.getElementById("btnGarage").addEventListener("click", () => {
+            clearActiveRacers();
+            mode = "GARAGE";
+            showroomGroup.visible = true;
+            buildShowroomPreview(saveState.selected);
+            previewId = saveState.selected;
+
+            document.getElementById("resultsOverlay").classList.add("hidden");
+            document.getElementById("resultsOverlay").classList.remove("flex");
+            document.getElementById("garageOverlay").classList.remove("hidden");
+            document.getElementById("mainHeader").classList.remove("hidden");
+            refreshGarageUI();
+        });
+
+        document.getElementById("btnRestart").addEventListener("click", () => {
+            beginRace();
+        });
+
+        document.getElementById("soundToggleBtn").addEventListener("click", () => {
+            soundMuted = !soundMuted;
+            document.getElementById("soundToggleBtn").textContent = soundMuted ? "🔇" : "🔊";
+            if (soundMuted) stopMotorAudio();
+        });
+
+        window.addEventListener("resize", () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+        // O'yinni ishga tushirish
+        window.onload = function () {
+            loadGameData();
+            previewId = saveState.selected;
+            buildShowroomPreview(previewId);
+            refreshGarageUI();
+            requestAnimationFrame(animate);
+        };
+    </script>
+</body>
+</html>

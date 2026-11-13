@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kosmik jang</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #05061a; }
+    canvas { display: block; width: 100%; height: 100%; }
+    .hud {
+      position: fixed; top: 10px; left: 0; right: 0; display: flex; justify-content: center; gap: 30px;
+      color: #fff; font: bold 18px Arial, sans-serif; pointer-events: none;
+    }
+    .msg {
+      position: fixed; inset: 0; display: grid; place-items: center; text-align: center;
+      color: #fff; font: bold 22px Arial, sans-serif; background: rgba(5, 6, 26, 0.6);
+    }
+    .msg h1 { font-size: 44px; margin: 0 0 10px; color: #ffcc00; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div class="hud"><span>⭐ <b id="score">0</b></span><span>❤️ <b id="lives">3</b></span></div>
+  <div class="msg" id="msg">
+    <div>
+      <h1>🚀 Kosmik jang</h1>
+      ← → — harakat · Probel — o'q otish<br>
+      Telefonda: barmoq bilan suring, o'zi otadi<br><br>
+      <span id="msgAction">Boshlash uchun Probel yoki ekranni bosing</span>
+    </div>
+  </div>
+
+  <script>
+    var canvas = document.getElementById("c");
+    var ctx = canvas.getContext("2d");
+    var W, H;
+    function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
+    addEventListener("resize", resize);
+    resize();
+
+    // Yulduzli fon
+    var stars = [];
+    for (var i = 0; i < 120; i++) stars.push({ x: Math.random(), y: Math.random(), s: Math.random() * 2 + 0.5 });
+
+    var player, bullets, enemies, particles, score, lives, playing, keys = {}, lastShot = 0, spawnTimer = 0;
+
+    function start() {
+      player = { x: W / 2, y: H - 70, w: 44 };
+      bullets = []; enemies = []; particles = [];
+      score = 0; lives = 3; playing = true;
+      document.getElementById("msg").style.display = "none";
+      updateHud();
+    }
+
+    function updateHud() {
+      document.getElementById("score").textContent = score;
+      document.getElementById("lives").textContent = lives;
+    }
+
+    function shoot(now) {
+      if (now - lastShot < 220) return;
+      lastShot = now;
+      bullets.push({ x: player.x, y: player.y - 24 });
+    }
+
+    function explode(x, y, color) {
+      for (var i = 0; i < 14; i++) {
+        particles.push({ x: x, y: y, vx: (Math.random() - 0.5) * 6, vy: (Math.random() - 0.5) * 6, life: 30, color: color });
+      }
+    }
+
+    function update(now) {
+      // Fon yulduzlari pastga siljiydi
+      stars.forEach(function (s) { s.y += s.s / 600; if (s.y > 1) s.y = 0; });
+      if (!playing) return;
+
+      // O'yinchi harakati
+      if (keys.ArrowLeft || keys.KeyA) player.x -= 7;
+      if (keys.ArrowRight || keys.KeyD) player.x += 7;
+      player.x = Math.max(25, Math.min(W - 25, player.x));
+      if (keys.Space || touchActive) shoot(now);
+
+      // O'qlar
+      bullets.forEach(function (b) { b.y -= 10; });
+      bullets = bullets.filter(function (b) { return b.y > -10; });
+
+      // Dushmanlar — vaqt o'tgan sari tezroq chiqadi
+      spawnTimer--;
+      if (spawnTimer <= 0) {
+        enemies.push({ x: 30 + Math.random() * (W - 60), y: -30, speed: 1.5 + Math.random() * 1.5 + score / 40 });
+        spawnTimer = Math.max(18, 60 - score);
+      }
+      enemies.forEach(function (e) { e.y += e.speed; });
+
+      // To'qnashuvlar
+      enemies = enemies.filter(function (e) {
+        for (var i = 0; i < bullets.length; i++) {
+          if (Math.abs(bullets[i].x - e.x) < 22 && Math.abs(bullets[i].y - e.y) < 22) {
+            bullets.splice(i, 1);
+            score++; updateHud();
+            explode(e.x, e.y, "#ffcc00");
+            return false;
+          }
+        }
+        var hitPlayer = Math.abs(player.x - e.x) < 32 && Math.abs(player.y - e.y) < 30;
+        if (hitPlayer || e.y > H + 30) {
+          lives--; updateHud();
+          explode(e.x, Math.min(e.y, H - 20), "#ff3d5a");
+          if (lives <= 0) gameOver();
+          return false;
+        }
+        return true;
+      });
+
+      particles.forEach(function (p) { p.x += p.vx; p.y += p.vy; p.life--; });
+      particles = particles.filter(function (p) { return p.life > 0; });
+    }
+
+    function draw() {
+      ctx.fillStyle = "#05061a";
+      ctx.fillRect(0, 0, W, H);
+      ctx.fillStyle = "#fff";
+      stars.forEach(function (s) { ctx.fillRect(s.x * W, s.y * H, s.s, s.s); });
+      if (!player) return;
+
+      ctx.font = "40px Arial";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      if (playing) ctx.fillText("🚀", player.x, player.y);
+      enemies.forEach(function (e) { ctx.fillText("👾", e.x, e.y); });
+
+      ctx.fillStyle = "#7cf2ff";
+      bullets.forEach(function (b) { ctx.fillRect(b.x - 2, b.y - 10, 4, 14); });
+
+      particles.forEach(function (p) {
+        ctx.globalAlpha = p.life / 30;
+        ctx.fillStyle = p.color;
+        ctx.fillRect(p.x, p.y, 4, 4);
+      });
+      ctx.globalAlpha = 1;
+    }
+
+    function gameOver() {
+      playing = false;
+      document.getElementById("msgAction").innerHTML = "💥 O'yin tugadi! Ball: " + score + "<br>Qayta boshlash uchun Probel yoki ekranni bosing";
+      document.getElementById("msg").style.display = "grid";
+    }
+
+    function loop(now) {
+      update(now);
+      draw();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+
+    // Klaviatura
+    addEventListener("keydown", function (e) {
+      keys[e.code] = true;
+      if (e.code === "Space" || e.code.indexOf("Arrow") === 0) e.preventDefault();
+      if (e.code === "Space" && !playing) start();
+    });
+    addEventListener("keyup", function (e) { keys[e.code] = false; });
+
+    // Sensorli ekran: barmoq turgan joyga kema boradi va o'zi otadi
+    var touchActive = false;
+    function onTouch(e) {
+      if (!playing) { start(); return; }
+      touchActive = true;
+      player.x = e.touches[0].clientX;
+    }
+    canvas.addEventListener("touchstart", onTouch);
+    canvas.addEventListener("touchmove", function (e) { e.preventDefault(); onTouch(e); }, { passive: false });
+    canvas.addEventListener("touchend", function () { touchActive = false; });
+    document.getElementById("msg").addEventListener("click", function () { if (!playing) start(); });
+  </script>
+</body>
+</html>
