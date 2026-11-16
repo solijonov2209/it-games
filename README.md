@@ -134,10 +134,10 @@ Quyidagilar `localStorage` da saqlanadi (faqat shu kompyuter va brauzerda):
 |----------|---------------------|
 | Abubakir | `abubakir-moto`, `abubakir-futbol`, `abubakir-retro` |
 | Azizbek  | `azizbek-bekinmachoq`, `azizbek-iloncha`, `azizbek-kosmik` |
-| Dinislom | `dinislom-cars`, `dinislom-goyalar`, `dinislom-xotira`, `dinislom-15` |
+| Dinislom | `dinislom-cars`, `dinislom-goyalar`, `dinislom-bilimdon`, `dinislom-xotira`, `dinislom-15` |
 | Dovudxon | `dovudxon-futbol`, `dovudxon-sprinter`, `dovudxon-shaxmat`, `dovudxon-sakrovchi`, `dovudxon-hisob` |
 | Ibrohim  | `ibrohim-skuter`, `ibrohim-velo`, `ibrohim-kosmik`, `ibrohim-x-va-o`, `ibrohim-tosh-qaychi` |
-| Tohirjon | `tohirjon-racing`, `tohirjon-ilon`, `tohirjon-kukilar`, `tohirjon-sonni-top` |
+| Tohirjon | `tohirjon-racing`, `tohirjon-scooter`, `tohirjon-ilon`, `tohirjon-kukilar`, `tohirjon-sonni-top` |
 | Temur    | `temur-minecraft` |
 
 O'yinni boshqa o'quvchiga o'tkazish uchun: papka nomini o'zgartiring va `games.js` dagi
@@ -145,3 +145,27 @@ O'yinni boshqa o'quvchiga o'tkazish uchun: papka nomini o'zgartiring va `games.j
 
 > ⚠️ Ba'zi o'quvchilar o'yinlari internetdan kutubxona yuklaydi (Tailwind, Three.js, Tone.js),
 > shuning uchun ular internet bo'lmasa to'g'ri ishlamaydi.
+
+---
+
+## 👥 2 kishilik o'yinlar
+
+Bitta klaviaturada ikki kishi o'ynaydi: **1-o'yinchi — W A S D**, **2-o'yinchi — strelkalar**.
+
+| O'yin | 2 kishilik rejim | Qo'shimcha |
+|-------|------------------|------------|
+| Super Scooter 400 | ekran ikkiga bo'linadi, 5 km poyga | 4 trassa, jonlar, tanga va yoqilg'i |
+| Retro Poyga | ikki yo'l yonma-yon | 4 trassa, nitro, qalqon |
+| Afsonaviy mashinalar | bitta yo'lda poyga | 5 xil yo'l, yomg'ir/qor, ⚡ nitro |
+| Uzbekistan 3D Racing | bitta yo'lda 4 polosa | kunduz / tun / yomg'ir, sakrash, jonlar |
+| Super Velo | ekran ikkiga bo'linadi | 4 trassa: yoz, kuz, qish, cho'l |
+| Skuterla poygasi | ekran ikkiga bo'linadi (3D) | kunduz / kechqurun / tun |
+| Ilon | bitta maydonda 2 ilon | 3 xarita, 3 tezlik, oltin olma |
+| Xotira kartalari | navbat bilan | 3 o'lcham, 3 mavzu |
+| Sakrovchi | ekran yuqori/pastga bo'linadi | tangalar, qushlar, kun-tun |
+| Tez hisob | duel (1-4 va 7-0 tugmalari) | 4 amal, 3 daraja |
+| Kosmik jang | birga (kooperativ) | boss, bonuslar |
+| Sonni top | navbat bilan | 3 oraliq, issiq-sovuq |
+| X va O | do'st bilan | 3×3, 4×4, 5×5, kuchli kompyuter |
+
+Toshkent 3D Moto Poygaga **4 xil yo'l sharoiti** qo'shilgan (o'yin davomida **T** tugmasi yoki pauza menyusi).

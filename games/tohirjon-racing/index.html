@@ -18,10 +18,17 @@
       <div class="garage-panel">
         <div class="section-title">XARITANI TANLA</div>
         <div id="mapGrid" class="map-grid"></div>
-        <div class="section-title car-title">MASHINANI TANLA</div>
+        <div class="section-title car-title">OB-HAVO</div>
+        <div id="weatherGrid" class="car-grid"></div>
+        <div class="section-title car-title">REJIM</div>
+        <div id="modeGrid" class="car-grid two">
+          <button class="car-card selected" data-mode="1"><div class="car-preview">👤</div><strong>1 O'YINCHI</strong></button>
+          <button class="car-card" data-mode="2"><div class="car-preview">👥</div><strong>2 O'YINCHI</strong></button>
+        </div>
+        <div class="section-title car-title">MASHINANI TANLA <small id="carHint">(1-o'yinchi)</small></div>
         <div id="carGrid" class="car-grid"></div>
         <button id="startBtn" class="main-btn">POYGANI BOSHLASH <span>➜</span></button>
-        <p class="hint">Kompyuter: ← → yoki A / D · Nitro: SPACE · Telefon: ekrandagi tugmalar</p>
+        <p class="hint">1-o'yinchi: A / D — polosa, W — sakrash, SPACE — nitro (1 kishilikda)<br>2-o'yinchi: ← → — polosa, ↑ — sakrash · ❤️ har kimda 3 ta jon · Esc — pauza</p>
       </div>
     </section>
 
@@ -31,6 +38,8 @@
         <div class="hud-pill"><small>HISOB</small><strong id="score">0</strong></div>
         <div class="hud-pill"><small>COIN</small><strong id="coins">0</strong></div>
         <div class="hud-pill"><small>TEZLIK</small><strong id="speed">0 km/h</strong></div>
+        <div class="hud-pill"><small id="p1Label">JON</small><strong id="lives1">❤️❤️❤️</strong></div>
+        <div class="hud-pill p2 hidden" id="p2Pill"><small>2-O'YINCHI</small><strong id="p2Info">❤️❤️❤️ · 0</strong></div>
       </div>
       <div id="cityLabel">TOSHKENT</div>
       <div id="message" class="message hidden"></div>
@@ -54,9 +63,11 @@
     <section id="resultScreen" class="overlay hidden">
       <div class="dialog">
         <div class="trophy">🏆</div>
-        <h2>POYGA TUGADI</h2>
-        <p>Hisob: <b id="finalScore">0</b></p>
-        <p>Yig‘ilgan coin: <b id="finalCoins">0</b></p>
+        <h2 id="resultTitle">POYGA TUGADI</h2>
+        <div id="resultBody">
+          <p>Hisob: <b id="finalScore">0</b></p>
+          <p>Yig‘ilgan coin: <b id="finalCoins">0</b></p>
+        </div>
         <button id="againBtn" class="main-btn">YANA O‘YNASH</button>
         <button id="resultMenuBtn" class="secondary-btn">MENYU</button>
       </div>

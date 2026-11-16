@@ -10,25 +10,43 @@
 <body>
 
     <div class="game-wrapper">
-        <div class="hud">
-            <div>OCHKO: <span id="scoreDisplay">0</span></div>
-            <div>REKORD: <span id="highScoreDisplay">0</span></div>
-        </div>
-
         <canvas id="gameCanvas" width="360" height="600"></canvas>
 
         <!-- Boshlash oynasi -->
         <div id="startScreen" class="overlay">
             <h1>RETRO<br>POYGA</h1>
-            <p>Chap/O'ng tugmalar yoki<br>A / D orqali boshqaring.<br><br>Yashil <b style="color:#00ff66">[N]</b> nitro<br>qo'shimcha ochko beradi!</p>
+
+            <div class="label">REJIM</div>
+            <div class="choice" id="modeChoice">
+                <button class="pick sel" data-mode="1">1 O'YINCHI</button>
+                <button class="pick" data-mode="2">2 O'YINCHI</button>
+            </div>
+
+            <div class="label">TRASSA</div>
+            <div class="choice" id="trackChoice"></div>
+
+            <p class="help">
+                1-o'yinchi: <b>A / D</b><br>
+                2-o'yinchi: <b>STRELKALAR</b><br>
+                <b style="color:#00ff66">[N]</b> nitro · <b style="color:#ffea00">$</b> tanga · <b style="color:#4da3ff">[S]</b> qalqon<br>
+                P / Esc — pauza
+            </p>
             <button class="btn" id="startBtn">BOSHLASH</button>
+        </div>
+
+        <!-- Pauza -->
+        <div id="pauseScreen" class="overlay hidden">
+            <h1>PAUZA</h1>
+            <p>Davom etish uchun P bosing</p>
+            <button class="btn" id="resumeBtn">DAVOM</button>
         </div>
 
         <!-- Yutqazish oynasi -->
         <div id="gameOverScreen" class="overlay hidden">
-            <h1>O'YIN<br>TUGADI!</h1>
-            <p>Sizning ochko: <span id="finalScore" style="color:#ffea00">0</span></p>
+            <h1 id="overTitle">O'YIN<br>TUGADI!</h1>
+            <p id="overText">Sizning ochko: <span id="finalScore" style="color:#ffea00">0</span></p>
             <button class="btn" id="restartBtn">QAYTA O'YNASH</button>
+            <button class="btn btn2" id="menuBtn">MENYU</button>
         </div>
     </div>
 

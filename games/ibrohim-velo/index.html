@@ -74,6 +74,9 @@
             background: rgba(74, 222, 128, 0.4);
             border-radius: 3px;
         }
+    
+        .pick-btn { padding: 6px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; color: #d1fae5; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.18); cursor: pointer; }
+        .pick-btn.active { background: #facc15; color: #111; border-color: #facc15; }
     </style>
 </head>
 <body class="relative w-screen h-screen overflow-hidden">
@@ -107,6 +110,14 @@
                     Poyga uchun 6 ta velosiped va haydovchidan birini tanlang!
                 </p>
             </div>
+
+            <!-- Rejim va trassa tanlash -->
+            <div class="flex flex-wrap justify-center gap-2 mb-2" id="modePicker">
+                <button data-mode="1" class="pick-btn active">👤 1 o'yinchi</button>
+                <button data-mode="2" class="pick-btn">👥 2 o'yinchi (ekran ikkiga bo'linadi)</button>
+            </div>
+            <div class="flex flex-wrap justify-center gap-2 mb-3" id="themePicker"></div>
+            <p class="text-center text-xs text-emerald-100/80 mb-2">1-o'yinchi: <b>A / D</b> — burilish, <b>W</b> — tezlash · 2-o'yinchi: <b>← / →</b>, <b>↑</b></p>
 
             <!-- 6 ta velosiped ro'yxati -->
             <div id="bikeGrid" class="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 overflow-y-auto pr-1 pb-2">
@@ -405,6 +416,17 @@
         // --- O'YIN HOLATI VA SOZLAMALARI ---
         const RACE_DURATION = 60.0; // 1 minut (60 soniya)
         const BASE_TARGET_SPEED = 20.0; // Foydalanuvchi so'ragan 20 tezlik
+
+        // --- TRASSA TURLARI ---
+        const THEMES = [
+            { name: "🌲 Yozgi o'rmon", sky: ['#064e3b', '#10b981', '#fef08a'], hills: '#065f46', grass: ['#14532d', '#166534'], road: ['#784b2a', '#855532'], edge: ['#eab308', '#fef08a'], treeTint: 0 },
+            { name: "🍂 Kuzgi o'rmon", sky: ['#7c2d12', '#f97316', '#fde68a'], hills: '#9a3412', grass: ['#713f12', '#854d0e'], road: ['#57361f', '#634029'], edge: ['#dc2626', '#fde68a'], treeTint: -112 },
+            { name: "❄️ Qishki o'rmon", sky: ['#334155', '#94a3b8', '#e2e8f0'], hills: '#cbd5e1', grass: ['#e2e8f0', '#f1f5f9'], road: ['#64748b', '#6b7a90'], edge: ['#2563eb', '#ffffff'], treeTint: 50, snow: true },
+            { name: "🏜️ Cho'l", sky: ['#0c4a6e', '#38bdf8', '#fde68a'], hills: '#c2410c', grass: ['#d97706', '#e19a2a'], road: ['#92400e', '#a1561b'], edge: ['#ffffff', '#f59e0b'], treeTint: -55, noTrees: true }
+        ];
+        let theme = THEMES[0];
+        let gameMode = 1;
+        const keys2 = { left: false, right: false, up: false };
 
         let selectedBikeId = 0;
         let gameState = 'SELECT'; // 'SELECT', 'COUNTDOWN', 'RACING', 'FINISHED'
@@ -738,15 +760,17 @@
 
             for (let i = 0; i < 6; i++) {
                 const isPlayer = (i === playerLaneIdx);
+                const isPlayer2 = gameMode === 2 && i === playerLaneIdx + 1;
                 const bikeInfo = isPlayer ? BIKES_DATA[selectedBikeId] : otherBikes[aiIdx++];
 
                 racers.push({
                     bike: bikeInfo,
                     isPlayer: isPlayer,
+                    isPlayer2: isPlayer2,
                     x: startLanes[i],
                     z: 0, // Bosib o'tilgan masofa
                     speed: 0,
-                    targetBaseSpeed: isPlayer ? BASE_TARGET_SPEED : (19.0 + Math.random() * 2.1),
+                    targetBaseSpeed: (isPlayer || isPlayer2) ? BASE_TARGET_SPEED : (19.0 + Math.random() * 2.1),
                     boostTimer: 0,
                     slowTimer: 0,
                     pedalPhase: Math.random() * Math.PI * 2,
@@ -762,7 +786,7 @@
                 const dot = document.createElement('div');
                 dot.id = `minimapDot_${idx}`;
                 dot.className = `absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full transition-all duration-100 ${
-                    r.isPlayer ? 'w-4 h-4 ring-2 ring-white z-20' : 'w-2.5 h-2.5 opacity-85 z-10'
+                    (r.isPlayer || r.isPlayer2) ? 'w-4 h-4 ring-2 ring-white z-20' : 'w-2.5 h-2.5 opacity-85 z-10'
                 }`;
                 dot.style.backgroundColor = r.bike.frameColor;
                 dot.style.left = '0%';
@@ -830,16 +854,17 @@
                 // Tezlikni hisoblash (20 tezlik tizimi)
                 let desiredSpeed = r.targetBaseSpeed;
 
-                if (r.isPlayer) {
+                if (r.isPlayer || r.isPlayer2) {
+                    const k = r.isPlayer2 ? keys2 : keys;
                     // O'yinchi gaz tugmasini bossa tezlik 20 dan 23 gacha ko'tariladi
-                    desiredSpeed = keys.up ? 22.5 : 20.0;
+                    desiredSpeed = k.up ? 22.5 : 20.0;
 
                     // Chap / O'ng boshqaruv
-                    const steerSpeed = 680 * (r.bike.handlingStat / 90);
-                    if (keys.left) {
+                    const steerSpeed = 680 * (r.bike.handlingStat / 90) * (theme.snow ? 0.7 : 1);
+                    if (k.left) {
                         r.x -= steerSpeed * dt;
                         r.lean = Math.max(-1, r.lean - dt * 6);
-                    } else if (keys.right) {
+                    } else if (k.right) {
                         r.x += steerSpeed * dt;
                         r.lean = Math.min(1, r.lean + dt * 6);
                     } else {
@@ -945,9 +970,9 @@
             }
 
             // O'rmon daraxtlarini cheksiz aylantirish
-            const player = racers.find(r => r.isPlayer);
+            const minHumanZ = Math.min(...racers.filter(r => r.isPlayer || r.isPlayer2).map(r => r.z));
             trees.forEach(tree => {
-                if (tree.z < player.z - 350) {
+                if (tree.z < minHumanZ - 350) {
                     tree.z += 4500;
                 }
             });
@@ -1008,7 +1033,11 @@
             const playerRank = sorted.findIndex(r => r.isPlayer) + 1;
 
             const resultSubtitle = document.getElementById('resultSubtitle');
-            if (playerRank === 1) {
+            if (gameMode === 2) {
+                const p2Rank = sorted.findIndex(r => r.isPlayer2) + 1;
+                const winner = playerRank < p2Rank ? "1-o'yinchi" : "2-o'yinchi";
+                resultSubtitle.innerHTML = `<span class="text-yellow-300 font-bold">🏆 ${winner} g'olib!</span> 1-o'yinchi: ${playerRank}-o'rin · 2-o'yinchi: ${p2Rank}-o'rin`;
+            } else if (playerRank === 1) {
                 resultSubtitle.innerHTML = `<span class="text-yellow-300 font-bold">Tabriklaymiz! Siz 1-o'rinni egallab, o'rmon chempioni bo'ldingiz!</span>`;
             } else {
                 resultSubtitle.innerHTML = `Siz 1 daqiqalik poygada <strong class="text-yellow-300">${playerRank}-o'rinni</strong> egalladingiz!`;
@@ -1022,7 +1051,7 @@
 
                 const row = document.createElement('div');
                 row.className = `flex items-center justify-between p-3 rounded-2xl border ${
-                    r.isPlayer
+                    (r.isPlayer || r.isPlayer2)
                         ? 'bg-emerald-500/25 border-yellow-400 shadow-md'
                         : 'bg-white/5 border-white/10'
                 }`;
@@ -1034,7 +1063,7 @@
                         <div>
                             <div class="font-display font-bold text-sm sm:text-base text-white flex items-center gap-2">
                                 <span>${r.bike.name}</span>
-                                ${r.isPlayer ? '<span class="text-[10px] bg-yellow-400 text-black font-black px-2 py-0.5 rounded-full">SIZ</span>' : ''}
+                                ${r.isPlayer ? `<span class="text-[10px] bg-yellow-400 text-black font-black px-2 py-0.5 rounded-full">${gameMode === 2 ? "1-O'YINCHI" : 'SIZ'}</span>` : ''}${r.isPlayer2 ? '<span class="text-[10px] bg-orange-400 text-black font-black px-2 py-0.5 rounded-full">2-O\'YINCHI</span>' : ''}
                             </div>
                             <div class="text-xs text-emerald-200/75">Haydovchi: ${r.bike.riderName}</div>
                         </div>
@@ -1120,9 +1149,7 @@
             ctx.restore();
         }
 
-        function renderScene() {
-            const W = canvas.width;
-            const H = canvas.height;
+        function renderScene(viewRacer, W, H) {
             const horizonY = H * 0.34;
 
             // Kamera o'yinchini kuzatadi (agar poyga boshlanmagan bo'lsa, demo kamera harakatlanadi)
@@ -1130,7 +1157,7 @@
             let cameraZ = -260;
 
             if (racers.length > 0 && (gameState === 'RACING' || gameState === 'COUNTDOWN' || gameState === 'FINISHED')) {
-                const player = racers.find(r => r.isPlayer) || racers[0];
+                const player = viewRacer || racers.find(r => r.isPlayer) || racers[0];
                 cameraX = player.x * 0.65;
                 cameraZ = player.z - 270;
             } else {
@@ -1140,9 +1167,9 @@
 
             // 1. OSMon VA O'RMON QUYOSH NURLARI
             const skyGrad = ctx.createLinearGradient(0, 0, 0, horizonY);
-            skyGrad.addColorStop(0, '#064e3b');
-            skyGrad.addColorStop(0.55, '#10b981');
-            skyGrad.addColorStop(1, '#fef08a');
+            skyGrad.addColorStop(0, theme.sky[0]);
+            skyGrad.addColorStop(0.55, theme.sky[1]);
+            skyGrad.addColorStop(1, theme.sky[2]);
             ctx.fillStyle = skyGrad;
             ctx.fillRect(0, 0, W, horizonY);
 
@@ -1156,7 +1183,7 @@
             ctx.fillRect(0, 0, W, horizonY + 50);
 
             // Uzoqdagi o'rmon tepaliklari silueti
-            ctx.fillStyle = '#065f46';
+            ctx.fillStyle = theme.hills;
             ctx.beginPath();
             ctx.moveTo(0, horizonY);
             for (let sx = 0; sx <= W + 60; sx += 60) {
@@ -1185,14 +1212,14 @@
                 const isAlt = idx % 2 === 0;
 
                 // O'rmon maysazori (chap va o'ng tomon)
-                ctx.fillStyle = isAlt ? '#14532d' : '#166534';
+                ctx.fillStyle = isAlt ? theme.grass[0] : theme.grass[1];
                 ctx.fillRect(0, pFar.y, W, pNear.y - pFar.y + 1.5);
 
                 // O'rmon tuproq yo'li (trassa)
                 const roadHalfNear = (ROAD_WIDTH / 2) * pNear.scale;
                 const roadHalfFar = (ROAD_WIDTH / 2) * pFar.scale;
 
-                ctx.fillStyle = isAlt ? '#784b2a' : '#855532';
+                ctx.fillStyle = isAlt ? theme.road[0] : theme.road[1];
                 ctx.beginPath();
                 ctx.moveTo(pFar.x - roadHalfFar, pFar.y);
                 ctx.lineTo(pFar.x + roadHalfFar, pFar.y);
@@ -1202,7 +1229,7 @@
                 ctx.fill();
 
                 // Yo'l chetidagi yashil-sariq chegara chizig'i
-                ctx.fillStyle = isAlt ? '#eab308' : '#fef08a';
+                ctx.fillStyle = isAlt ? theme.edge[0] : theme.edge[1];
                 const edgeNear = 18 * pNear.scale;
                 const edgeFar = 18 * pFar.scale;
                 // Chap chegara
@@ -1245,6 +1272,7 @@
 
             // Daraxtlar
             trees.forEach(tree => {
+                if (theme.noTrees && tree.type === 'oak') return; // cho'lda faqat siyrak daraxtlar
                 let tz = tree.z;
                 if (gameState === 'SELECT') {
                     while (tz < cameraZ + 20) tz += 3000;
@@ -1255,9 +1283,9 @@
                         z: tz,
                         draw: () => {
                             if (tree.type === 'pine') {
-                                drawPineTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift);
+                                drawPineTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift + theme.treeTint);
                             } else {
-                                drawOakTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift);
+                                drawOakTree(proj.x, proj.y, proj.scale * tree.scale * 1.45, tree.hueShift + theme.treeTint);
                             }
                         }
                     });
@@ -1330,7 +1358,7 @@
                                     proj.scale * 1.48,
                                     r.pedalPhase,
                                     r.lean,
-                                    r.isPlayer,
+                                    r === viewRacer || r.isPlayer,
                                     r.speed
                                 );
                             }
@@ -1358,6 +1386,29 @@
             // Uzoqdagilarni birinchi, yaqindagilarni keyin chizish
             renderables.sort((a, b) => b.z - a.z);
             renderables.forEach(obj => obj.draw());
+
+            // Qishki trassada qor yog'adi
+            if (theme.snow) {
+                ctx.fillStyle = 'rgba(255,255,255,0.85)';
+                const t = performance.now() / 1000;
+                for (let i = 0; i < 90; i++) {
+                    const x = ((i * 97.3 + t * 25 * (1 + i % 3)) % W);
+                    const y = ((i * 53.7 + t * 70 * (1 + i % 2)) % H);
+                    ctx.fillRect(x, y, 2 + i % 3, 2 + i % 3);
+                }
+            }
+
+            // 2 kishilik rejimda kimning ekrani ekanini yozamiz
+            if (gameMode === 2 && viewRacer && gameState !== 'SELECT') {
+                ctx.fillStyle = 'rgba(0,0,0,0.55)';
+                ctx.fillRect(10, H - 44, 170, 34);
+                ctx.fillStyle = viewRacer.isPlayer2 ? '#fb923c' : '#facc15';
+                ctx.font = 'bold 15px sans-serif';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                const rank = [...racers].sort((a, b) => b.z - a.z).indexOf(viewRacer) + 1;
+                ctx.fillText((viewRacer.isPlayer2 ? "2-O'YINCHI" : "1-O'YINCHI") + ' · ' + rank + '-o\'rin', 20, H - 27);
+            }
         }
 
         // --- ASOSIY ANIMATSIYA SIKLI ---
@@ -1367,23 +1418,48 @@
             lastTimestamp = timestamp;
 
             updateGame(dt);
-            renderScene();
+            const p1 = racers.find(r => r.isPlayer), p2 = racers.find(r => r.isPlayer2);
+            if (gameMode === 2 && p2 && gameState !== 'SELECT') {
+                const half = canvas.width / 2;
+                [[p1, 0], [p2, half]].forEach(([view, x]) => {
+                    ctx.save();
+                    ctx.translate(x, 0);
+                    ctx.beginPath();
+                    ctx.rect(0, 0, half, canvas.height);
+                    ctx.clip();
+                    renderScene(view, half, canvas.height);
+                    ctx.restore();
+                });
+                ctx.fillStyle = '#000';
+                ctx.fillRect(half - 2, 0, 4, canvas.height);
+            } else {
+                renderScene(p1, canvas.width, canvas.height);
+            }
 
             requestAnimationFrame(gameLoop);
         }
 
         // --- KLAVIATURA VA SENSORLI BOSHQARUV ---
+        // 2 kishilik rejimda strelkalar 2-o'yinchiniki, 1 kishilikda — 1-o'yinchiniki
+        const arrowKeys = () => (gameMode === 2 ? keys2 : keys);
         window.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = true;
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = true;
-            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = true;
+            if (e.key.startsWith('Arrow')) e.preventDefault();
+            if (e.key === 'a' || e.key === 'A') keys.left = true;
+            if (e.key === 'd' || e.key === 'D') keys.right = true;
+            if (e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = true;
+            if (e.key === 'ArrowLeft') arrowKeys().left = true;
+            if (e.key === 'ArrowRight') arrowKeys().right = true;
+            if (e.key === 'ArrowUp') arrowKeys().up = true;
             if (e.key === 'b' || e.key === 'B') sound.playBell();
         });
 
         window.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') keys.left = false;
-            if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') keys.right = false;
-            if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+            if (e.key === 'a' || e.key === 'A') keys.left = false;
+            if (e.key === 'd' || e.key === 'D') keys.right = false;
+            if (e.key === 'w' || e.key === 'W' || e.key === ' ') keys.up = false;
+            if (e.key === 'ArrowLeft') arrowKeys().left = false;
+            if (e.key === 'ArrowRight') arrowKeys().right = false;
+            if (e.key === 'ArrowUp') arrowKeys().up = false;
         });
 
         // Mobil / Sensorli tugmalar uchun helper
@@ -1438,6 +1514,25 @@
         });
 
         // O'yinni ishga tushirish
+        // Rejim va trassa tugmalari
+        document.querySelectorAll('#modePicker .pick-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                gameMode = Number(btn.dataset.mode);
+                document.querySelectorAll('#modePicker .pick-btn').forEach(b => b.classList.toggle('active', b === btn));
+            });
+        });
+        const themePicker = document.getElementById('themePicker');
+        THEMES.forEach((t, i) => {
+            const btn = document.createElement('button');
+            btn.className = 'pick-btn' + (i === 0 ? ' active' : '');
+            btn.textContent = t.name;
+            btn.addEventListener('click', () => {
+                theme = t;
+                [...themePicker.children].forEach(b => b.classList.toggle('active', b === btn));
+            });
+            themePicker.appendChild(btn);
+        });
+
         window.onload = () => {
             initForestEnvironment();
             renderBikeSelectionCards();

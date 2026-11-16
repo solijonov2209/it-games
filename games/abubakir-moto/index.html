@@ -768,6 +768,9 @@
         <div class="rb-badge">⏸️ PAUZA</div>
         <h2 class="modal-title">O'YIN TO'XTATILDI</h2>
         <p class="modal-sub">Davom etish uchun tugmani bosing</p>
+        <!-- Yo'l sharoitini tanlash (T tugmasi ham almashtiradi) -->
+        <div class="modal-sub" style="margin-top:4px">YO'L SHAROITI <small>(o'yin davomida <b>T</b> tugmasi)</small></div>
+        <div id="condition-picker" style="display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 14px"></div>
         <button id="resume-btn" class="primary-btn">DAVOM ETISH</button>
       </div>
     </div>
@@ -2733,12 +2736,87 @@
       nitroFill.style.width = state.nitro + '%';
     }
 
+    // ==========================================
+    // YO'L SHAROITLARI: oqshom, kunduz, tun, yomg'ir
+    // ==========================================
+    const CONDITIONS = [
+      { name: '🌇 Oqshom', sky: [[0, '#172554'], [0.28, '#3b5988'], [0.44, '#d97706'], [0.5, '#fef08a'], [0.56, '#fed7aa'], [1, '#cbd5e1']], fog: 0xd9b398, density: 0.0036, hemi: 1.05, sun: 1.45, exposure: 1.08 },
+      { name: '☀️ Kunduz', sky: [[0, '#1e3a8a'], [0.3, '#3b82f6'], [0.5, '#bfdbfe'], [1, '#e0f2fe']], fog: 0xc7dbef, density: 0.0028, hemi: 1.2, sun: 1.6, exposure: 1.05 },
+      { name: '🌙 Tun', sky: [[0, '#020617'], [0.45, '#0f172a'], [0.52, '#1e293b'], [1, '#334155']], fog: 0x0b1120, density: 0.006, hemi: 0.3, sun: 0.15, exposure: 1.3, night: true },
+      { name: "🌧️ Yomg'ir", sky: [[0, '#334155'], [0.5, '#64748b'], [1, '#94a3b8']], fog: 0x7b8794, density: 0.009, hemi: 0.75, sun: 0.45, exposure: 1.0, rain: true }
+    ];
+    let conditionIndex = 0;
+
+    // Tunda mototsikl farasi
+    const headLight = new THREE.SpotLight(0xfff2c0, 0, 70, 0.42, 0.45);
+    headLight.position.set(0, 1.2, -0.8);
+    headLight.target.position.set(0, 0, -25);
+    playerGroup.add(headLight);
+    playerGroup.add(headLight.target);
+
+    // Yomg'ir tomchilari kamera bilan birga yuradi
+    scene.add(camera);
+    const rainCount = 1400;
+    const rainPos = new Float32Array(rainCount * 6);
+    for (let i = 0; i < rainCount; i++) {
+      const x = (Math.random() - 0.5) * 40, y = Math.random() * 20 - 4, z = -Math.random() * 40;
+      rainPos.set([x, y, z, x + 0.05, y - 0.7, z], i * 6);
+    }
+    const rainGeo = new THREE.BufferGeometry();
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3));
+    const rain = new THREE.LineSegments(rainGeo, new THREE.LineBasicMaterial({ color: 0xb8c6d6, transparent: true, opacity: 0.5 }));
+    rain.visible = false;
+    camera.add(rain);
+
+    function applyCondition(i) {
+      conditionIndex = i;
+      const c = CONDITIONS[i];
+      const grad = sCtx.createLinearGradient(0, 0, 0, 512);
+      c.sky.forEach(([stop, color]) => grad.addColorStop(stop, color));
+      sCtx.fillStyle = grad;
+      sCtx.fillRect(0, 0, 64, 512);
+      skyMat.map.needsUpdate = true;
+      scene.fog.color.set(c.fog);
+      scene.fog.density = c.density;
+      hemiLight.intensity = c.hemi;
+      sunLight.intensity = c.sun;
+      renderer.toneMappingExposure = c.exposure;
+      headLight.intensity = c.night ? 3.2 : 0;
+      rain.visible = !!c.rain;
+      // Tugmalarni yangilash
+      document.querySelectorAll('#condition-picker button').forEach((b, j) => {
+        b.style.background = j === i ? '#facc15' : '#1e293b';
+        b.style.color = j === i ? '#0f172a' : '#e2e8f0';
+      });
+    }
+
+    const conditionPicker = document.getElementById('condition-picker');
+    CONDITIONS.forEach((c, i) => {
+      const b = document.createElement('button');
+      b.textContent = c.name;
+      b.style.cssText = 'padding:7px 12px;border-radius:10px;border:1px solid #475569;font-weight:700;cursor:pointer';
+      b.addEventListener('click', () => applyCondition(i));
+      conditionPicker.appendChild(b);
+    });
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 't' || e.key === 'T') {
+        applyCondition((conditionIndex + 1) % CONDITIONS.length);
+        showToast(CONDITIONS[conditionIndex].name);
+      }
+    });
+    applyCondition(0);
+
     function animate(now) {
       requestAnimationFrame(animate);
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
 
       updateSimulation(dt);
+      // Yomg'ir tushishi
+      if (rain.visible) {
+        rain.position.y -= dt * 28;
+        if (rain.position.y < -10) rain.position.y = 0;
+      }
       drawMinimap();
       renderer.render(scene, camera);
     }

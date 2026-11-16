@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bilimdon Arena - Har bir fanda 30 ta savol</title>
+    <link rel="stylesheet" href="./main.css">
+</head>
+<body>
+    <div class="arena-container">
+        <!-- Bosh sahifa / Kirish -->
+        <div id="start-screen" class="screen active">
+            <div class="logo-badge">🎓⚡</div>
+            <h1 id="ui-title">Bilimdon Arena</h1>
+            <p id="ui-subtitle" class="subtitle">Har bir fanda 30 ta takrorlanmas savol, professional bot va 30 soniya vaqt!</p>
+            
+            <div class="setup-box">
+                <label for="lang-select" id="lbl-lang">Tilni tanlang / Выберите язык:</label>
+                <select id="lang-select">
+                    <option value="uz" selected>O'zbekcha</option>
+                    <option value="ru">Русский</option>
+                </select>
+
+                <label for="player-name" id="lbl-name">Ismingizni kiriting / Ваше имя:</label>
+                <input type="text" id="player-name" placeholder="Masalan: Jasurbek" maxlength="20">
+                
+                <label for="grade-input" id="lbl-grade">Sinfni kiriting (1–11) / Введите класс (1–11):</label>
+                <input type="number" id="grade-input" min="1" max="11" value="7" placeholder="1 dan 11 gacha">
+
+                <label for="category-select" id="lbl-cat">Fanlarni tanlang / Выберите предмет:</label>
+                <select id="category-select">
+                    <option value="all">🌐 Barchasi aralash / Все предметы</option>
+                    <option value="math">📐 Matematika / Математика</option>
+                    <option value="uzbek">📖 Ona tili & Adabiyot / Язык и литература</option>
+                    <option value="history">🏛️ Tarix / История</option>
+                    <option value="geography">🌍 Geografiya / География</option>
+                    <option value="biology">🧬 Biologiya / Биология</option>
+                    <option value="physics">⚛️ Fizika / Физика</option>
+                    <option value="chemistry">🧪 Kimyo / Химия</option>
+                    <option value="english">🇬🇧 Ingliz tili / Английский язык</option>
+                    <option value="informatics">💻 Informatika / Информатика</option>
+                </select>
+            </div>
+
+            <button id="find-match-btn" class="btn-primary">⚔️ Raqib Qidirish va Boshlash</button>
+        </div>
+
+        <!-- Raqib qidirish animatsiyasi -->
+        <div id="matchmaking-screen" class="screen">
+            <div class="loader"></div>
+            <h2 id="ui-searching">Raqib qidirilmoqda...</h2>
+            <p id="matchmaking-status">Professional darajadagi raqib tanlanmoqda...</p>
+        </div>
+
+        <!-- O'yin maydoni -->
+        <div id="game-screen" class="screen">
+            <header class="battle-header">
+                <div class="player-card me">
+                    <div class="avatar">👤</div>
+                    <div class="p-info">
+                        <span id="my-display-name" class="p-name">Siz</span>
+                        <span id="my-score" class="p-score">0</span>
+                    </div>
+                </div>
+
+                <div class="timer-box">
+                    <span id="round-indicator">1 / 30</span>
+                    <div id="timer" class="timer-circle">30</div>
+                </div>
+
+                <div class="player-card opp">
+                    <div class="p-info">
+                        <span id="opp-display-name" class="p-name">Raqib</span>
+                        <span id="opp-score" class="p-score">0</span>
+                    </div>
+                    <div class="avatar" id="opp-avatar">🤖</div>
+                </div>
+            </header>
+
+            <div class="progress-bar-wrap">
+                <div id="progress-fill" class="progress-fill"></div>
+            </div>
+
+            <div class="question-box">
+                <span id="q-category" class="category-tag">Fan nomi</span>
+                <h2 id="question-text">Savol matni bu yerda chiqadi...</h2>
+            </div>
+
+            <div id="options-grid" class="options-grid"></div>
+
+            <div id="feedback-banner" class="feedback-banner hidden"></div>
+        </div>
+
+        <!-- Natijalar ekrani -->
+        <div id="result-screen" class="screen">
+            <div id="result-trophy" class="trophy">🏆</div>
+            <h1 id="result-title">G'alaba!</h1>
+            <p id="result-subtitle">Ajoyib intellektual ustunlik!</p>
+
+            <div class="final-scoreboard">
+                <div class="f-side">
+                    <h3 id="final-my-name">Siz</h3>
+                    <span id="final-my-score" class="big-num">0</span>
+                    <small id="final-my-correct" class="correct-stat">0 / 30 to'g'ri</small>
+                </div>
+                <div class="vs-divider">VS</div>
+                <div class="f-side">
+                    <h3 id="final-opp-name">Raqib</h3>
+                    <span id="final-opp-score" class="big-num">0</span>
+                    <small id="final-opp-correct" class="correct-stat">0 / 30 to'g'ri</small>
+                </div>
+            </div>
+
+            <div class="rating-change" id="rating-change">+50 Reyting ochkosi</div>
+
+            <button id="play-again-btn" class="btn-primary">🔄 Boshqattan Boshlash (Yangi Savollar)</button>
+        </div>
+    </div>
+
+    <script src="./main.js"></script>
+</body>
+</html>

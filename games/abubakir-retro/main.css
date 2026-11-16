@@ -45,6 +45,56 @@ body {
 canvas {
     display: block;
     background-color: #2b2b36;
+    /* Ekranga sig'ishi uchun proporsiyani saqlab kichrayadi */
+    max-width: 96vw;
+    max-height: 84vh;
+    width: auto;
+    height: auto;
+}
+
+/* Menyu tanlovlari */
+.label {
+    font-size: 9px;
+    color: #00f3ff;
+    margin: 6px 0 6px;
+    letter-spacing: 2px;
+}
+
+.choice {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    max-width: 330px;
+}
+
+.pick {
+    font-family: 'Press Start 2P', monospace;
+    font-size: 9px;
+    padding: 8px 8px;
+    background: #1a1a2e;
+    color: #ccc;
+    border: 2px solid #444466;
+    cursor: pointer;
+}
+
+.pick.sel {
+    background: #00f3ff;
+    color: #0d0d15;
+    border-color: #00f3ff;
+}
+
+.overlay .help {
+    font-size: 9px;
+    margin: 8px 0 14px;
+}
+
+.btn2 {
+    margin-top: 12px;
+    background: #ff0055;
+    color: #fff;
+    box-shadow: 4px 4px 0px #00f3ff;
 }
 
 .hud {

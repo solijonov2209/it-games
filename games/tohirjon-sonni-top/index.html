@@ -6,55 +6,102 @@
   <title>Sonni top</title>
   <style>
     body {
-      margin: 0; height: 100vh; display: grid; place-items: center;
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
       font-family: Arial, sans-serif; color: #fff;
       background: linear-gradient(135deg, #1e90ff, #6c4cf5);
     }
     .box {
-      width: min(420px, 90vw); padding: 30px; border-radius: 24px; text-align: center;
+      width: min(460px, 92vw); padding: 24px; border-radius: 24px; text-align: center; box-sizing: border-box;
       background: rgba(255,255,255,0.15); backdrop-filter: blur(6px);
       box-shadow: 0 20px 40px rgba(0,0,0,0.25);
     }
-    h1 { margin: 0 0 6px; }
-    .hint { font-size: 22px; min-height: 30px; margin: 18px 0; font-weight: bold; }
+    h1 { margin: 0 0 8px; }
+    .bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0; }
+    .opt { padding: 6px 12px; border-radius: 999px; border: 2px solid #fff; background: transparent; color: #fff; font-weight: bold; cursor: pointer; }
+    .opt.sel { background: #fff; color: #4a3bd6; }
+    .hint { font-size: 21px; min-height: 30px; margin: 14px 0; font-weight: bold; }
+    .turn { font-size: 18px; font-weight: bold; padding: 4px 14px; border-radius: 999px; display: inline-block; background: #ffcc00; color: #222; }
     input {
       width: 140px; padding: 12px; font-size: 26px; text-align: center;
       border: none; border-radius: 14px; outline: none;
     }
-    button {
+    button.check {
       padding: 12px 20px; font-size: 20px; border: none; border-radius: 14px;
       background: #ffcc00; color: #222; font-weight: bold; cursor: pointer; margin-left: 6px;
     }
-    .tries { margin-top: 14px; opacity: 0.85; }
-    .history { margin-top: 8px; font-size: 15px; opacity: 0.8; min-height: 20px; }
+    .meter { height: 12px; border-radius: 99px; background: #ffffff33; overflow: hidden; margin: 12px 0 4px; }
+    .meter div { height: 100%; width: 0; transition: width 0.3s, background 0.3s; }
+    .tries { margin-top: 10px; opacity: 0.9; }
+    .history { margin-top: 8px; font-size: 15px; opacity: 0.85; min-height: 20px; word-break: break-word; }
+    .hidden { display: none; }
   </style>
 </head>
 <body>
   <div class="box">
     <h1>🔢 Sonni top</h1>
-    <div>Men 1 dan 100 gacha son o'yladim</div>
+    <div class="bar" data-group="max">
+      <button class="opt" data-v="50">1–50 (oson)</button>
+      <button class="opt sel" data-v="100">1–100</button>
+      <button class="opt" data-v="1000">1–1000 (qiyin)</button>
+    </div>
+    <div class="bar" data-group="players">
+      <button class="opt sel" data-v="1">👤 Yolg'iz</button>
+      <button class="opt" data-v="2">👥 2 o'yinchi (navbat bilan)</button>
+    </div>
+
+    <div id="who" class="turn hidden"></div>
+    <div id="rangeText">Men 1 dan 100 gacha son o'yladim</div>
     <div id="hint" class="hint">Taxminingizni yozing 👇</div>
     <form id="form">
-      <input id="guess" type="number" min="1" max="100" autofocus>
-      <button type="submit">Tekshir</button>
+      <input id="guess" type="number" min="1" autofocus>
+      <button type="submit" class="check">Tekshir</button>
     </form>
-    <div class="tries">Urinishlar: <b id="tries">0</b></div>
+    <!-- "Issiq-sovuq" ko'rsatkichi: songa qanchalik yaqinligini bildiradi -->
+    <div class="meter"><div id="meter"></div></div>
+    <div class="tries">Urinishlar: <b id="tries">0</b> / <span id="limit">7</span> · 🏆 <span id="best">—</span></div>
     <div id="history" class="history"></div>
   </div>
 
   <script>
-    var secret, tries, history;
+    var settings = { max: 100, players: 1 };
+    var secret, tries, guesses, turn, low, high; // "history" nomi brauzerda band, shuning uchun "guesses"
     var input = document.getElementById("guess");
     var hint = document.getElementById("hint");
 
+    document.querySelectorAll("[data-group]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        var b = e.target.closest(".opt"); if (!b) return;
+        row.querySelectorAll(".opt").forEach(function (x) { x.classList.toggle("sel", x === b); });
+        settings[row.dataset.group] = Number(b.dataset.v);
+        hint.textContent = "Yangi son o'ylandi! 👇";
+        newGame();
+      });
+    });
+
+    // Urinishlar chegarasi: ikkilik qidiruv bilan albatta topish mumkin bo'lgan son + 1
+    function limit() { return Math.ceil(Math.log2(settings.max)) + 1; }
+    function bestKey() { return "tohirjon-sonni-top-best-" + settings.max; }
+
     function newGame() {
-      secret = Math.floor(Math.random() * 100) + 1;
-      tries = 0;
-      history = [];
+      secret = Math.floor(Math.random() * settings.max) + 1;
+      tries = 0; guesses = []; turn = 0; low = 1; high = settings.max;
+      input.max = settings.max;
+      document.getElementById("rangeText").textContent = "Men 1 dan " + settings.max + " gacha son o'yladim";
+      document.getElementById("limit").textContent = settings.players === 2 ? "∞" : limit();
       document.getElementById("tries").textContent = 0;
       document.getElementById("history").textContent = "";
+      document.getElementById("meter").style.width = "0";
+      var best = localStorage.getItem(bestKey());
+      document.getElementById("best").textContent = best ? best + " urinish" : "—";
+      updateWho();
       input.value = "";
       input.focus();
+    }
+
+    function updateWho() {
+      var who = document.getElementById("who");
+      who.classList.toggle("hidden", settings.players !== 2);
+      who.textContent = (turn + 1) + "-o'yinchi navbati";
     }
 
     document.getElementById("form").addEventListener("submit", function (e) {
@@ -65,20 +112,45 @@
         return newGame();
       }
       var n = Number(input.value);
-      if (!n || n < 1 || n > 100) {
-        hint.textContent = "⚠️ 1 dan 100 gacha son yozing";
+      if (!n || n < 1 || n > settings.max) {
+        hint.textContent = "⚠️ 1 dan " + settings.max + " gacha son yozing";
         return;
       }
       tries++;
-      history.push(n);
+      guesses.push(n);
       document.getElementById("tries").textContent = tries;
-      document.getElementById("history").textContent = history.join(" · ");
+      // Javob qaysi oraliqda ekanini toraytiramiz
+      if (n < secret) low = Math.max(low, n + 1);
+      if (n > secret) high = Math.min(high, n - 1);
+      document.getElementById("history").textContent = "Oraliq: " + low + " … " + high + "   |   " + guesses.join(" · ");
 
-      if (n < secret) hint.textContent = "⬆️ Kattaroq son!";
-      else if (n > secret) hint.textContent = "⬇️ Kichikroq son!";
-      else {
-        hint.textContent = "🎉 Topdingiz! " + tries + " urinishda. Enter — yana o'ynash";
+      // Issiq-sovuq: qanchalik yaqin bo'lsa, shuncha to'la va qizil
+      var closeness = 1 - Math.abs(n - secret) / settings.max;
+      var meter = document.getElementById("meter");
+      meter.style.width = Math.round(closeness * 100) + "%";
+      meter.style.background = closeness > 0.95 ? "#ff3d3d" : closeness > 0.8 ? "#ff9f1c" : "#7cc8ff";
+      var temp = closeness > 0.97 ? " 🔥 Juda issiq!" : closeness > 0.9 ? " ♨️ Issiq" : closeness > 0.7 ? " 🙂 Iliq" : " 🧊 Sovuq";
+
+      if (n === secret) {
+        if (settings.players === 2) {
+          hint.textContent = "🎉 " + (turn + 1) + "-o'yinchi topdi! (" + secret + ") Enter — yana";
+        } else {
+          var best = Number(localStorage.getItem(bestKey())) || 0;
+          var record = !best || tries < best;
+          if (record) localStorage.setItem(bestKey(), tries);
+          hint.textContent = "🎉 Topdingiz! " + tries + " urinishda" + (record ? " — rekord!" : "") + " Enter — yana";
+        }
+        meter.style.width = "100%";
         secret = null;
+      } else {
+        hint.textContent = (n < secret ? "⬆️ Kattaroq!" : "⬇️ Kichikroq!") + temp;
+        if (settings.players === 1 && tries >= limit()) {
+          hint.textContent = "😢 Urinishlar tugadi! Son " + secret + " edi. Enter — yana";
+          secret = null;
+        } else if (settings.players === 2) {
+          turn = 1 - turn; // navbat almashadi
+          updateWho();
+        }
       }
       input.value = "";
       input.focus();

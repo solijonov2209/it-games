@@ -315,3 +315,40 @@ kbd {
   background: #00f5d4;
   color: #05131a;
 }
+/* ===== Rejim va yo'l tanlash tugmalari ===== */
+.pick-label {
+  font-size: 0.7rem;
+  letter-spacing: 2px;
+  color: #8f95a8;
+  margin: 12px 0 6px;
+}
+
+.pick-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+}
+
+.pick-btn {
+  background: rgba(255, 255, 255, 0.06);
+  color: #e5e7f0;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 8px 14px;
+  border-radius: 12px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.pick-btn.active {
+  background: linear-gradient(135deg, #00f5d4, #00bbf9);
+  color: #06060e;
+  border-color: transparent;
+}
+
+.p2-guide {
+  font-size: 0.8rem;
+  color: #c5c9d6;
+  margin: 10px 0 0;
+}

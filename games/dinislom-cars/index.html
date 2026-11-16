@@ -42,12 +42,22 @@
       <h1 id="overlay-title">LEGENDARY RACES</h1>
       <p id="overlay-desc">To'siqlar olib tashlandi! $15,000 byudjet bilan Tesla Roadster va afsonaviy mashinalarni minib 20 km masofani bosib o'ting!</p>
       
+      <!-- Rejim va yo'l tanlash -->
+      <div class="pick-label">REJIM</div>
+      <div class="pick-row" id="mode-picker">
+        <button class="pick-btn active" data-mode="1">👤 1 o'yinchi</button>
+        <button class="pick-btn" data-mode="2">👥 2 o'yinchi</button>
+      </div>
+      <div class="pick-label">YO'L</div>
+      <div class="pick-row" id="road-picker"></div>
+
       <div class="controls-guide">
         <div><kbd>W</kbd> Gaz / 100+ km/h</div>
         <div><kbd>S</kbd> Tormoz</div>
         <div><kbd>A</kbd> Chap polosa</div>
         <div><kbd>D</kbd> O'ng polosa</div>
       </div>
+      <p class="p2-guide">2-o'yinchi: <kbd>↑</kbd> gaz · <kbd>↓</kbd> tormoz · <kbd>←</kbd> <kbd>→</kbd> polosa · ⚡ — nitro bonusi</p>
 
       <div class="modal-actions">
         <button id="start-btn" class="start-btn">BOSHLASH (<kbd>ENTER</kbd>)</button>

@@ -62,3 +62,10 @@ h1 span { color: var(--cyan); }
   .hud-pill strong { font-size: 11px; }
   #hud { right: 56px; }
 }
+
+/* ===== 2 kishilik rejim va ob-havo ===== */
+.car-grid.two { grid-template-columns: repeat(2, 1fr); }
+.car-title small { color: #ffb52e; letter-spacing: 0; }
+.hud-pill.p2 { border-color: #ffb52e88; }
+.hud-pill.p2 small { color: #ffb52e; }
+#rain { position: absolute; inset: 0; pointer-events: none; }

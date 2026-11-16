@@ -6,66 +6,110 @@
   <title>Tez hisob</title>
   <style>
     body {
-      margin: 0; height: 100vh; display: grid; place-items: center;
+      margin: 0; min-height: 100vh; display: grid; place-items: center;
       font-family: Arial, sans-serif; color: #3a2400; user-select: none;
       background: linear-gradient(135deg, #ffcc00, #ff7a00);
     }
-    .box { width: min(460px, 92vw); text-align: center; }
+    .box { width: min(520px, 94vw); text-align: center; }
     .hud { display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; }
-    .bar { height: 10px; background: #ffffff66; border-radius: 99px; overflow: hidden; margin: 10px 0 24px; }
+    .bar { height: 10px; background: #ffffff66; border-radius: 99px; overflow: hidden; margin: 10px 0 18px; }
     .bar div { height: 100%; background: #3a2400; width: 100%; transition: width 0.1s linear; }
     .question {
-      font-size: clamp(40px, 10vw, 64px); font-weight: 900; padding: 20px;
-      background: #fff; border-radius: 24px; box-shadow: 0 10px 0 #c85f00; margin-bottom: 24px;
+      font-size: clamp(36px, 9vw, 60px); font-weight: 900; padding: 18px;
+      background: #fff; border-radius: 24px; box-shadow: 0 10px 0 #c85f00; margin-bottom: 20px;
     }
     .answers { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .answers button {
-      font-size: 30px; font-weight: bold; padding: 16px; border: none; border-radius: 18px;
+      font-size: 28px; font-weight: bold; padding: 14px; border: none; border-radius: 18px;
       background: #fff8e6; color: #3a2400; cursor: pointer; box-shadow: 0 6px 0 #d08c33;
     }
-    .answers button:active { transform: translateY(4px); box-shadow: 0 2px 0 #d08c33; }
-    .answers small { font-size: 14px; opacity: 0.5; display: block; }
+    .answers small { font-size: 13px; opacity: 0.55; display: block; }
     .ok { background: #7cf29b !important; }
     .bad { background: #ff8a8a !important; }
-    .start {
-      font-size: 22px; padding: 14px 34px; border: none; border-radius: 999px;
-      background: #3a2400; color: #fff; font-weight: bold; cursor: pointer;
-    }
+    .settings { background: #ffffff55; border-radius: 18px; padding: 12px; margin-top: 14px; }
+    .settings .row { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 6px 0; }
+    .opt { padding: 6px 12px; border-radius: 999px; border: 2px solid #3a2400; background: transparent; color: #3a2400; font-weight: bold; cursor: pointer; font-size: 15px; }
+    .opt.sel { background: #3a2400; color: #ffcc00; }
+    .start { font-size: 22px; padding: 12px 34px; border: none; border-radius: 999px; background: #3a2400; color: #fff; font-weight: bold; cursor: pointer; margin-top: 8px; }
+    .duel { display: flex; justify-content: space-between; font-size: 20px; font-weight: bold; margin-bottom: 8px; }
+    .duel span { padding: 4px 12px; border-radius: 999px; background: #ffffff77; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <div class="box">
-    <div class="hud">
+    <div class="hud" id="soloHud">
       <span>⭐ <span id="score">0</span></span>
       <span>🏆 <span id="best">0</span></span>
       <span>⏱ <span id="time">60</span></span>
     </div>
-    <div class="bar"><div id="bar"></div></div>
+    <div class="duel hidden" id="duelHud">
+      <span>1-o'yinchi: <b id="s1">0</b></span>
+      <span>🎯 10 gacha</span>
+      <span>2-o'yinchi: <b id="s2">0</b></span>
+    </div>
+    <div class="bar" id="barWrap"><div id="bar"></div></div>
     <div class="question" id="question">➕ Tez hisob</div>
     <div class="answers" id="answers"></div>
-    <div id="startBox" style="margin-top:20px">
-      <p>60 soniyada iloji boricha ko'p misol yeching!<br>Javobni bosing yoki 1–4 raqamlarini ishlating.</p>
+
+    <div class="settings" id="settings">
+      <div class="row" data-group="mode">
+        <button class="opt sel" data-v="solo">👤 60 soniya</button>
+        <button class="opt" data-v="duel">👥 Duel (2 o'yinchi)</button>
+      </div>
+      <div class="row" data-group="level">
+        <button class="opt" data-v="1">Oson</button>
+        <button class="opt sel" data-v="2">O'rta</button>
+        <button class="opt" data-v="3">Qiyin</button>
+      </div>
+      <div class="row" id="ops">
+        <button class="opt sel" data-op="+">+</button>
+        <button class="opt sel" data-op="-">−</button>
+        <button class="opt sel" data-op="×">×</button>
+        <button class="opt" data-op="÷">÷</button>
+      </div>
+      <p id="help">Javobni bosing yoki <b>1–4</b> raqamlarini ishlating. Xato javob 3 soniya oladi.</p>
       <button class="start" id="start">▶ Boshlash</button>
     </div>
   </div>
 
   <script>
+    var mode = "solo", level = 2, ops = ["+", "-", "×"];
     var score = 0, timeLeft = 60, timer = null, correct = 0, playing = false;
+    var duel = [0, 0], locked = [false, false];
     var best = Number(localStorage.getItem("dovudxon-hisob-best")) || 0;
     document.getElementById("best").textContent = best;
 
+    // Sozlamalar
+    document.querySelectorAll("[data-group]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        var b = e.target.closest(".opt"); if (!b) return;
+        row.querySelectorAll(".opt").forEach(function (x) { x.classList.toggle("sel", x === b); });
+        if (row.dataset.group === "mode") mode = b.dataset.v; else level = Number(b.dataset.v);
+        document.getElementById("help").innerHTML = mode === "duel"
+          ? "Ikkalangizga bitta misol! 1-o'yinchi: <b>1 2 3 4</b>, 2-o'yinchi: <b>7 8 9 0</b>. Xato — shu misolda boshqa javob berolmaysiz."
+          : "Javobni bosing yoki <b>1–4</b> raqamlarini ishlating. Xato javob 3 soniya oladi.";
+      });
+    });
+    document.getElementById("ops").addEventListener("click", function (e) {
+      var b = e.target.closest(".opt"); if (!b) return;
+      b.classList.toggle("sel");
+      ops = [].map.call(document.querySelectorAll("#ops .opt.sel"), function (x) { return x.dataset.op === "−" ? "-" : x.dataset.op; });
+      if (!ops.length) { b.classList.add("sel"); ops = [b.dataset.op]; } // kamida bitta amal bo'lsin
+    });
+
     function rand(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
 
-    // Yangi misol: ball oshgani sari qiyinlashadi
+    // Yangi misol: daraja va ball oshgani sari qiyinlashadi
     function newQuestion() {
-      var level = 1 + Math.floor(score / 5);
-      var ops = level < 2 ? ["+", "-"] : ["+", "-", "×"];
+      var k = level + Math.floor(score / 8);
       var op = ops[rand(0, ops.length - 1)];
       var a, b;
-      if (op === "×") { a = rand(2, 5 + level); b = rand(2, 9); correct = a * b; }
-      else if (op === "+") { a = rand(1, 10 * level); b = rand(1, 10 * level); correct = a + b; }
-      else { a = rand(5, 10 * level + 5); b = rand(1, a); correct = a - b; }
-      document.getElementById("question").textContent = a + " " + op + " " + b + " = ?";
+      if (op === "×") { a = rand(2, 3 + k * 2); b = rand(2, 9); correct = a * b; }
+      else if (op === "÷") { b = rand(2, 3 + k * 2); correct = rand(2, 10); a = b * correct; }
+      else if (op === "+") { a = rand(1, 10 * k); b = rand(1, 10 * k); correct = a + b; }
+      else { a = rand(5, 10 * k + 5); b = rand(1, a); correct = a - b; }
+      document.getElementById("question").textContent = a + " " + (op === "-" ? "−" : op) + " " + b + " = ?";
 
       // 1 ta to'g'ri + 3 ta yaqin noto'g'ri javob
       var options = [correct];
@@ -75,66 +119,94 @@
       }
       options.sort(function () { return Math.random() - 0.5; });
 
+      locked = [false, false];
       var box = document.getElementById("answers");
       box.innerHTML = "";
       options.forEach(function (n, i) {
         var btn = document.createElement("button");
-        btn.innerHTML = n + "<small>" + (i + 1) + "</small>";
+        btn.innerHTML = n + "<small>" + (mode === "duel" ? (i + 1) + " | " + [7, 8, 9, 0][i] : i + 1) + "</small>";
         btn.dataset.value = n;
-        btn.onclick = function () { answer(btn); };
+        btn.onclick = function () { answer(btn, 0); };
         box.appendChild(btn);
       });
     }
 
-    function answer(btn) {
-      if (!playing) return;
-      if (Number(btn.dataset.value) === correct) {
-        score++;
-        btn.classList.add("ok");
-      } else {
-        timeLeft = Math.max(0, timeLeft - 3); // xato uchun -3 soniya
-        btn.classList.add("bad");
+    function answer(btn, player) {
+      if (!playing || locked[player]) return;
+      var right = Number(btn.dataset.value) === correct;
+      btn.classList.add(right ? "ok" : "bad");
+      if (mode === "solo") {
+        if (right) score++; else timeLeft = Math.max(0, timeLeft - 3);
+        document.getElementById("score").textContent = score;
+        setTimeout(newQuestion, 200);
+        return;
       }
-      document.getElementById("score").textContent = score;
-      setTimeout(newQuestion, 200);
+      // Duel
+      if (right) {
+        duel[player]++;
+        locked = [true, true];
+        document.getElementById("question").textContent = (player + 1) + "-o'yinchi topdi! ✅";
+        updateDuel();
+        if (duel[player] >= 10) return end((player + 1) + "-o'yinchi yutdi! 🏆");
+        setTimeout(newQuestion, 700);
+      } else {
+        locked[player] = true;
+        if (locked[0] && locked[1]) setTimeout(newQuestion, 700); // ikkalasi ham xato qildi
+      }
+    }
+
+    function updateDuel() {
+      document.getElementById("s1").textContent = duel[0];
+      document.getElementById("s2").textContent = duel[1];
     }
 
     function start() {
-      score = 0; timeLeft = 60; playing = true;
+      score = 0; timeLeft = 60; playing = true; duel = [0, 0];
       document.getElementById("score").textContent = 0;
-      document.getElementById("startBox").style.display = "none";
+      document.getElementById("settings").classList.add("hidden");
+      document.getElementById("soloHud").classList.toggle("hidden", mode === "duel");
+      document.getElementById("barWrap").classList.toggle("hidden", mode === "duel");
+      document.getElementById("duelHud").classList.toggle("hidden", mode !== "duel");
+      updateDuel();
       newQuestion();
       clearInterval(timer);
-      timer = setInterval(tick, 100);
+      if (mode === "solo") timer = setInterval(tick, 100);
     }
 
     function tick() {
       timeLeft -= 0.1;
       document.getElementById("time").textContent = Math.ceil(Math.max(0, timeLeft));
       document.getElementById("bar").style.width = Math.max(0, timeLeft) / 60 * 100 + "%";
-      if (timeLeft <= 0) end();
+      if (timeLeft <= 0) {
+        if (score > best) {
+          best = score;
+          localStorage.setItem("dovudxon-hisob-best", best);
+          document.getElementById("best").textContent = best;
+        }
+        end("⏰ Vaqt tugadi! " + score + " ball");
+      }
     }
 
-    function end() {
+    function end(text) {
       clearInterval(timer);
       playing = false;
-      if (score > best) {
-        best = score;
-        localStorage.setItem("dovudxon-hisob-best", best);
-        document.getElementById("best").textContent = best;
-      }
-      document.getElementById("question").textContent = "⏰ Vaqt tugadi! " + score + " ball";
+      document.getElementById("question").textContent = text;
       document.getElementById("answers").innerHTML = "";
       document.getElementById("start").textContent = "🔄 Yana o'ynash";
-      document.getElementById("startBox").style.display = "block";
+      document.getElementById("settings").classList.remove("hidden");
     }
 
     document.getElementById("start").onclick = start;
     document.addEventListener("keydown", function (e) {
       var buttons = document.querySelectorAll("#answers button");
-      var i = Number(e.key) - 1;
-      if (playing && buttons[i]) answer(buttons[i]);
-      else if (!playing && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); start(); }
+      if (!playing) {
+        if (e.key === "Enter") start();
+        return;
+      }
+      var p1 = ["1", "2", "3", "4"].indexOf(e.key);
+      var p2 = ["7", "8", "9", "0"].indexOf(e.key);
+      if (p1 >= 0 && buttons[p1]) answer(buttons[p1], 0);
+      if (mode === "duel" && p2 >= 0 && buttons[p2]) answer(buttons[p2], 1);
     });
   </script>
 </body>

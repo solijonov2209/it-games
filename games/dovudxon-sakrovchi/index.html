@@ -5,143 +5,217 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Sakrovchi</title>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; user-select: none; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #8fd3ff; user-select: none; font-family: Arial, sans-serif; }
     canvas { display: block; width: 100%; height: 100%; }
+    .menu {
+      position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 10px; background: rgba(20, 40, 80, 0.55); color: #fff; text-align: center;
+    }
+    .menu.hidden { display: none; }
+    .menu h1 { margin: 0; font-size: 44px; text-shadow: 0 4px 0 #1d2140; }
+    .row { display: flex; gap: 8px; }
+    .opt { padding: 10px 18px; border-radius: 999px; border: 3px solid #fff; background: transparent; color: #fff; font-size: 16px; font-weight: bold; cursor: pointer; }
+    .opt.sel { background: #fff; color: #1d2140; }
+    .menu p { margin: 4px; font-size: 15px; }
+    .go { padding: 12px 34px; font-size: 20px; font-weight: bold; border: none; border-radius: 999px; background: #ffcc00; color: #222; cursor: pointer; }
   </style>
 </head>
 <body>
   <canvas id="c"></canvas>
+  <div class="menu" id="menu">
+    <h1>🏃 Sakrovchi</h1>
+    <div id="result" style="font-size:20px;font-weight:bold"></div>
+    <div class="row" id="modes">
+      <button class="opt sel" data-p="1">👤 1 o'yinchi</button>
+      <button class="opt" data-p="2">👥 2 o'yinchi</button>
+    </div>
+    <p>1-o'yinchi: <b>W</b> yoki <b>Probel</b> · 2-o'yinchi: <b>↑</b> · telefonda ekranni bosing</p>
+    <p>Havoda yana bir marta sakrash mumkin · 🪙 tanga +10 m · 🐦 qushdan ehtiyot bo'ling!</p>
+    <button class="go" id="go">▶ Boshlash</button>
+  </div>
 
   <script>
     var canvas = document.getElementById("c");
     var ctx = canvas.getContext("2d");
-    var W, H, GROUND;
-    function resize() {
-      W = canvas.width = innerWidth;
-      H = canvas.height = innerHeight;
-      GROUND = H - 70;
-    }
+    var W, H;
+    function resize() { W = canvas.width = innerWidth; H = canvas.height = innerHeight; }
     addEventListener("resize", resize);
     resize();
 
     var GRAVITY = 0.8, JUMP = -15;
-    var hero, obstacles, clouds, speed, distance, state, spawnIn;
+    var playerCount = 1, runners = [], state = "menu", speed, clouds = [];
     var best = Number(localStorage.getItem("dovudxon-sakrovchi-best")) || 0;
+    for (var i = 0; i < 6; i++) clouds.push({ x: Math.random() * 2000, y: 0.1 + Math.random() * 0.35 });
 
-    clouds = [];
-    for (var i = 0; i < 5; i++) clouds.push({ x: Math.random() * W, y: 30 + Math.random() * 150 });
+    document.getElementById("modes").addEventListener("click", function (e) {
+      var b = e.target.closest(".opt"); if (!b) return;
+      document.querySelectorAll("#modes .opt").forEach(function (x) { x.classList.toggle("sel", x === b); });
+      playerCount = Number(b.dataset.p);
+    });
 
-    function reset() {
-      hero = { x: 90, y: GROUND, vy: 0, size: 44, jumps: 0 };
-      obstacles = [];
-      speed = 6;
-      distance = 0;
-      spawnIn = 60;
+    // Har bir o'yinchining o'z yo'lagi (2 kishilikda ekran ikkiga bo'linadi)
+    function makeRunner(id) {
+      return { id: id, y: 0, vy: 0, jumps: 0, distance: 0, coins: 0, alive: true, obstacles: [], items: [], spawnIn: 60, itemIn: 90 };
     }
-    reset();
-    state = "menu"; // menu | play | over
+    function laneOf(r) {
+      var h = H / runners.length;
+      return { top: r.id * h, h: h, ground: r.id * h + h - 60 };
+    }
+
+    function start() {
+      runners = [];
+      for (var i = 0; i < playerCount; i++) runners.push(makeRunner(i));
+      speed = 6;
+      state = "play";
+      document.getElementById("menu").classList.add("hidden");
+    }
+    document.getElementById("go").onclick = start;
 
     // Sakrash: havoda bir marta qo'shimcha sakrash mumkin
-    function jump() {
-      if (state !== "play") { reset(); state = "play"; return; }
-      if (hero.jumps < 2) {
-        hero.vy = JUMP;
-        hero.jumps++;
-      }
+    function jump(r) {
+      if (state !== "play" || !r || !r.alive) return;
+      if (r.jumps < 2) { r.vy = JUMP; r.jumps++; }
     }
 
     function update() {
       clouds.forEach(function (c) { c.x -= 0.5; if (c.x < -100) c.x = W + 50; });
       if (state !== "play") return;
-
       speed += 0.002;
-      distance += speed / 10;
 
-      hero.vy += GRAVITY;
-      hero.y += hero.vy;
-      if (hero.y >= GROUND) { hero.y = GROUND; hero.vy = 0; hero.jumps = 0; }
+      runners.forEach(function (r) {
+        if (!r.alive) return;
+        r.distance += speed / 10;
+        r.vy += GRAVITY;
+        r.y += r.vy;
+        if (r.y >= 0) { r.y = 0; r.vy = 0; r.jumps = 0; }  // y — yerdan balandlik (manfiy = yuqorida)
 
-      // Yangi to'siq
-      spawnIn--;
-      if (spawnIn <= 0) {
-        var types = ["🌵", "🪨", "🔥"];
-        obstacles.push({ x: W + 30, type: types[Math.floor(Math.random() * types.length)] });
-        spawnIn = 50 + Math.random() * 70 - Math.min(30, speed * 2);
-      }
-      obstacles.forEach(function (o) { o.x -= speed; });
-      obstacles = obstacles.filter(function (o) { return o.x > -50; });
-
-      // To'qnashuv
-      obstacles.forEach(function (o) {
-        if (Math.abs(o.x - hero.x) < 30 && GROUND - hero.y < 34) {
-          state = "over";
-          var score = Math.floor(distance);
-          if (score > best) { best = score; localStorage.setItem("dovudxon-sakrovchi-best", best); }
+        // Yangi to'siq: yerdagi yoki uchayotgan qush
+        r.spawnIn--;
+        if (r.spawnIn <= 0) {
+          var bird = r.distance > 150 && Math.random() < 0.25;
+          var types = ["🌵", "🪨", "🔥"];
+          r.obstacles.push({ x: W + 30, type: bird ? "🐦" : types[Math.floor(Math.random() * 3)], air: bird ? 55 : 0 });
+          r.spawnIn = 50 + Math.random() * 70 - Math.min(30, speed * 2);
         }
+        r.itemIn--;
+        if (r.itemIn <= 0) { r.items.push({ x: W + 30, h: 40 + Math.random() * 90 }); r.itemIn = 80 + Math.random() * 80; }
+
+        r.obstacles.forEach(function (o) { o.x -= speed; });
+        r.obstacles = r.obstacles.filter(function (o) { return o.x > -50; });
+        r.items.forEach(function (o) { o.x -= speed; });
+
+        // To'qnashuv (qush havoda, shuning uchun uning ostidan yugurib o'tish mumkin)
+        r.obstacles.forEach(function (o) {
+          var height = -r.y;
+          var hit = o.air ? (height > o.air - 30 && height < o.air + 30) : height < 34;
+          if (Math.abs(o.x - 90) < 28 && hit) r.alive = false;
+        });
+        r.items = r.items.filter(function (o) {
+          if (Math.abs(o.x - 90) < 30 && Math.abs(-r.y - o.h) < 35) { r.coins++; r.distance += 10; return false; }
+          return o.x > -30;
+        });
       });
+
+      if (runners.every(function (r) { return !r.alive; })) end();
     }
 
-    function text(str, x, y, size, color) {
+    function end() {
+      state = "over";
+      var top = Math.max.apply(null, runners.map(function (r) { return Math.floor(r.distance); }));
+      if (top > best) { best = top; localStorage.setItem("dovudxon-sakrovchi-best", best); }
+      var text;
+      if (runners.length === 2) {
+        var a = Math.floor(runners[0].distance), b = Math.floor(runners[1].distance);
+        text = (a === b ? "🤝 Durang!" : (a > b ? "🏆 1-o'yinchi yutdi!" : "🏆 2-o'yinchi yutdi!")) + " (" + a + " m : " + b + " m)";
+      } else {
+        text = "💥 " + top + " metr yugurdingiz!";
+      }
+      setTimeout(function () {
+        document.getElementById("result").textContent = text;
+        document.getElementById("go").textContent = "🔄 Yana o'ynash";
+        document.getElementById("menu").classList.remove("hidden");
+      }, 700);
+    }
+
+    function text(str, x, y, size, color, align) {
       ctx.font = "bold " + size + "px Arial";
       ctx.fillStyle = color || "#1d2140";
-      ctx.textAlign = "center";
+      ctx.textAlign = align || "center";
       ctx.fillText(str, x, y);
     }
 
-    function draw() {
-      // Osmon
-      var sky = ctx.createLinearGradient(0, 0, 0, H);
-      sky.addColorStop(0, "#5ec4ff");
-      sky.addColorStop(1, "#d6f1ff");
+    // Masofa oshgan sari osmon: kunduz → kechqurun → tun
+    function skyColors(d) {
+      if (d < 300) return ["#5ec4ff", "#d6f1ff"];
+      if (d < 700) return ["#ff8a4c", "#ffd3a1"];
+      return ["#0b1640", "#33407a"];
+    }
+
+    function drawLane(r) {
+      var L = laneOf(r);
+      ctx.save();
+      ctx.beginPath(); ctx.rect(0, L.top, W, L.h); ctx.clip();
+      var sc = skyColors(r.distance);
+      var sky = ctx.createLinearGradient(0, L.top, 0, L.top + L.h);
+      sky.addColorStop(0, sc[0]); sky.addColorStop(1, sc[1]);
       ctx.fillStyle = sky;
-      ctx.fillRect(0, 0, W, H);
+      ctx.fillRect(0, L.top, W, L.h);
+      if (r.distance >= 700) { ctx.fillStyle = "#fff"; for (var s = 0; s < 40; s++) ctx.fillRect((s * 97) % W, L.top + (s * 37) % (L.h * 0.6), 2, 2); }
 
       ctx.textBaseline = "middle";
-      ctx.font = "50px Arial";
-      clouds.forEach(function (c) { ctx.fillText("☁️", c.x, c.y); });
+      ctx.font = "44px Arial";
+      clouds.forEach(function (c) { ctx.fillText("☁️", c.x, L.top + c.y * L.h); });
 
       // Yer
       ctx.fillStyle = "#5cb85c";
-      ctx.fillRect(0, GROUND + 22, W, 14);
+      ctx.fillRect(0, L.ground + 22, W, 14);
       ctx.fillStyle = "#8b5a2b";
-      ctx.fillRect(0, GROUND + 36, W, H);
+      ctx.fillRect(0, L.ground + 36, W, L.h);
 
-      // Qahramon va to'siqlar
       ctx.textAlign = "center";
+      ctx.font = "34px Arial";
+      r.items.forEach(function (o) { ctx.fillText("🪙", o.x, L.ground - o.h); });
       ctx.font = "40px Arial";
-      obstacles.forEach(function (o) { ctx.fillText(o.type, o.x, GROUND); });
+      r.obstacles.forEach(function (o) { ctx.fillText(o.type, o.x, L.ground - o.air); });
+
       ctx.save();
-      ctx.translate(hero.x, hero.y);
+      ctx.translate(90, L.ground + r.y);
       ctx.scale(-1, 1); // yugurayotgan odam o'ngga qarasin
-      ctx.font = hero.size + "px Arial";
+      ctx.globalAlpha = r.alive ? 1 : 0.35;
+      ctx.font = "44px Arial";
       ctx.fillText("🏃", 0, 0);
       ctx.restore();
 
-      text("📏 " + Math.floor(distance) + " m", W - 90, 30, 22);
-      text("🏆 " + best + " m", 80, 30, 22);
+      var night = r.distance >= 700;
+      var label = runners.length === 2 ? (r.id === 0 ? "1-o'yinchi (W)" : "2-o'yinchi (↑)") + " · " : "";
+      text(label + "📏 " + Math.floor(r.distance) + " m · 🪙 " + r.coins, W - 20, L.top + 30, 20, night ? "#fff" : "#1d2140", "right");
+      text("🏆 " + best + " m", 20, L.top + 30, 20, night ? "#fff" : "#1d2140", "left");
+      if (!r.alive) text("💥 Yiqildi!", W / 2, L.top + L.h / 2, 34, "#ff3d5a");
+      ctx.restore();
 
-      if (state === "menu") {
-        text("🏃 Sakrovchi", W / 2, H / 2 - 50, 48, "#fff");
-        text("Probel / ↑ / ekranni bosish — sakrash (havoda yana bir marta mumkin)", W / 2, H / 2 + 5, 18, "#1d2140");
-        text("Boshlash uchun bosing", W / 2, H / 2 + 40, 22, "#1d2140");
-      }
-      if (state === "over") {
-        text("💥 Yiqildingiz!", W / 2, H / 2 - 40, 44, "#ff3d5a");
-        text(Math.floor(distance) + " metr yugurdingiz", W / 2, H / 2 + 10, 24);
-        text("Qayta boshlash uchun bosing", W / 2, H / 2 + 45, 20);
-      }
+      if (r.id === 1) { ctx.fillStyle = "#1d2140"; ctx.fillRect(0, L.top - 2, W, 4); }
+    }
+
+    function draw() {
+      if (!runners.length) runners = [makeRunner(0)];
+      runners.forEach(drawLane);
     }
 
     function loop() { update(); draw(); requestAnimationFrame(loop); }
     loop();
 
     addEventListener("keydown", function (e) {
-      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") {
-        e.preventDefault();
-        if (!e.repeat) jump();
-      }
+      if (e.code === "Space" || e.code === "ArrowUp" || e.code === "KeyW") e.preventDefault();
+      if (e.repeat) return;
+      if (state !== "play" && e.code === "Enter") { start(); return; }
+      if (e.code === "KeyW" || e.code === "Space") jump(runners[0]);
+      if (e.code === "ArrowUp") jump(runners.length === 2 ? runners[1] : runners[0]);
     });
-    addEventListener("pointerdown", jump);
+    // Telefonda: 2 kishilikda ekranning yuqori/pastki yarmi
+    canvas.addEventListener("pointerdown", function (e) {
+      if (runners.length === 2) jump(runners[e.clientY < H / 2 ? 0 : 1]);
+      else jump(runners[0]);
+    });
   </script>
 </body>
 </html>

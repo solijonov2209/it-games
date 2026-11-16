@@ -64,6 +64,10 @@
             background: radial-gradient(circle at center, transparent 58%, rgba(255, 255, 255, 0.08) 88%, rgba(56, 189, 248, 0.18) 100%);
             transition: opacity 0.2s ease;
         }
+    
+        .pick-btn { padding: 6px 8px; border-radius: 12px; font-weight: 800; font-size: 12px; color: #e2e8f0; background: rgba(15,23,42,0.85); border: 1px solid rgba(255,255,255,0.15); cursor: pointer; }
+        .pick-btn.active { background: #f59e0b; color: #0f172a; border-color: #f59e0b; }
+        .p2-hud { position: fixed; top: 50%; right: 12px; z-index: 30; padding: 8px 12px; border-radius: 14px; background: rgba(15,23,42,0.85); border: 1px solid rgba(251,146,60,0.5); color: #fff; font-weight: 800; font-size: 13px; pointer-events: none; }
     </style>
 </head>
 <body class="text-white h-screen w-screen relative overflow-hidden">
@@ -185,6 +189,14 @@
                         <div>🏁 Finish: <strong class="text-emerald-400">Shahar shohko'chasi</strong></div>
                     </div>
                 </div>
+
+                <!-- Rejim va vaqt tanlash -->
+                <div class="flex gap-2" id="modePicker">
+                    <button data-mode="1" class="pick-btn flex-1 active">👤 1 o'yinchi</button>
+                    <button data-mode="2" class="pick-btn flex-1">👥 2 o'yinchi</button>
+                </div>
+                <div class="flex gap-2" id="timePicker"></div>
+                <div class="text-[10px] text-slate-400 leading-snug">1-o'yinchi: W A S D · 2-o'yinchi: strelkalar (ekran ikkiga bo'linadi)</div>
 
                 <button id="actionBtn" class="w-full py-3.5 px-5 rounded-2xl racing-font font-extrabold text-sm sm:text-base tracking-wider uppercase btn-press flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 via-orange-500 to-red-500 text-slate-950 shadow-xl glow-cta">
                     <span>🏁 POYGANI BOSHLASH</span>
@@ -736,6 +748,9 @@
         scene.fog = new THREE.FogExp2(0x93c5fd, 0.0055);
 
         const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 450);
+        // 2-o'yinchi uchun alohida kamera (ekranning o'ng yarmi)
+        const camera2 = new THREE.PerspectiveCamera(60, window.innerWidth / 2 / window.innerHeight, 0.1, 450);
+        let gameMode = 1;
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -763,6 +778,22 @@
         sunLight.shadow.camera.bottom = -d;
         scene.add(sunLight);
         scene.add(sunLight.target);
+
+        // Kun vaqtlari: osmon, tuman va yorug'lik o'zgaradi
+        const TIMES = [
+            { name: "☀️ Kunduz", sky: 0x7dd3fc, fog: 0x93c5fd, hemi: 0.85, sun: 1.35, exposure: 1.12 },
+            { name: "🌇 Kechqurun", sky: 0xf97316, fog: 0xfdba74, hemi: 0.6, sun: 0.9, exposure: 1.0 },
+            { name: "🌙 Tun", sky: 0x0b1026, fog: 0x111833, hemi: 0.28, sun: 0.18, exposure: 1.25 }
+        ];
+        let timeOfDay = TIMES[0];
+        function applyTimeOfDay(t) {
+            timeOfDay = t;
+            scene.background = new THREE.Color(t.sky);
+            scene.fog.color = new THREE.Color(t.fog);
+            hemiLight.intensity = t.hemi;
+            sunLight.intensity = t.sun;
+            renderer.toneMappingExposure = t.exposure;
+        }
 
         // Quyosh diski osmonda
         const sunMesh = new THREE.Mesh(
@@ -1296,18 +1327,23 @@
         // Klaviatura va Sensor boshqaruv
         const inputState = { gas: false, brake: false, left: false, right: false };
 
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") inputState.gas = true;
-            if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") inputState.brake = true;
-            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputState.left = true;
-            if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputState.right = true;
-        });
-        window.addEventListener("keyup", (e) => {
-            if (e.key === "ArrowUp" || e.key === "w" || e.key === "W") inputState.gas = false;
-            if (e.key === "ArrowDown" || e.key === "s" || e.key === "S") inputState.brake = false;
-            if (e.key === "ArrowLeft" || e.key === "a" || e.key === "A") inputState.left = false;
-            if (e.key === "ArrowRight" || e.key === "d" || e.key === "D") inputState.right = false;
-        });
+        const inputState2 = { gas: false, brake: false, left: false, right: false };
+        // W A S D — 1-o'yinchi. Strelkalar: 1 kishilikda 1-o'yinchi, 2 kishilikda 2-o'yinchi.
+        function setKey(e, value) {
+            const k = e.key.toLowerCase();
+            const arrows = gameMode === 2 ? inputState2 : inputState;
+            if (k === "w") inputState.gas = value;
+            if (k === "s") inputState.brake = value;
+            if (k === "a") inputState.left = value;
+            if (k === "d") inputState.right = value;
+            if (e.key === "ArrowUp") arrows.gas = value;
+            if (e.key === "ArrowDown") arrows.brake = value;
+            if (e.key === "ArrowLeft") arrows.left = value;
+            if (e.key === "ArrowRight") arrows.right = value;
+            if (e.key.startsWith("Arrow")) e.preventDefault();
+        }
+        window.addEventListener("keydown", (e) => setKey(e, true));
+        window.addEventListener("keyup", (e) => setKey(e, false));
 
         function attachControlBtn(elId, prop) {
             const btn = document.getElementById(elId);
@@ -1467,7 +1503,7 @@
 
             activeRacers.push({
                 isPlayer: true,
-                name: `Siz (${chosen.name})`,
+                name: gameMode === 2 ? "1-o'yinchi" : `Siz (${chosen.name})`,
                 colorStr: "#" + chosen.bodyHex.toString(16).padStart(6, "0"),
                 model: pModel,
                 x: 0,
@@ -1485,6 +1521,20 @@
             // 2. 4 ta Aqlli AI Raqiblar (Jami 5 skuter)
             const aiSlots = [-4.6, -2.3, 2.3, 4.6];
             AI_DRIVERS.forEach((ai, idx) => {
+                // 2 kishilik rejimda oxirgi raqib o'rniga 2-o'yinchi chiqadi
+                if (gameMode === 2 && idx === AI_DRIVERS.length - 1) {
+                    const spec2 = { bodyHex: 0xf97316, trimHex: 0x111827, jacketHex: 0xea580c, helmetHex: 0xffffff };
+                    const m2 = buildRealisticScooterWithRider(spec2);
+                    m2.root.position.set(2.3, 0, 0);
+                    scene.add(m2.root);
+                    activeRacers.push({
+                        isPlayer: false, isPlayer2: true, name: "2-o'yinchi",
+                        colorStr: "#f97316", model: m2, x: 2.3, z: 0, speed: 0,
+                        maxSpeed: chosen.maxSpeed, accel: chosen.accel, handling: chosen.handling,
+                        lean: 0, finished: false, finishTime: null, smokeTimer: 0
+                    });
+                    return;
+                }
                 const aiSpec = {
                     bodyHex: ai.bodyHex,
                     trimHex: ai.trimHex,
@@ -1517,6 +1567,17 @@
 
             timeLeft = RACE_SECONDS;
             mode = "COUNTDOWN";
+            applyTimeOfDay(timeOfDay);
+            // Tunda skuter faralari yonadi
+            activeRacers.forEach((r) => {
+                if (timeOfDay === TIMES[2] && (r.isPlayer || r.isPlayer2)) {
+                    const head = new THREE.SpotLight(0xfff2c0, 3, 45, 0.5, 0.5);
+                    head.position.set(0, 1.2, -0.8);
+                    head.target.position.set(0, 0, -15);
+                    r.model.root.add(head); r.model.root.add(head.target);
+                }
+            });
+            document.getElementById("p2Hud").classList.toggle("hidden", gameMode !== 2);
 
             // UI ni poyga rejimiga o'tkazish
             document.getElementById("garageOverlay").classList.add("hidden");
@@ -1566,11 +1627,12 @@
             const elapsed = RACE_SECONDS - timeLeft;
 
             activeRacers.forEach((r) => {
-                if (r.isPlayer) {
-                    if (inputState.gas) {
+                if (r.isPlayer || r.isPlayer2) {
+                    const inp = r.isPlayer2 ? inputState2 : inputState;
+                    if (inp.gas) {
                         r.speed += r.accel * dt;
                         r.model.brakeLightMat.emissiveIntensity = 0.5;
-                    } else if (inputState.brake) {
+                    } else if (inp.brake) {
                         r.speed -= 38 * dt;
                         r.model.brakeLightMat.emissiveIntensity = 3.0;
                     } else {
@@ -1581,10 +1643,10 @@
                     r.speed = Math.max(0, Math.min(r.maxSpeed, r.speed));
 
                     const steerRate = 6.2 * r.handling;
-                    if (inputState.left) {
+                    if (inp.left) {
                         r.x -= steerRate * dt;
                         r.lean = Math.min(0.28, r.lean + 2.2 * dt);
-                    } else if (inputState.right) {
+                    } else if (inp.right) {
                         r.x += steerRate * dt;
                         r.lean = Math.max(-0.28, r.lean - 2.2 * dt);
                     } else {
@@ -1596,11 +1658,13 @@
                     if (r.x < -maxRoadX) { r.x = -maxRoadX; r.speed *= 0.985; }
                     if (r.x > maxRoadX) { r.x = maxRoadX; r.speed *= 0.985; }
 
-                    updateMotorAudio(r.speed);
+                    if (r.isPlayer) {
+                        updateMotorAudio(r.speed);
 
-                    // Tezlik effekti (40 km/s dan oshganda)
-                    const speedOverlay = document.getElementById("speedLinesOverlay");
-                    speedOverlay.style.opacity = r.speed > 38 ? ((r.speed - 38) / 12) * 0.85 : 0;
+                        // Tezlik effekti (40 km/s dan oshganda)
+                        const speedOverlay = document.getElementById("speedLinesOverlay");
+                        speedOverlay.style.opacity = r.speed > 38 ? ((r.speed - 38) / 12) * 0.85 : 0;
+                    }
                 } else {
                     // AI boshqaruvi
                     const desiredSpeed = r.finished
@@ -1659,7 +1723,8 @@
                 if (!r.finished && coveredDist >= TRACK_DISTANCE) {
                     r.finished = true;
                     r.finishTime = elapsed;
-                    if (r.isPlayer) {
+                    const humans = activeRacers.filter((h) => h.isPlayer || h.isPlayer2);
+                    if ((r.isPlayer || r.isPlayer2) && humans.every((h) => h.finished)) {
                         setTimeout(() => {
                             if (mode === "RACING") concludeRace(false);
                         }, 600);
@@ -1677,6 +1742,12 @@
             document.getElementById("hudSpeed").textContent = Math.round(player.speed);
             document.getElementById("hudSpeedGauge").style.width = `${(player.speed / 50) * 100}%`;
 
+            const p2 = activeRacers.find((r) => r.isPlayer2);
+            if (p2) {
+                const p2Pos = ranking.findIndex((x) => x.isPlayer2) + 1;
+                document.getElementById("p2Hud").textContent =
+                    `2-O'YINCHI · ${p2Pos}-o'rin · ${Math.round(p2.speed)} km/s${p2.finished ? " · 🏁" : ""}`;
+            }
             const pct = Math.min(100, Math.max(0, Math.round((-player.z / TRACK_DISTANCE) * 100)));
             document.getElementById("hudProgressPct").textContent = `${pct}%`;
             document.getElementById("hudProgressFill").style.width = `${pct}%`;
@@ -1717,6 +1788,11 @@
 
             document.getElementById("resTrophy").textContent = myPlace === 1 ? "🏆" : myPlace === 2 ? "🥈" : myPlace === 3 ? "🥉" : "🏁";
             document.getElementById("resTitle").textContent = myPlace === 1 ? "1-O'RIN! G'ALABA!" : `${myPlace}-O'RINNI OLDINGIZ`;
+            if (gameMode === 2) {
+                const p2Place = ranked.findIndex((r) => r.isPlayer2) + 1;
+                document.getElementById("resTrophy").textContent = "🏆";
+                document.getElementById("resTitle").textContent = myPlace < p2Place ? "1-O'YINCHI YUTDI!" : "2-O'YINCHI YUTDI!";
+            }
             document.getElementById("resSubtitle").textContent = isTimeOut
                 ? "40 soniya vaqt yakunlandi!"
                 : "Finish chizig'ini muvaffaqiyatli kesib o'tdingiz!";
@@ -1733,7 +1809,7 @@
 
                 const row = document.createElement("div");
                 row.className = `flex items-center justify-between px-3 py-2 rounded-xl text-xs sm:text-sm ${
-                    r.isPlayer
+                    (r.isPlayer || r.isPlayer2)
                         ? "bg-amber-500/20 border border-amber-400/50 font-bold text-white"
                         : "bg-slate-900/80 text-slate-300"
                 }`;
@@ -1813,19 +1889,23 @@
 
                 // Dinamik poyga kamerasi (Chase Cam + Tezlikka qarab FOV o'zgarishi)
                 const player = activeRacers[0];
-                if (player) {
-                    const speedRatio = player.speed / 50;
+                const followCam = (cam, who) => {
+                    const speedRatio = who.speed / 50;
                     const targetFov = 60 + speedRatio * 14;
-                    camera.fov += (targetFov - camera.fov) * 0.1;
-                    camera.updateProjectionMatrix();
-
+                    cam.fov += (targetFov - cam.fov) * 0.1;
+                    cam.updateProjectionMatrix();
                     const camTargetPos = new THREE.Vector3(
-                        player.x * 0.78,
+                        who.x * 0.78,
                         2.35 - speedRatio * 0.2,
-                        player.z + 4.3 + speedRatio * 0.55
+                        who.z + 4.3 + speedRatio * 0.55
                     );
-                    camera.position.lerp(camTargetPos, 0.18);
-                    camera.lookAt(player.x * 0.55, 1.15, player.z - 8);
+                    cam.position.lerp(camTargetPos, 0.18);
+                    cam.lookAt(who.x * 0.55, 1.15, who.z - 8);
+                };
+                const player2 = activeRacers.find((r) => r.isPlayer2);
+                if (player2) followCam(camera2, player2);
+                if (player) {
+                    followCam(camera, player);
 
                     // Quyosh soyasi o'yinchini kuzatib boradi
                     sunLight.position.set(player.x + 25, 55, player.z + 15);
@@ -1833,7 +1913,26 @@
                 }
             }
 
-            renderer.render(scene, camera);
+            const p2r = activeRacers.find((r) => r.isPlayer2);
+            if (gameMode === 2 && p2r && mode !== "GARAGE") {
+                // Ekran ikkiga bo'linadi: chapda 1-o'yinchi, o'ngda 2-o'yinchi
+                const w = window.innerWidth, h = window.innerHeight, half = Math.floor(w / 2);
+                camera.aspect = half / h; camera.updateProjectionMatrix();
+                camera2.aspect = half / h; camera2.updateProjectionMatrix();
+                renderer.setScissorTest(true);
+                renderer.setViewport(0, 0, half - 2, h); renderer.setScissor(0, 0, half - 2, h);
+                renderer.render(scene, camera);
+                renderer.setViewport(half + 2, 0, half - 2, h); renderer.setScissor(half + 2, 0, half - 2, h);
+                renderer.render(scene, camera2);
+                renderer.setScissorTest(false);
+                renderer.setViewport(0, 0, w, h);
+            } else {
+                if (Math.abs(camera.aspect - window.innerWidth / window.innerHeight) > 0.01) {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                }
+                renderer.render(scene, camera);
+            }
         }
 
         // Tugmalar va oyna o'lchami hodisalari
@@ -1868,6 +1967,28 @@
         });
 
         // O'yinni ishga tushirish
+        const p2HudEl = document.createElement("div");
+        p2HudEl.id = "p2Hud";
+        p2HudEl.className = "p2-hud hidden";
+        document.body.appendChild(p2HudEl);
+        document.querySelectorAll("#modePicker .pick-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+                gameMode = Number(btn.dataset.mode);
+                document.querySelectorAll("#modePicker .pick-btn").forEach((b) => b.classList.toggle("active", b === btn));
+            });
+        });
+        const timePicker = document.getElementById("timePicker");
+        TIMES.forEach((t, i) => {
+            const btn = document.createElement("button");
+            btn.className = "pick-btn flex-1" + (i === 0 ? " active" : "");
+            btn.textContent = t.name;
+            btn.addEventListener("click", () => {
+                applyTimeOfDay(t);
+                [...timePicker.children].forEach((b) => b.classList.toggle("active", b === btn));
+            });
+            timePicker.appendChild(btn);
+        });
+
         window.onload = function () {
             loadGameData();
             previewId = saveState.selected;

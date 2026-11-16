@@ -8,11 +8,41 @@
 </head>
 <body>
   <div class="hud">
-    <span>🍎 Ball: <b id="score">0</b></span>
+    <span class="p1">🟢 <b id="score1">0</b></span>
+    <span id="p2box" class="p2 hidden">🔵 <b id="score2">0</b></span>
     <span>🏆 Rekord: <b id="best">0</b></span>
   </div>
-  <canvas id="board" width="600" height="400"></canvas>
-  <div id="message" class="message">Boshlash uchun istalgan strelkani bosing</div>
+
+  <div class="stage">
+    <canvas id="board" width="600" height="400"></canvas>
+
+    <!-- Menyu -->
+    <div id="menu" class="menu">
+      <h1>🐍 Ilon</h1>
+      <div class="label">Rejim</div>
+      <div class="row" data-group="players">
+        <button class="opt sel" data-value="1">👤 1 o'yinchi</button>
+        <button class="opt" data-value="2">👥 2 o'yinchi</button>
+      </div>
+      <div class="label">Xarita</div>
+      <div class="row" data-group="map">
+        <button class="opt sel" data-value="classic">🧱 Klassik</button>
+        <button class="opt" data-value="portal">🌀 Teleport</button>
+        <button class="opt" data-value="rocks">🪨 To'siqlar</button>
+      </div>
+      <div class="label">Tezlik</div>
+      <div class="row" data-group="speed">
+        <button class="opt" data-value="150">🐢 Sekin</button>
+        <button class="opt sel" data-value="110">🐇 O'rta</button>
+        <button class="opt" data-value="75">⚡ Tez</button>
+      </div>
+      <p class="help">1-o'yinchi: <b>W A S D</b> · 2-o'yinchi: <b>strelkalar</b><br>
+        🍎 +1 · 🌟 oltin olma +5 (tez yo'qoladi) · Probel — pauza</p>
+      <button id="startBtn" class="start">▶ Boshlash</button>
+    </div>
+  </div>
+
+  <div id="message" class="message"></div>
 
   <!-- Telefon uchun tugmalar -->
   <div class="pad">

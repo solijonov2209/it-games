@@ -7,48 +7,83 @@
   <style>
     body {
       margin: 0; min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 14px;
+      align-items: center; justify-content: center; gap: 10px; padding: 10px; box-sizing: border-box;
       font-family: Arial, sans-serif; color: #fff; user-select: none;
       background: linear-gradient(135deg, #00b37e, #00a3d9);
     }
-    h1 { margin: 0; font-size: 28px; }
-    .hud { display: flex; gap: 24px; font-size: 18px; }
-    .board {
-      display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;
-      width: min(440px, 92vw, 70vh);
+    h1 { margin: 0; font-size: 26px; text-align: center; }
+    .bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .opt {
+      padding: 6px 12px; border-radius: 999px; border: 2px solid #ffffff99; background: transparent;
+      color: #fff; font-weight: bold; font-size: 13px; cursor: pointer;
     }
+    .opt.sel { background: #fff; color: #00876a; }
+    .hud { display: flex; gap: 18px; font-size: 17px; flex-wrap: wrap; justify-content: center; }
+    .hud .turn { padding: 2px 10px; border-radius: 999px; background: #ffffff33; }
+    .hud .turn.active { background: #ffcc00; color: #222; }
+    .board { display: grid; gap: 8px; width: min(560px, 94vw); }
     .card {
-      aspect-ratio: 1; border-radius: 14px; cursor: pointer; position: relative;
+      aspect-ratio: 1; border-radius: 12px; cursor: pointer; position: relative;
       transform-style: preserve-3d; transition: transform 0.4s;
     }
     .card.open, .card.done { transform: rotateY(180deg); }
     .card div {
-      position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden;
+      position: absolute; inset: 0; border-radius: 12px; backface-visibility: hidden;
       display: grid; place-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.2);
     }
-    .back { background: #ffffff33; border: 3px solid #ffffff88; font-size: 32px; }
-    .front { background: #fff; transform: rotateY(180deg); font-size: clamp(28px, 7vw, 48px); }
+    .back { background: #ffffff33; border: 3px solid #ffffff88; font-size: 26px; }
+    .front { background: #fff; transform: rotateY(180deg); font-size: clamp(22px, 6vw, 44px); }
     .card.done .front { background: #d6ffe9; }
+    .card.done.p2 .front { background: #ffe8c9; }
     button.again {
-      padding: 10px 24px; font-size: 18px; border: none; border-radius: 999px;
+      padding: 10px 24px; font-size: 17px; border: none; border-radius: 999px;
       background: #ffcc00; color: #222; font-weight: bold; cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <h1>🃏 Xotira kartalari</h1>
-  <div class="hud">
-    <span>Yurishlar: <b id="moves">0</b></span>
-    <span>Topildi: <b id="found">0</b> / 8</span>
-    <span>⏱ <b id="time">0</b> s</span>
+  <h1 id="title">🃏 Xotira kartalari</h1>
+
+  <div class="bar" data-group="size">
+    <button class="opt" data-value="12">Oson (12)</button>
+    <button class="opt sel" data-value="16">O'rta (16)</button>
+    <button class="opt" data-value="24">Qiyin (24)</button>
   </div>
+  <div class="bar" data-group="theme">
+    <button class="opt sel" data-value="animals">🐶 Hayvonlar</button>
+    <button class="opt" data-value="fruits">🍎 Mevalar</button>
+    <button class="opt" data-value="transport">🚗 Transport</button>
+  </div>
+  <div class="bar" data-group="players">
+    <button class="opt sel" data-value="1">👤 1 o'yinchi</button>
+    <button class="opt" data-value="2">👥 2 o'yinchi (navbat bilan)</button>
+  </div>
+
+  <div class="hud" id="hud"></div>
   <div id="board" class="board"></div>
   <button class="again" id="again">🔄 Yangi o'yin</button>
 
   <script>
-    var EMOJIS = ["🐶", "🐱", "🦊", "🐼", "🐸", "🦁", "🐵", "🐧"];
+    var THEMES = {
+      animals: ["🐶", "🐱", "🦊", "🐼", "🐸", "🦁", "🐵", "🐧", "🐨", "🐯", "🦄", "🐙"],
+      fruits: ["🍎", "🍌", "🍇", "🍓", "🍒", "🍍", "🥝", "🍑", "🍉", "🍋", "🥥", "🍐"],
+      transport: ["🚗", "🚕", "🚌", "🚓", "🚑", "🚒", "🚜", "🏍️", "🚲", "✈️", "🚀", "🚂"]
+    };
+    var settings = { size: "16", theme: "animals", players: "1" };
     var board = document.getElementById("board");
-    var first, second, lock, moves, found, seconds, timer;
+    var first, second, lock, moves, found, seconds, timer, total, turn, scores;
+
+    // Tanlov tugmalari: bosilganda o'yin qaytadan boshlanadi
+    document.querySelectorAll("[data-group]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        var btn = e.target.closest(".opt");
+        if (!btn) return;
+        row.querySelectorAll(".opt").forEach(function (b) { b.classList.remove("sel"); });
+        btn.classList.add("sel");
+        settings[row.dataset.group] = btn.dataset.value;
+        newGame();
+      });
+    });
 
     // Massivni aralashtirish (Fisher–Yates)
     function shuffle(arr) {
@@ -59,12 +94,17 @@
       return arr;
     }
 
+    function bestKey() { return "dinislom-xotira-best-" + settings.size; }
+
     function newGame() {
-      first = second = null; lock = false; moves = 0; found = 0; seconds = 0;
+      first = second = null; lock = false; moves = 0; found = 0; seconds = 0; turn = 0; scores = [0, 0];
       clearInterval(timer); timer = null;
-      update();
+      total = Number(settings.size) / 2;
+      document.getElementById("title").textContent = "🃏 Xotira kartalari";
+      board.style.gridTemplateColumns = "repeat(" + (total === 12 ? 6 : 4) + ", 1fr)";
       board.innerHTML = "";
-      shuffle(EMOJIS.concat(EMOJIS)).forEach(function (emoji) {
+      var emojis = shuffle(THEMES[settings.theme].slice()).slice(0, total);
+      shuffle(emojis.concat(emojis)).forEach(function (emoji) {
         var card = document.createElement("div");
         card.className = "card";
         card.dataset.emoji = emoji;
@@ -72,11 +112,11 @@
         card.addEventListener("click", function () { flip(card); });
         board.appendChild(card);
       });
+      update();
     }
 
     function flip(card) {
-      if (lock || card === first || card.classList.contains("done")) return;
-      // Birinchi bosishda taymer boshlanadi
+      if (lock || card === first || card.classList.contains("done") || card.classList.contains("open")) return;
       if (!timer) timer = setInterval(function () { seconds++; update(); }, 1000);
 
       card.classList.add("open");
@@ -85,35 +125,53 @@
       second = card;
       moves++;
       if (first.dataset.emoji === second.dataset.emoji) {
-        first.classList.add("done"); second.classList.add("done");
+        // Juftlik topildi: 2 kishilikda shu o'yinchiga ochko va yana navbat
+        [first, second].forEach(function (c) { c.classList.add("done"); if (turn === 1) c.classList.add("p2"); });
         first = second = null;
         found++;
-        if (found === 8) {
-          clearInterval(timer);
-          setTimeout(function () {
-            document.querySelector("h1").textContent = "🎉 Barakalla! " + moves + " yurishda";
-          }, 400);
-        }
+        scores[turn]++;
+        if (found === total) finish();
       } else {
         lock = true;
         setTimeout(function () {
           first.classList.remove("open"); second.classList.remove("open");
           first = second = null; lock = false;
+          if (settings.players === "2") turn = 1 - turn; // navbat almashadi
+          update();
         }, 800);
       }
       update();
     }
 
-    function update() {
-      document.getElementById("moves").textContent = moves;
-      document.getElementById("found").textContent = found;
-      document.getElementById("time").textContent = seconds;
+    function finish() {
+      clearInterval(timer);
+      var title;
+      if (settings.players === "2") {
+        title = scores[0] === scores[1] ? "🤝 Durang!" : (scores[0] > scores[1] ? "🎉 1-o'yinchi yutdi!" : "🎉 2-o'yinchi yutdi!");
+      } else {
+        var best = Number(localStorage.getItem(bestKey())) || 0;
+        var record = !best || moves < best;
+        if (record) localStorage.setItem(bestKey(), moves);
+        title = "🎉 " + moves + " yurishda, " + seconds + " soniyada!" + (record ? " Yangi rekord!" : "");
+      }
+      setTimeout(function () { document.getElementById("title").textContent = title; update(); }, 400);
     }
 
-    document.getElementById("again").addEventListener("click", function () {
-      document.querySelector("h1").textContent = "🃏 Xotira kartalari";
-      newGame();
-    });
+    function update() {
+      var hud = document.getElementById("hud");
+      if (settings.players === "2") {
+        hud.innerHTML =
+          '<span class="turn ' + (turn === 0 ? "active" : "") + '">1-o\'yinchi: <b>' + scores[0] + "</b></span>" +
+          '<span class="turn ' + (turn === 1 ? "active" : "") + '">2-o\'yinchi: <b>' + scores[1] + "</b></span>" +
+          "<span>⏱ <b>" + seconds + "</b> s</span>";
+      } else {
+        var best = localStorage.getItem(bestKey());
+        hud.innerHTML = "<span>Yurishlar: <b>" + moves + "</b></span><span>Topildi: <b>" + found + "</b> / " + total +
+          "</span><span>⏱ <b>" + seconds + "</b> s</span><span>🏆 " + (best ? best + " yurish" : "—") + "</span>";
+      }
+    }
+
+    document.getElementById("again").addEventListener("click", newGame);
     newGame();
   </script>
 </body>

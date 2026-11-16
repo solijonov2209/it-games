@@ -6,94 +6,211 @@
   <title>Kukilar fabrikasi</title>
   <style>
     body {
-      margin: 0; height: 100vh; overflow: hidden;
-      display: flex; align-items: center; justify-content: center; gap: 40px;
+      margin: 0; min-height: 100vh; overflow-x: hidden;
+      display: flex; align-items: center; justify-content: center; gap: 30px; padding: 12px; box-sizing: border-box;
       font-family: Arial, sans-serif; color: #4a2c10;
       background: radial-gradient(circle, #ffe7b8, #f5b85c);
       user-select: none; flex-wrap: wrap;
     }
-    .left { text-align: center; }
+    .left { text-align: center; position: relative; }
     h1 { margin: 0; font-size: 34px; }
-    .rate { opacity: 0.7; margin-bottom: 14px; }
+    .rate { opacity: 0.75; margin-bottom: 8px; }
+    .frenzy { font-weight: bold; color: #b8860b; min-height: 22px; }
     #cookie {
       font-size: 150px; background: none; border: none; cursor: pointer;
       transition: transform 0.08s; filter: drop-shadow(0 10px 12px rgba(0,0,0,0.25));
     }
     #cookie:active { transform: scale(0.9); }
-    .shop { display: flex; flex-direction: column; gap: 10px; min-width: 240px; }
-    .shop h2 { margin: 0 0 4px; }
+    .side { display: flex; flex-direction: column; gap: 8px; min-width: 270px; max-width: 340px; }
+    .side h2 { margin: 4px 0; font-size: 20px; }
     .shop button {
-      padding: 12px 14px; border: none; border-radius: 12px; font-size: 16px; text-align: left;
+      width: 100%; display: flex; justify-content: space-between; align-items: center; gap: 8px;
+      padding: 10px 12px; margin-bottom: 7px; border: none; border-radius: 12px; font-size: 15px; text-align: left;
       background: #fff8ec; color: #4a2c10; cursor: pointer; box-shadow: 0 4px 0 #d08c33;
     }
     .shop button:disabled { opacity: 0.45; cursor: not-allowed; }
+    .shop small { display: block; opacity: 0.7; font-size: 12px; }
+    .shop .count { font-size: 20px; font-weight: bold; min-width: 26px; text-align: right; }
+    .ach { display: flex; flex-wrap: wrap; gap: 6px; }
+    .ach span { font-size: 24px; filter: grayscale(1); opacity: 0.35; }
+    .ach span.got { filter: none; opacity: 1; }
+    .reset { background: none; border: none; color: #8a5a2b; text-decoration: underline; cursor: pointer; font-size: 13px; }
     .float {
-      position: absolute; pointer-events: none; font-weight: bold; font-size: 22px;
+      position: fixed; pointer-events: none; font-weight: bold; font-size: 22px;
       animation: up 0.8s ease-out forwards;
     }
     @keyframes up { to { transform: translateY(-60px); opacity: 0; } }
+    #golden {
+      position: fixed; font-size: 60px; cursor: pointer; display: none;
+      filter: drop-shadow(0 0 14px gold); animation: pulse 0.8s infinite alternate;
+    }
+    @keyframes pulse { to { transform: scale(1.15) rotate(15deg); } }
+    .toast {
+      position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 10px 18px;
+      background: #4a2c10; color: #ffe7b8; border-radius: 999px; font-weight: bold; opacity: 0; transition: opacity 0.3s;
+    }
+    .toast.show { opacity: 1; }
   </style>
 </head>
 <body>
   <div class="left">
     <h1>🍪 <span id="count">0</span></h1>
-    <div class="rate">sekundiga <span id="rate">0</span> ta</div>
+    <div class="rate">sekundiga <span id="rate">0</span> ta · bosish: +<span id="perClick">1</span></div>
+    <div class="frenzy" id="frenzy"></div>
     <button id="cookie" aria-label="Kuki">🍪</button>
   </div>
 
-  <div class="shop">
+  <div class="side">
     <h2>🛒 Do'kon</h2>
-    <button id="buyClick">👆 Kuchli barmoq (+1 bosish) — <b id="clickPrice">15</b></button>
-    <button id="buyBaker">👩‍🍳 Novvoy (+1/sek) — <b id="bakerPrice">50</b></button>
-    <button id="buyFactory">🏭 Fabrika (+10/sek) — <b id="factoryPrice">500</b></button>
+    <div class="shop" id="shop"></div>
+    <h2>🏅 Yutuqlar</h2>
+    <div class="ach" id="ach"></div>
+    <button class="reset" id="reset">Hammasini boshidan boshlash</button>
   </div>
 
+  <div id="golden">🍪</div>
+  <div class="toast" id="toast"></div>
+
   <script>
-    // O'yin holati
-    var cookies = 0, perClick = 1, perSecond = 0;
-    var prices = { click: 15, baker: 50, factory: 500 };
+    // Yaxshilanishlar: click — bosishga qo'shadi, cps — sekundiga qo'shadi
+    var UPGRADES = [
+      { id: "finger", icon: "👆", name: "Kuchli barmoq", desc: "+1 har bosishda", price: 15, click: 1 },
+      { id: "baker", icon: "👩‍🍳", name: "Novvoy", desc: "+1 sekundiga", price: 50, cps: 1 },
+      { id: "oven", icon: "🔥", name: "Tandir", desc: "+5 sekundiga", price: 300, cps: 5 },
+      { id: "factory", icon: "🏭", name: "Fabrika", desc: "+20 sekundiga", price: 1500, cps: 20 },
+      { id: "robot", icon: "🤖", name: "Robot qo'l", desc: "+10 har bosishda", price: 5000, click: 10 },
+      { id: "rocket", icon: "🚀", name: "Kosmik zavod", desc: "+150 sekundiga", price: 25000, cps: 150 }
+    ];
+    var ACHIEVEMENTS = [
+      { icon: "🥉", text: "100 ta kuki", test: function (s) { return s.total >= 100; } },
+      { icon: "🥈", text: "1 000 ta kuki", test: function (s) { return s.total >= 1000; } },
+      { icon: "🥇", text: "10 000 ta kuki", test: function (s) { return s.total >= 10000; } },
+      { icon: "💎", text: "1 000 000 ta kuki", test: function (s) { return s.total >= 1000000; } },
+      { icon: "👆", text: "500 marta bosish", test: function (s) { return s.clicks >= 500; } },
+      { icon: "🌟", text: "Oltin kukini ushlash", test: function (s) { return s.golden >= 1; } },
+      { icon: "🏭", text: "Birinchi fabrika", test: function (s) { return s.owned.factory >= 1; } },
+      { icon: "🚀", text: "Kosmik zavod", test: function (s) { return s.owned.rocket >= 1; } }
+    ];
+
+    var SAVE_KEY = "tohirjon-kukilar-save";
+    var state;
+    function fresh() { return { cookies: 0, total: 0, clicks: 0, golden: 0, owned: {}, got: [] }; }
+    try { state = JSON.parse(localStorage.getItem(SAVE_KEY)) || fresh(); } catch (e) { state = fresh(); }
+    var frenzyUntil = 0; // oltin kuki bonusi tugaydigan vaqt
 
     var $ = function (id) { return document.getElementById(id); };
+    function owned(id) { return state.owned[id] || 0; }
+    // Har bir sotib olishda narx 15% oshadi
+    function price(u) { return Math.ceil(u.price * Math.pow(1.15, owned(u.id))); }
+    function perClick() { return 1 + UPGRADES.reduce(function (s, u) { return s + (u.click || 0) * owned(u.id); }, 0); }
+    function perSecond() { return UPGRADES.reduce(function (s, u) { return s + (u.cps || 0) * owned(u.id); }, 0); }
+    function multiplier() { return Date.now() < frenzyUntil ? 7 : 1; }
+    function fmt(n) { return Math.floor(n).toLocaleString("ru-RU"); }
 
-    function update() {
-      $("count").textContent = Math.floor(cookies);
-      $("rate").textContent = perSecond;
-      $("clickPrice").textContent = prices.click;
-      $("bakerPrice").textContent = prices.baker;
-      $("factoryPrice").textContent = prices.factory;
-      $("buyClick").disabled = cookies < prices.click;
-      $("buyBaker").disabled = cookies < prices.baker;
-      $("buyFactory").disabled = cookies < prices.factory;
+    function add(n) { state.cookies += n; state.total += n; }
+
+    // Do'kon tugmalarini bir marta yaratamiz
+    UPGRADES.forEach(function (u) {
+      var b = document.createElement("button");
+      b.id = "buy-" + u.id;
+      b.innerHTML = '<span>' + u.icon + ' <b>' + u.name + '</b><small>' + u.desc + ' · <span class="p"></span> 🍪</small></span><span class="count"></span>';
+      b.onclick = function () {
+        if (state.cookies < price(u)) return;
+        state.cookies -= price(u);
+        state.owned[u.id] = owned(u.id) + 1;
+        render();
+      };
+      $("shop").appendChild(b);
+    });
+    ACHIEVEMENTS.forEach(function (a, i) {
+      var s = document.createElement("span");
+      s.textContent = a.icon; s.title = a.text; s.id = "ach-" + i;
+      $("ach").appendChild(s);
+    });
+
+    function toast(text) {
+      var t = $("toast");
+      t.textContent = text; t.classList.add("show");
+      clearTimeout(toast.timer);
+      toast.timer = setTimeout(function () { t.classList.remove("show"); }, 2200);
+    }
+
+    function render() {
+      $("count").textContent = fmt(state.cookies);
+      $("rate").textContent = fmt(perSecond() * multiplier());
+      $("perClick").textContent = fmt(perClick() * multiplier());
+      var left = Math.ceil((frenzyUntil - Date.now()) / 1000);
+      $("frenzy").textContent = left > 0 ? "🌟 OLTIN BONUS ×7 — " + left + " s" : "";
+      UPGRADES.forEach(function (u) {
+        var b = $("buy-" + u.id);
+        b.querySelector(".p").textContent = fmt(price(u));
+        b.querySelector(".count").textContent = owned(u.id) || "";
+        b.disabled = state.cookies < price(u);
+      });
+      ACHIEVEMENTS.forEach(function (a, i) {
+        if (state.got.indexOf(i) === -1 && a.test(state)) {
+          state.got.push(i);
+          toast("🏅 Yutuq: " + a.text);
+        }
+        $("ach-" + i).classList.toggle("got", state.got.indexOf(i) !== -1);
+      });
     }
 
     // Kukini bosish
     $("cookie").addEventListener("click", function (e) {
-      cookies += perClick;
+      var n = perClick() * multiplier();
+      add(n);
+      state.clicks++;
       var f = document.createElement("div");
       f.className = "float";
-      f.textContent = "+" + perClick;
+      f.textContent = "+" + fmt(n);
       f.style.left = e.clientX + "px";
       f.style.top = e.clientY + "px";
       document.body.appendChild(f);
       setTimeout(function () { f.remove(); }, 800);
-      update();
+      render();
     });
 
-    // Sotib olish: narx har safar 1.5 barobar oshadi
-    function buy(name, effect) {
-      if (cookies < prices[name]) return;
-      cookies -= prices[name];
-      prices[name] = Math.ceil(prices[name] * 1.5);
-      effect();
-      update();
+    // Oltin kuki: tasodifiy paydo bo'ladi, ushlasang 15 soniya ×7
+    function spawnGolden() {
+      var g = $("golden");
+      g.style.left = 20 + Math.random() * (innerWidth - 100) + "px";
+      g.style.top = 20 + Math.random() * (innerHeight - 100) + "px";
+      g.style.display = "block";
+      setTimeout(function () { g.style.display = "none"; }, 6000);
+      setTimeout(spawnGolden, 30000 + Math.random() * 40000);
     }
-    $("buyClick").onclick = function () { buy("click", function () { perClick++; }); };
-    $("buyBaker").onclick = function () { buy("baker", function () { perSecond += 1; }); };
-    $("buyFactory").onclick = function () { buy("factory", function () { perSecond += 10; }); };
+    $("golden").addEventListener("click", function () {
+      $("golden").style.display = "none";
+      frenzyUntil = Date.now() + 15000;
+      state.golden++;
+      toast("🌟 Oltin kuki! 15 soniya davomida hammasi ×7");
+      render();
+    });
+    setTimeout(spawnGolden, 20000);
 
-    // Har 100 ms'da avtomatik daromad
-    setInterval(function () { cookies += perSecond / 10; update(); }, 100);
-    update();
+    // Tasodifan bosib yubormaslik uchun 3 soniya ichida ikkinchi marta bosish kerak
+    // (platformada confirm() oynasi ishlamaydi, chunki o'yin iframe ichida)
+    var resetArmed = false;
+    $("reset").onclick = function () {
+      if (!resetArmed) {
+        resetArmed = true;
+        $("reset").textContent = "⚠️ Ishonchingiz komilmi? Yana bir marta bosing";
+        setTimeout(function () { resetArmed = false; $("reset").textContent = "Hammasini boshidan boshlash"; }, 3000);
+        return;
+      }
+      state = fresh();
+      localStorage.removeItem(SAVE_KEY);
+      resetArmed = false;
+      $("reset").textContent = "Hammasini boshidan boshlash";
+      render();
+    };
+
+    // Har 100 ms'da avtomatik daromad, har 5 soniyada saqlash
+    setInterval(function () { add(perSecond() * multiplier() / 10); render(); }, 100);
+    setInterval(function () { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); }, 5000);
+    addEventListener("beforeunload", function () { localStorage.setItem(SAVE_KEY, JSON.stringify(state)); });
+    render();
   </script>
 </body>
 </html>

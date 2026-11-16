@@ -7,24 +7,22 @@
   <style>
     body {
       margin: 0; min-height: 100vh; display: flex; flex-direction: column;
-      align-items: center; justify-content: center; gap: 14px;
+      align-items: center; justify-content: center; gap: 10px; padding: 10px; box-sizing: border-box;
       font-family: Arial, sans-serif; color: #fff; user-select: none;
       background: linear-gradient(135deg, #b14cf5, #ff5c9a);
     }
     h1 { margin: 0; }
-    .modes button, .again {
-      padding: 8px 16px; margin: 0 4px; font-size: 16px; border: 2px solid #fff; border-radius: 999px;
-      background: transparent; color: #fff; font-weight: bold; cursor: pointer;
+    .bar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+    .opt, .again {
+      padding: 7px 14px; border: 2px solid #fff; border-radius: 999px;
+      background: transparent; color: #fff; font-weight: bold; cursor: pointer; font-size: 14px;
     }
-    .modes button.active { background: #fff; color: #b14cf5; }
+    .opt.sel { background: #fff; color: #b14cf5; }
     .status { font-size: 22px; font-weight: bold; min-height: 28px; }
-    .board {
-      display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-      width: min(340px, 80vw, 55vh);
-    }
+    .board { display: grid; gap: 8px; width: min(380px, 86vw, 55vh); }
     .cell {
-      aspect-ratio: 1; border-radius: 16px; background: #ffffff33; cursor: pointer;
-      display: grid; place-items: center; font-size: clamp(40px, 12vw, 72px); font-weight: 900;
+      aspect-ratio: 1; border-radius: 12px; background: #ffffff33; cursor: pointer;
+      display: grid; place-items: center; font-weight: 900;
       transition: background 0.2s, transform 0.1s;
     }
     .cell:hover { background: #ffffff55; }
@@ -32,13 +30,23 @@
     .cell.o { color: #7cf2ff; }
     .cell.win { background: #ffffffaa; transform: scale(1.05); }
     .score { display: flex; gap: 20px; font-size: 18px; }
+    .hidden { display: none !important; }
   </style>
 </head>
 <body>
   <h1>❌ X va O ⭕</h1>
-  <div class="modes">
-    <button id="vsAi" class="active">🤖 Kompyuterga qarshi</button>
-    <button id="vsFriend">👫 Do'st bilan</button>
+  <div class="bar" data-group="mode">
+    <button class="opt sel" data-v="ai">🤖 Kompyuterga qarshi</button>
+    <button class="opt" data-v="friend">👫 Do'st bilan</button>
+  </div>
+  <div class="bar" data-group="size">
+    <button class="opt sel" data-v="3">3×3</button>
+    <button class="opt" data-v="4">4×4 (4 ta qatorda)</button>
+    <button class="opt" data-v="5">5×5 (4 ta qatorda)</button>
+  </div>
+  <div class="bar" data-group="level" id="levelBar">
+    <button class="opt" data-v="easy">😊 Oson</button>
+    <button class="opt sel" data-v="hard">😈 Qiyin</button>
   </div>
   <div class="score"><span>X: <b id="sx">0</b></span><span>Durang: <b id="sd">0</b></span><span>O: <b id="so">0</b></span></div>
   <div class="status" id="status"></div>
@@ -46,45 +54,88 @@
   <button class="again" id="again">🔄 Yangi raund</button>
 
   <script>
-    var LINES = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
-    var cells, turn, over, vsAi = true;
+    var settings = { mode: "ai", size: "3", level: "hard" };
+    var N, WIN, LINES, cells, turn, over, starter = "X";
     var score = { X: 0, O: 0, D: 0 };
     var boardEl = document.getElementById("board");
 
-    function newRound() {
-      cells = ["", "", "", "", "", "", "", "", ""];
-      turn = "X";
-      over = false;
-      draw();
+    document.querySelectorAll("[data-group]").forEach(function (row) {
+      row.addEventListener("click", function (e) {
+        var b = e.target.closest(".opt"); if (!b) return;
+        row.querySelectorAll(".opt").forEach(function (x) { x.classList.toggle("sel", x === b); });
+        settings[row.dataset.group] = b.dataset.v;
+        document.getElementById("levelBar").classList.toggle("hidden", settings.mode !== "ai");
+        score = { X: 0, O: 0, D: 0 };
+        newRound();
+      });
+    });
+
+    // Barcha yutuq chiziqlarini oldindan hisoblab qo'yamiz
+    function buildLines() {
+      LINES = [];
+      var dirs = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (var r = 0; r < N; r++) for (var c = 0; c < N; c++) {
+        dirs.forEach(function (d) {
+          var line = [];
+          for (var k = 0; k < WIN; k++) {
+            var rr = r + d[0] * k, cc = c + d[1] * k;
+            if (rr < 0 || rr >= N || cc < 0 || cc >= N) return;
+            line.push(rr * N + cc);
+          }
+          LINES.push(line);
+        });
+      }
     }
+
+    function newRound() {
+      N = Number(settings.size);
+      WIN = N === 3 ? 3 : 4;
+      buildLines();
+      cells = [];
+      for (var i = 0; i < N * N; i++) cells.push("");
+      turn = starter;
+      starter = starter === "X" ? "O" : "X"; // har raundda boshlovchi almashadi
+      over = false;
+      boardEl.style.gridTemplateColumns = "repeat(" + N + ", 1fr)";
+      draw();
+      if (isAiTurn()) setTimeout(aiMove, 450);
+    }
+
+    function isAiTurn() { return settings.mode === "ai" && turn === "O" && !over; }
 
     function draw() {
       boardEl.innerHTML = "";
       cells.forEach(function (v, i) {
         var c = document.createElement("div");
         c.className = "cell " + v.toLowerCase();
+        c.style.fontSize = "clamp(26px, " + (36 / N) + "vw, " + (210 / N) + "px)";
         c.textContent = v;
         c.onclick = function () { play(i); };
         boardEl.appendChild(c);
       });
       if (!over) {
-        document.getElementById("status").textContent =
-          vsAi && turn === "O" ? "🤖 Kompyuter o'ylayapti..." : "Navbat: " + turn;
+        document.getElementById("status").textContent = isAiTurn() ? "🤖 Kompyuter o'ylayapti..." : "Navbat: " + turn;
       }
+      document.getElementById("sx").textContent = score.X;
+      document.getElementById("so").textContent = score.O;
+      document.getElementById("sd").textContent = score.D;
     }
 
     function winner(b) {
       for (var i = 0; i < LINES.length; i++) {
-        var l = LINES[i];
-        if (b[l[0]] && b[l[0]] === b[l[1]] && b[l[0]] === b[l[2]]) return l;
+        var l = LINES[i], v = b[l[0]];
+        if (!v) continue;
+        var ok = true;
+        for (var k = 1; k < l.length; k++) if (b[l[k]] !== v) { ok = false; break; }
+        if (ok) return l;
       }
       return null;
     }
 
     function play(i) {
-      if (over || cells[i] || (vsAi && turn === "O")) return;
+      if (over || cells[i] || isAiTurn()) return;
       move(i);
-      if (vsAi && !over) setTimeout(aiMove, 400);
+      if (isAiTurn()) setTimeout(aiMove, 400);
     }
 
     function move(i) {
@@ -92,60 +143,86 @@
       var line = winner(cells);
       if (line) {
         over = true;
+        score[turn]++;
         draw();
         line.forEach(function (k) { boardEl.children[k].classList.add("win"); });
         document.getElementById("status").textContent = "🎉 " + turn + " yutdi!";
-        score[turn]++;
       } else if (cells.indexOf("") === -1) {
         over = true;
+        score.D++;
         draw();
         document.getElementById("status").textContent = "🤝 Durang!";
-        score.D++;
       } else {
         turn = turn === "X" ? "O" : "X";
         draw();
       }
-      document.getElementById("sx").textContent = score.X;
-      document.getElementById("so").textContent = score.O;
-      document.getElementById("sd").textContent = score.D;
     }
 
-    // Kompyuter: 1) yuta olsa — yutadi, 2) to'sishi kerak bo'lsa — to'sadi,
-    // 3) markaz, 4) burchak, 5) istalgan bo'sh katak
-    function aiMove() {
-      var empty = [];
-      cells.forEach(function (v, i) { if (!v) empty.push(i); });
+    function empties(b) {
+      var list = [];
+      b.forEach(function (v, i) { if (!v) list.push(i); });
+      return list;
+    }
 
-      function findWinning(mark) {
-        for (var k = 0; k < empty.length; k++) {
-          var test = cells.slice();
-          test[empty[k]] = mark;
-          if (winner(test)) return empty[k];
+    // 3×3 uchun minimaks: kompyuter hech qachon yutqazmaydi
+    function minimax(b, player) {
+      if (winner(b)) return { score: player === "O" ? -10 : 10 };
+      var free = empties(b);
+      if (!free.length) return { score: 0 };
+      var bestMove = { score: player === "O" ? -99 : 99 };
+      free.forEach(function (i) {
+        b[i] = player;
+        var s = minimax(b, player === "O" ? "X" : "O").score;
+        b[i] = "";
+        if (player === "O" ? s > bestMove.score : s < bestMove.score) bestMove = { score: s, index: i };
+      });
+      return bestMove;
+    }
+
+    // Katta taxta uchun: yutadigan / to'sadigan yurish, keyin eng foydali katak
+    function heuristicMove() {
+      var free = empties(cells);
+      function finds(mark) {
+        for (var k = 0; k < free.length; k++) {
+          cells[free[k]] = mark;
+          var w = winner(cells);
+          cells[free[k]] = "";
+          if (w) return free[k];
         }
         return -1;
       }
+      var m = finds("O"); if (m >= 0) return m;
+      m = finds("X"); if (m >= 0) return m;
+      // Har bir katakni chiziqlar bo'yicha baholaymiz
+      var bestScore = -1, bestIdx = free[0];
+      free.forEach(function (i) {
+        var s = 0;
+        LINES.forEach(function (l) {
+          if (l.indexOf(i) === -1) return;
+          var o = 0, x = 0;
+          l.forEach(function (k) { if (cells[k] === "O") o++; if (cells[k] === "X") x++; });
+          if (x === 0) s += 1 + o * o * 3;
+          if (o === 0) s += x * x * 2;
+        });
+        if (s > bestScore) { bestScore = s; bestIdx = i; }
+      });
+      return bestIdx;
+    }
 
-      var choice = findWinning("O");
-      if (choice === -1) choice = findWinning("X");
-      if (choice === -1 && !cells[4]) choice = 4;
-      if (choice === -1) {
-        var corners = [0, 2, 6, 8].filter(function (c) { return !cells[c]; });
-        if (corners.length && Math.random() < 0.7) choice = corners[Math.floor(Math.random() * corners.length)];
+    function aiMove() {
+      if (over) return;
+      var free = empties(cells), choice;
+      if (settings.level === "easy") {
+        // Oson: ko'pincha tasodifiy yuradi
+        choice = Math.random() < 0.7 ? free[Math.floor(Math.random() * free.length)] : heuristicMove();
+      } else if (N === 3) {
+        choice = minimax(cells.slice(), "O").index;
+      } else {
+        choice = heuristicMove();
       }
-      if (choice === -1) choice = empty[Math.floor(Math.random() * empty.length)];
       move(choice);
     }
 
-    function setMode(ai) {
-      vsAi = ai;
-      document.getElementById("vsAi").classList.toggle("active", ai);
-      document.getElementById("vsFriend").classList.toggle("active", !ai);
-      score = { X: 0, O: 0, D: 0 };
-      newRound();
-    }
-
-    document.getElementById("vsAi").onclick = function () { setMode(true); };
-    document.getElementById("vsFriend").onclick = function () { setMode(false); };
     document.getElementById("again").onclick = newRound;
     newRound();
   </script>
