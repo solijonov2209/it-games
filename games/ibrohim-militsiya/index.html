@@ -1,0 +1,2371 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JINOYATCHINI OLDIR — VIP 3D Militsiya O'yini</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js 3D Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@600;700;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #090d16;
+        }
+        h1, h2, h3, .font-display {
+            font-family: 'Montserrat', sans-serif;
+        }
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            z-index: 1;
+        }
+        .glass-panel {
+            background: rgba(11, 17, 32, 0.80);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.14);
+        }
+        .vip-gold-panel {
+            background: linear-gradient(135deg, rgba(30, 22, 10, 0.90), rgba(15, 23, 42, 0.92));
+            border: 1.5px solid rgba(250, 204, 21, 0.65);
+            box-shadow: 0 0 24px rgba(250, 204, 21, 0.25);
+        }
+        .vip-shimmer {
+            background: linear-gradient(90deg, #f59e0b, #fef08a, #eab308, #f59e0b);
+            background-size: 200% auto;
+            color: #090d16;
+            animation: shimmer 2.5s linear infinite;
+        }
+        @keyframes shimmer {
+            to { background-position: 200% center; }
+        }
+        .siren-glow {
+            animation: sirenFlash 0.6s infinite alternate;
+        }
+        @keyframes sirenFlash {
+            0% { box-shadow: 0 0 28px rgba(239, 68, 68, 0.65), inset 0 0 12px rgba(239, 68, 68, 0.35); border-color: rgba(239, 68, 68, 0.8); }
+            100% { box-shadow: 0 0 28px rgba(59, 130, 246, 0.65), inset 0 0 12px rgba(59, 130, 246, 0.35); border-color: rgba(59, 130, 246, 0.8); }
+        }
+        @keyframes pulseAlert {
+            0%, 100% { transform: translateX(-50%) scale(1); }
+            50% { transform: translateX(-50%) scale(1.03); }
+        }
+        .alert-anim {
+            animation: pulseAlert 0.85s infinite ease-in-out;
+        }
+        /* Crosshair in cockpit view */
+        .cockpit-crosshair {
+            position: fixed;
+            top: 46%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 28px;
+            height: 28px;
+            border: 2px solid rgba(250, 204, 21, 0.75);
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 15;
+            box-shadow: 0 0 10px rgba(250, 204, 21, 0.5);
+        }
+        .cockpit-crosshair::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 4px;
+            height: 4px;
+            background: #ef4444;
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.5);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(250, 204, 21, 0.6);
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="text-white">
+
+    <!-- 3D Render Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Cockpit Aiming Crosshair (Visible in 1st-person Interior View) -->
+    <div id="cockpit-reticle" class="cockpit-crosshair hidden"></div>
+
+    <!-- ================= TOP BAR (VIP Balance, Camera Mode, Audio & Shop) ================= -->
+    <div class="fixed top-3 left-3 right-3 z-30 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+        <!-- Brand + Active Car + VIP Badge -->
+        <div class="glass-panel px-3.5 py-2 rounded-2xl flex items-center gap-3 pointer-events-auto shadow-xl">
+            <div class="w-3 h-3 rounded-full bg-red-500 animate-ping"></div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span class="font-display font-black text-sm sm:text-base tracking-wider text-white">JINOYATCHINI OLDIR</span>
+                    <span class="vip-shimmer px-2 py-0.5 rounded-full font-display font-black text-[10px] tracking-wider shadow">👑 VIP</span>
+                </div>
+                <div id="hud-current-car" class="text-[11px] sm:text-xs text-slate-300">Mashina: Standart Militsiya (150 km/s)</div>
+            </div>
+        </div>
+
+        <!-- VIP Money, VIP Bonus Claim, Camera Switch & Shop -->
+        <div class="flex flex-wrap items-center gap-2 pointer-events-auto">
+            <!-- VIP Money Counter -->
+            <div class="vip-gold-panel px-3.5 py-1.5 rounded-2xl flex items-center gap-2 shadow-xl">
+                <span class="text-xl">👑</span>
+                <div>
+                    <div class="text-[9px] uppercase tracking-widest text-amber-300 font-bold leading-none">VIP HISOB (2X BONUS)</div>
+                    <div id="hud-money" class="font-display font-black text-base sm:text-lg text-amber-300 leading-tight">$500</div>
+                </div>
+            </div>
+
+            <!-- Instant VIP Cash Bonus Button -->
+            <button onclick="claimVipBonus()" title="VIP Pul Olish (+$1000)" class="vip-shimmer px-3 py-2.5 rounded-2xl font-display font-black text-xs sm:text-sm transition transform hover:scale-105 active:scale-95 shadow-lg flex items-center gap-1">
+                <span>💎</span>
+                <span>VIP PUL +$1000</span>
+            </button>
+
+            <!-- Toggle Interior (Salon) vs Exterior Camera -->
+            <button id="btn-camera-toggle" onclick="toggleCameraMode()" class="glass-panel border-cyan-400/50 bg-cyan-950/70 hover:bg-cyan-900/90 px-3 py-2.5 rounded-2xl text-cyan-200 font-display font-bold text-xs sm:text-sm transition active:scale-95 shadow-lg flex items-center gap-1.5">
+                <span>🎥</span>
+                <span id="cam-mode-label">SALON ICHIDAN</span>
+            </button>
+
+            <!-- Music Toggle -->
+            <button id="btn-toggle-music" onclick="toggleMusic()" title="Musiqani yoqish/o'chirish" class="glass-panel border-purple-400/50 bg-purple-950/70 px-3 py-2.5 rounded-2xl hover:bg-purple-900/90 text-purple-200 font-display font-bold text-xs sm:text-sm transition active:scale-95 shadow-lg flex items-center gap-1">
+                <span id="music-icon">🎵</span>
+                <span class="hidden md:inline" id="music-label">Musiqa: ON</span>
+            </button>
+
+            <!-- Engine & SFX Sound Toggle -->
+            <button id="btn-toggle-sound" onclick="toggleAudio()" title="Mashina ovozini yoqish/o'chirish" class="glass-panel border-emerald-400/40 px-3 py-2.5 rounded-2xl hover:bg-slate-800/90 text-emerald-200 font-display font-bold text-xs sm:text-sm transition active:scale-95 shadow-lg flex items-center gap-1">
+                <span id="sound-icon">🔊</span>
+                <span class="hidden md:inline" id="sound-label">Ovoz: ON</span>
+            </button>
+
+            <!-- Siren Toggle -->
+            <button id="btn-toggle-siren" onclick="toggleSiren()" title="Sirena (H)" class="glass-panel border-red-400/50 bg-red-950/70 px-3 py-2.5 rounded-2xl hover:bg-red-900/90 text-red-200 font-display font-bold text-xs sm:text-sm transition active:scale-95 shadow-lg flex items-center gap-1">
+                <span>🚨</span>
+                <span class="hidden lg:inline" id="siren-label">Sirena: ON</span>
+            </button>
+
+            <!-- Car Shop Button -->
+            <button id="btn-hud-shop" onclick="openShop()" class="glass-panel px-3.5 py-2.5 rounded-2xl bg-blue-600/85 hover:bg-blue-500 text-white font-display font-bold text-xs sm:text-sm transition active:scale-95 shadow-lg flex items-center gap-1.5">
+                <span>🚘</span>
+                <span>Do'kon (12)</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- ================= START MENU / GARAGE OVERLAY ================= -->
+    <div id="start-screen" class="fixed inset-0 z-20 flex flex-col justify-between p-4 sm:p-8 pointer-events-none bg-gradient-to-t from-slate-950/90 via-slate-900/15 to-slate-950/45">
+        <div class="mt-16 sm:mt-20 text-center max-w-2xl mx-auto">
+            <div class="inline-flex items-center gap-2 px-4 py-1 rounded-full vip-gold-panel text-amber-300 text-xs sm:text-sm font-bold mb-2">
+                <span>☀️ ERTALABKI KATTA SHAHAR</span>
+                <span>•</span>
+                <span>👑 VIP EDITION</span>
+            </div>
+            <h1 class="font-display font-black text-3xl sm:text-5xl md:text-6xl tracking-tight text-white drop-shadow-[0_4px_24px_rgba(0,0,0,0.85)]">
+                JINOYATCHINI <span class="text-red-500">OLDIR</span>
+            </h1>
+            <p class="text-slate-100 text-xs sm:text-base mt-2 max-w-xl mx-auto drop-shadow">
+                Mashina saloniga kirib rulga o'tiring! Shaharda odamlarni urib ketayotgan jinoyatchini quvib yetib, miltiqda otib yo'q qiling va VIP mukofot oling!
+            </p>
+        </div>
+
+        <!-- Bottom VIP Launch Card -->
+        <div class="max-w-2xl w-full mx-auto glass-panel siren-glow rounded-3xl p-5 sm:p-6 pointer-events-auto shadow-2xl mb-2">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 mb-4">
+                <div>
+                    <div class="text-xs uppercase tracking-wider text-amber-400 font-bold flex items-center gap-1.5">
+                        <span>👑 VIP Xizmat Mashinasi</span>
+                    </div>
+                    <div id="menu-car-name" class="font-display font-extrabold text-xl sm:text-2xl text-white">Standart Militsiya</div>
+                    <div class="flex flex-wrap items-center gap-3 mt-1 text-xs sm:text-sm text-slate-300">
+                        <span>⚡ Tezlik: <strong id="menu-car-speed" class="text-cyan-400">150 km/s</strong></span>
+                        <span>🎯 Jinoyatchi: <strong class="text-red-400">maks 50 km/s</strong></span>
+                    </div>
+                </div>
+                <div class="text-center sm:text-right bg-slate-900/80 border border-amber-400/40 px-4 py-2 rounded-2xl">
+                    <div class="text-[11px] text-amber-300 font-bold">Missiya + VIP Mukofot</div>
+                    <div class="font-display font-black text-2xl text-emerald-400">+$1234 <span class="text-xs text-amber-300">(+$1234 VIP)</span></div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="startGame()" class="w-full py-3.5 px-5 rounded-2xl bg-gradient-to-r from-red-600 via-blue-600 to-cyan-600 hover:brightness-110 text-white font-display font-extrabold text-sm sm:text-base shadow-lg shadow-blue-900/50 transition transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
+                    <span>🚔</span>
+                    <span>MASHINAGA KIRISH VA BOSHLASH</span>
+                </button>
+                <button onclick="openShop()" class="w-full py-3.5 px-5 rounded-2xl vip-gold-panel hover:brightness-110 text-amber-300 font-display font-extrabold text-sm sm:text-base transition transform hover:-translate-y-0.5 active:scale-95 flex items-center justify-center gap-2">
+                    <span>🏪</span>
+                    <span>VIP MASHINALAR DO'KONI</span>
+                </button>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-700/70 text-[11px] sm:text-xs text-slate-300 flex flex-wrap justify-between gap-2">
+                <span>🎮 Haydash: <b>W A S D</b> / <b>Strelkalar</b></span>
+                <span>🎥 Salon / Tashqi: <b>C</b></span>
+                <span>🚨 Sirena: <b>H</b></span>
+                <span>🚶 Tushish / Minish: <b>F</b></span>
+                <span>🔫 Otish: <b>PROBEL</b></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= IN-GAME HUD ================= -->
+    <div id="game-hud" class="hidden fixed inset-0 z-20 pointer-events-none">
+        
+        <!-- Criminal Alert Banner -->
+        <div id="criminal-alert" class="fixed top-20 left-1/2 w-[92%] max-w-lg glass-panel border-red-500/80 bg-red-950/80 px-4 py-2 rounded-2xl text-center shadow-xl alert-anim">
+            <div id="alert-text" class="font-display font-extrabold text-xs sm:text-sm text-red-200 tracking-wide">
+                🚨 DIQQAT! Jinoyatchi shaharda odamlarni urib ketmoqda! Uni quvib yeting!
+            </div>
+        </div>
+
+        <!-- Criminal Health & Distance Indicator -->
+        <div class="fixed top-32 sm:top-36 left-1/2 -translate-x-1/2 w-[88%] max-w-md glass-panel px-4 py-2.5 rounded-2xl shadow-lg">
+            <div class="flex justify-between items-center text-xs font-bold mb-1">
+                <span class="text-red-400 flex items-center gap-1">🦹‍♂️ JINOYATCHI MASHINASI (≤50 km/s)</span>
+                <span id="hud-distance" class="text-amber-300">Masofa: 120 m</span>
+            </div>
+            <div class="w-full h-3 bg-slate-800 rounded-full overflow-hidden border border-slate-700">
+                <div id="criminal-hp-bar" class="h-full bg-gradient-to-r from-red-600 via-orange-500 to-amber-400 transition-all duration-150" style="width: 100%;"></div>
+            </div>
+            <div id="shoot-ready-hint" class="text-[11px] text-center mt-1 text-slate-300">
+                Yaqinroq boring va miltiqda oting!
+            </div>
+        </div>
+
+        <!-- Enter / Exit Car Prompt Banner (When on foot near police car) -->
+        <div id="foot-mode-banner" class="hidden fixed bottom-24 left-1/2 -translate-x-1/2 glass-panel border-amber-400 px-5 py-3 rounded-2xl text-center pointer-events-auto shadow-2xl">
+            <div class="text-xs sm:text-sm font-bold text-amber-300 mb-2">🚶 Siz mashina tashqarisidasiz! Mashina ichiga kirib mining:</div>
+            <button onclick="toggleEnterExitCar()" class="vip-shimmer px-5 py-2 rounded-xl font-display font-black text-xs sm:text-sm shadow-lg">
+                🚘 MASHINA ICHIGA KIRISH (F)
+            </button>
+        </div>
+
+        <!-- Mini-Map Radar (Bottom Left on Desktop) -->
+        <div class="fixed bottom-4 left-4 hidden sm:flex flex-col items-center glass-panel p-2 rounded-2xl shadow-xl">
+            <canvas id="minimap-canvas" width="145" height="145" class="rounded-xl bg-slate-900"></canvas>
+            <div class="text-[10px] text-slate-300 mt-1 flex gap-2.5">
+                <span class="text-cyan-400 font-bold">● Siz</span>
+                <span class="text-red-400 font-bold">● Jinoyatchi</span>
+                <span class="text-amber-300">● Avto</span>
+                <span class="text-emerald-400">● Odam</span>
+            </div>
+        </div>
+
+        <!-- Speedometer, Enter/Exit & Rifle Controls (Bottom Right Desktop) -->
+        <div class="fixed bottom-4 right-4 hidden sm:flex items-center gap-3 glass-panel px-5 py-3 rounded-3xl shadow-xl">
+            <div class="text-right">
+                <div class="text-[10px] uppercase tracking-wider text-amber-300 font-bold">Tezlik</div>
+                <div class="flex items-baseline gap-1">
+                    <span id="hud-speed" class="font-display font-black text-3xl text-cyan-400">0</span>
+                    <span class="text-xs text-slate-300 font-bold">km/s</span>
+                </div>
+                <div class="text-[10px] text-slate-400">Maks: <span id="hud-max-speed">150</span> km/s</div>
+            </div>
+            <div class="h-10 w-[1px] bg-slate-700"></div>
+            <button onclick="toggleEnterExitCar()" class="pointer-events-auto px-3 py-3 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-slate-600 text-amber-300 font-display font-bold text-xs shadow transition flex flex-col items-center">
+                <span class="text-base">🚪</span>
+                <span id="enter-exit-label">TUSHISH (F)</span>
+            </button>
+            <button onclick="fireRifle()" class="pointer-events-auto px-4 py-3 rounded-2xl bg-red-600 hover:bg-red-500 active:scale-95 text-white font-display font-extrabold text-sm shadow-lg shadow-red-900/50 transition flex flex-col items-center">
+                <span class="text-lg">🔫</span>
+                <span>OTISH</span>
+            </button>
+        </div>
+
+        <!-- Mobile / Touch Controls -->
+        <div class="fixed bottom-3 left-3 right-3 flex sm:hidden justify-between items-end pointer-events-none">
+            <div class="flex gap-2 pointer-events-auto">
+                <button id="touch-left" class="w-14 h-14 rounded-2xl glass-panel active:bg-blue-600/80 flex items-center justify-center text-2xl font-bold shadow-lg">◀</button>
+                <button id="touch-right" class="w-14 h-14 rounded-2xl glass-panel active:bg-blue-600/80 flex items-center justify-center text-2xl font-bold shadow-lg">▶</button>
+            </div>
+
+            <div class="flex flex-col items-center gap-1 pointer-events-auto">
+                <button onclick="toggleEnterExitCar()" class="px-3 py-1 rounded-xl glass-panel border-amber-400/50 text-[11px] font-bold text-amber-300">
+                    🚪 Kirish/Tushish
+                </button>
+                <div class="glass-panel px-3 py-1 rounded-xl text-center">
+                    <span id="mobile-speed" class="font-display font-black text-lg text-cyan-400">0</span>
+                    <span class="text-[10px] text-slate-300"> km/s</span>
+                </div>
+            </div>
+
+            <div class="flex flex-col items-end gap-2 pointer-events-auto">
+                <button onclick="fireRifle()" class="px-5 py-3 rounded-2xl bg-red-600 active:bg-red-500 text-white font-display font-extrabold text-sm shadow-lg flex items-center gap-1">
+                    <span>🔫</span> OTISH
+                </button>
+                <div class="flex gap-2">
+                    <button id="touch-down" class="w-13 h-13 p-3 rounded-2xl glass-panel active:bg-amber-600/80 flex items-center justify-center text-lg font-bold shadow-lg">▼</button>
+                    <button id="touch-up" class="w-14 h-14 rounded-2xl bg-emerald-600/80 active:bg-emerald-500 flex items-center justify-center text-xl font-bold shadow-lg">▲</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= VICTORY MODAL (+1234$ + VIP BONUS) ================= -->
+    <div id="victory-modal" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md">
+        <div class="vip-gold-panel max-w-md w-full rounded-3xl p-6 sm:p-8 text-center shadow-2xl transform transition-all">
+            <div class="w-20 h-20 mx-auto rounded-full bg-amber-500/20 border-2 border-amber-400 flex items-center justify-center text-4xl mb-4 animate-bounce">
+                👑
+            </div>
+            <h2 class="font-display font-black text-2xl sm:text-3xl text-white mb-2">
+                JINOYATCHI YO'Q QILINDI!
+            </h2>
+            <p class="text-slate-200 text-sm mb-5">
+                Siz jinoyatchini muvaffaqiyatli quvib yetib, miltiqda otib tashladingiz!
+            </p>
+
+            <div class="bg-slate-950/90 border border-amber-400/50 rounded-2xl p-4 mb-6 space-y-1">
+                <div class="text-xs uppercase tracking-wider text-amber-300 font-bold">Asosiy Mukofot + VIP 2X Bonus</div>
+                <div class="font-display font-black text-3xl sm:text-4xl text-emerald-400">+$1234 <span class="text-amber-300 text-xl">+ $1234 VIP</span></div>
+                <div class="text-xs text-slate-300 pt-1">Jami VIP balansingiz: <span id="victory-total-money" class="text-amber-300 font-extrabold text-sm">$2468</span></div>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button onclick="openShopFromVictory()" class="w-full py-3.5 px-4 rounded-2xl vip-shimmer font-display font-black text-sm sm:text-base transition active:scale-95 flex items-center justify-center gap-1.5 shadow-lg">
+                    <span>🚘</span>
+                    <span>Mashina Sotib Olish</span>
+                </button>
+                <button onclick="nextMission()" class="w-full py-3.5 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-display font-extrabold text-sm sm:text-base transition active:scale-95 flex items-center justify-center gap-1.5 shadow-lg">
+                    <span>🚨</span>
+                    <span>Keyingi Missiya</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= VIP CAR SHOP MODAL ("MASHINALAR DO'KONI") ================= -->
+    <div id="shop-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/85 backdrop-blur-md">
+        <div class="vip-gold-panel max-w-4xl w-full max-h-[90vh] rounded-3xl flex flex-col overflow-hidden shadow-2xl">
+            <!-- Shop Header -->
+            <div class="p-4 sm:p-6 border-b border-amber-500/30 flex flex-wrap items-center justify-between gap-3 bg-slate-950/70">
+                <div>
+                    <h2 class="font-display font-black text-xl sm:text-2xl text-white flex items-center gap-2">
+                        <span>👑</span> VIP MASHINALAR DO'KONI (12 TA AVTOMOBIL)
+                    </h2>
+                    <p class="text-xs sm:text-sm text-slate-300">Nexia 2, Cobalt, Gentra, Malibu 2, Mers ($1000 — 200 km/s), BMW, Porsche, Lamborghini va Bugatti ($2000)!</p>
+                </div>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="claimVipBonus(true)" class="vip-shimmer px-3 py-2 rounded-xl font-display font-black text-xs transition active:scale-95 shadow">
+                        💎 +$1000 VIP
+                    </button>
+                    <div class="bg-amber-950/80 border border-amber-400/50 px-3.5 py-1.5 rounded-2xl">
+                        <span class="text-[10px] text-amber-300 block font-bold">VIP BALANS</span>
+                        <span id="shop-money" class="font-display font-black text-base sm:text-lg text-amber-300">$500</span>
+                    </div>
+                    <button onclick="closeShop()" class="w-10 h-10 rounded-2xl bg-slate-800 hover:bg-red-600 text-white font-bold text-lg transition flex items-center justify-center">
+                        ✕
+                    </button>
+                </div>
+            </div>
+
+            <!-- Shop Notification Toast -->
+            <div id="shop-toast" class="hidden mx-4 mt-3 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-center"></div>
+
+            <!-- Cars Grid -->
+            <div id="shop-cars-grid" class="p-4 sm:p-6 overflow-y-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Populated dynamically -->
+            </div>
+
+            <!-- Shop Footer -->
+            <div class="p-4 border-t border-amber-500/30 bg-slate-950/70 flex justify-between items-center">
+                <span class="text-xs text-amber-300 font-semibold">Eng qimmat VIP giperkar: Bugatti ($2000)</span>
+                <button onclick="closeShop()" class="px-6 py-2.5 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-sm transition">
+                    Tayyor / Yopish
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // 1. EXPANDED VIP CAR CATALOG (12 CARS UP TO $2000) & PLAYER STATE
+        // ============================================================================
+        let playerState = {
+            money: 500,
+            ownedCars: ['starter_police'],
+            selectedCarId: 'starter_police'
+        };
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem('jinoyatchi_vip_state');
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    if (typeof parsed.money === 'number') playerState.money = parsed.money;
+                    if (Array.isArray(parsed.ownedCars)) playerState.ownedCars = parsed.ownedCars;
+                    if (typeof parsed.selectedCarId === 'string') playerState.selectedCarId = parsed.selectedCarId;
+                }
+            } catch (e) {}
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem('jinoyatchi_vip_state', JSON.stringify(playerState));
+            } catch (e) {}
+        }
+
+        function claimVipBonus(silent = false) {
+            playerState.money += 1000;
+            saveState();
+            updateAllUI();
+            playRewardSound();
+            if (!silent) {
+                showShopToast('💎 Tabriklaymiz! Hisobingizga +$1000 VIP Bonus qo\'shildi!', true);
+            }
+        }
+
+        function getSelectedCar() {
+            return CARS_CATALOG.find(c => c.id === playerState.selectedCarId) || CARS_CATALOG[0];
+        }
+
+        loadState();
+
+        const CARS_CATALOG = [
+            {
+                id: 'starter_police',
+                name: 'Politsiya Patrul',
+                subtitle: 'Boshlang\'ich tezkor xizmat mashinasi',
+                price: 0,
+                maxSpeed: 150,
+                accel: 46,
+                color: 0x1e3a8a,
+                accentColor: 0xffffff,
+                interiorTrim: 0x3b82f6,
+                badge: 'BEPUL',
+                icon: '🚓'
+            },
+            {
+                id: 'nexia_2',
+                name: 'Daewoo Nexia 2',
+                subtitle: 'Klassik tezkor shahar patruli',
+                price: 350,
+                maxSpeed: 165,
+                accel: 52,
+                color: 0xf8fafc,
+                accentColor: 0x1d4ed8,
+                interiorTrim: 0x60a5fa,
+                badge: 'KLASSIK',
+                icon: '🚔'
+            },
+            {
+                id: 'cobalt',
+                name: 'Chevrolet Cobalt',
+                subtitle: 'Mustahkam va chaqqon shahar sedani',
+                price: 500,
+                maxSpeed: 175,
+                accel: 56,
+                color: 0xe2e8f0,
+                accentColor: 0x0284c7,
+                interiorTrim: 0x38bdf8,
+                badge: 'SHAHAR',
+                icon: '🚘'
+            },
+            {
+                id: 'gentra',
+                name: 'Chevrolet Gentra',
+                subtitle: 'Qora tunning qilingan tezkor Gentra',
+                price: 650,
+                maxSpeed: 185,
+                accel: 60,
+                color: 0x0f172a,
+                accentColor: 0x38bdf8,
+                interiorTrim: 0x22d3ee,
+                badge: 'TUNING',
+                icon: '🖤'
+            },
+            {
+                id: 'malibu_2',
+                name: 'Chevrolet Malibu 2',
+                subtitle: 'Turbo motorli biznes-klass patrul',
+                price: 850,
+                maxSpeed: 195,
+                accel: 64,
+                color: 0x1e293b,
+                accentColor: 0x3b82f6,
+                interiorTrim: 0x60a5fa,
+                badge: 'TURBO',
+                icon: '🚙'
+            },
+            {
+                id: 'mers_1000',
+                name: 'Mers (E-Class Police)',
+                subtitle: 'Maxsus 200 km/s tezkor militsiya',
+                price: 1000,
+                maxSpeed: 200,
+                accel: 68,
+                color: 0xcbd5e1,
+                accentColor: 0x0284c7,
+                interiorTrim: 0xfacc15,
+                badge: 'TAVSIYA ($1000)',
+                icon: '🏎️'
+            },
+            {
+                id: 'kia_k5',
+                name: 'Kia K5 VIP GT',
+                subtitle: 'Sport dizayn va yuqori boshqaruv',
+                price: 1150,
+                maxSpeed: 210,
+                accel: 72,
+                color: 0x334155,
+                accentColor: 0xf97316,
+                interiorTrim: 0xfb923c,
+                badge: 'GT SPORT',
+                icon: '🔥'
+            },
+            {
+                id: 'mercedes_benz',
+                name: 'Mercedes-Benz E63 AMG',
+                subtitle: 'Lyuks VIP salon va kuchli V8 motor',
+                price: 1350,
+                maxSpeed: 225,
+                accel: 76,
+                color: 0x111827,
+                accentColor: 0xfacc15,
+                interiorTrim: 0xf59e0b,
+                badge: 'VIP AMG',
+                icon: '⚡'
+            },
+            {
+                id: 'bmw_m5',
+                name: 'BMW M5 Competition',
+                subtitle: 'Burilishlarda tengsiz M-Power',
+                price: 1550,
+                maxSpeed: 240,
+                accel: 82,
+                color: 0x1d4ed8,
+                accentColor: 0xfacc15,
+                interiorTrim: 0xef4444,
+                badge: 'M-POWER VIP',
+                icon: '💠'
+            },
+            {
+                id: 'porsche_911',
+                name: 'Porsche 911 Turbo S',
+                subtitle: 'Chaqmoqdek tezlanish va muvozanat',
+                price: 1700,
+                maxSpeed: 255,
+                accel: 88,
+                color: 0xdc2626,
+                accentColor: 0xfef08a,
+                interiorTrim: 0xfacc15,
+                badge: 'TURBO S',
+                icon: '🏁'
+            },
+            {
+                id: 'lamborghini',
+                name: 'Lamborghini Aventador',
+                subtitle: 'Oltin VIP superkar patruli',
+                price: 1850,
+                maxSpeed: 275,
+                accel: 94,
+                color: 0xeab308,
+                accentColor: 0x0f172a,
+                interiorTrim: 0xfacc15,
+                badge: 'SUPERKAR VIP',
+                icon: '🐆'
+            },
+            {
+                id: 'bugatti',
+                name: 'Bugatti Chiron VIP',
+                subtitle: 'Eng qimmat va eng tezkor giperkar',
+                price: 2000,
+                maxSpeed: 300,
+                accel: 102,
+                color: 0x0284c7,
+                accentColor: 0xfacc15,
+                interiorTrim: 0xfef08a,
+                badge: 'ENG QIMMAT ($2000)',
+                icon: '👑'
+            }
+        ];
+// ... existing code ... -->
+        // ============================================================================
+        // 2. REALISTIC CAR ENGINE AUDIO, SIREN, GUNSHOTS & SYNTHWAVE CHASE MUSIC
+        // ============================================================================
+        let audioCtx = null;
+        let soundEnabled = true;
+        let musicEnabled = true;
+        let sirenEnabled = true;
+        let sirenTimer = 0;
+        let sirenHigh = false;
+
+        // Continuous Dual-Oscillator Car Engine Audio Nodes
+        let engineOsc1 = null;
+        let engineOsc2 = null;
+        let engineGain = null;
+        let engineFilter = null;
+        let engineStarted = false;
+
+        // Procedural Chase Background Music Sequencer
+        let musicInterval = null;
+        let musicStep = 0;
+        const BASS_NOTES = [110, 110, 130.81, 146.83, 110, 110, 164.81, 146.83]; // A2 C3 D3 E3
+        const LEAD_NOTES = [440, 0, 523.25, 587.33, 659.25, 587.33, 523.25, 392.00];
+
+        function initAudio() {
+            if (!audioCtx) {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (AudioContext) audioCtx = new AudioContext();
+            }
+            if (audioCtx && audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            if (audioCtx && !engineStarted) {
+                setupEngineSound();
+            }
+            if (audioCtx && !musicInterval) {
+                startBackgroundMusic();
+            }
+        }
+
+        function setupEngineSound() {
+            if (!audioCtx || engineStarted) return;
+            try {
+                engineOsc1 = audioCtx.createOscillator();
+                engineOsc2 = audioCtx.createOscillator();
+                engineFilter = audioCtx.createBiquadFilter();
+                engineGain = audioCtx.createGain();
+
+                engineOsc1.type = 'sawtooth';
+                engineOsc2.type = 'triangle';
+                engineOsc1.frequency.value = 42;
+                engineOsc2.frequency.value = 84;
+
+                engineFilter.type = 'lowpass';
+                engineFilter.frequency.value = 180;
+                engineFilter.Q.value = 3.5;
+
+                engineGain.gain.value = 0.0001;
+
+                engineOsc1.connect(engineFilter);
+                engineOsc2.connect(engineFilter);
+                engineFilter.connect(engineGain);
+                engineGain.connect(audioCtx.destination);
+
+                engineOsc1.start();
+                engineOsc2.start();
+                engineStarted = true;
+            } catch (e) {}
+        }
+
+        function updateEngineSound(speedKmh, maxKmh) {
+            if (!audioCtx || !engineStarted || !engineGain) return;
+            const now = audioCtx.currentTime;
+            if (!soundEnabled || gameMode !== 'playing' || !isInsideCar) {
+                engineGain.gain.setTargetAtTime(0.0001, now, 0.08);
+                return;
+            }
+
+            const ratio = Math.min(1, Math.abs(speedKmh) / Math.max(150, maxKmh));
+            const baseFreq = 38 + ratio * 125;
+            engineOsc1.frequency.setTargetAtTime(baseFreq, now, 0.06);
+            engineOsc2.frequency.setTargetAtTime(baseFreq * 1.98, now, 0.06);
+            engineFilter.frequency.setTargetAtTime(160 + ratio * 620, now, 0.06);
+
+            const targetVol = 0.045 + ratio * 0.075;
+            engineGain.gain.setTargetAtTime(targetVol, now, 0.06);
+        }
+
+        function startBackgroundMusic() {
+            if (musicInterval) return;
+            musicInterval = setInterval(() => {
+                if (!musicEnabled || !audioCtx || audioCtx.state !== 'running') return;
+                try {
+                    const now = audioCtx.currentTime;
+                    const step = musicStep % 8;
+
+                    // Punchy Bassline
+                    const bassFreq = BASS_NOTES[step];
+                    const bassOsc = audioCtx.createOscillator();
+                    const bassGain = audioCtx.createGain();
+                    bassOsc.type = 'triangle';
+                    bassOsc.frequency.setValueAtTime(bassFreq, now);
+                    bassGain.gain.setValueAtTime(0.055, now);
+                    bassGain.gain.exponentialRampToValueAtTime(0.001, now + 0.21);
+                    bassOsc.connect(bassGain);
+                    bassGain.connect(audioCtx.destination);
+                    bassOsc.start(now);
+                    bassOsc.stop(now + 0.22);
+
+                    // Kick / Hi-hat pulse
+                    if (step % 2 === 0) {
+                        const kickOsc = audioCtx.createOscillator();
+                        const kickGain = audioCtx.createGain();
+                        kickOsc.type = 'sine';
+                        kickOsc.frequency.setValueAtTime(135, now);
+                        kickOsc.frequency.exponentialRampToValueAtTime(38, now + 0.11);
+                        kickGain.gain.setValueAtTime(0.08, now);
+                        kickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                        kickOsc.connect(kickGain);
+                        kickGain.connect(audioCtx.destination);
+                        kickOsc.start(now);
+                        kickOsc.stop(now + 0.13);
+                    }
+
+                    // Synth Lead Melody
+                    const leadFreq = LEAD_NOTES[step];
+                    if (leadFreq > 0) {
+                        const leadOsc = audioCtx.createOscillator();
+                        const leadGain = audioCtx.createGain();
+                        leadOsc.type = 'sine';
+                        leadOsc.frequency.setValueAtTime(leadFreq, now);
+                        leadGain.gain.setValueAtTime(0.024, now);
+                        leadGain.gain.exponentialRampToValueAtTime(0.001, now + 0.20);
+                        leadOsc.connect(leadGain);
+                        leadGain.connect(audioCtx.destination);
+                        leadOsc.start(now);
+                        leadOsc.stop(now + 0.21);
+                    }
+
+                    musicStep++;
+                } catch (e) {}
+            }, 230);
+        }
+
+        function toggleAudio() {
+            soundEnabled = !soundEnabled;
+            document.getElementById('sound-icon').textContent = soundEnabled ? '🔊' : '🔇';
+            const lbl = document.getElementById('sound-label');
+            if (lbl) lbl.textContent = soundEnabled ? 'Ovoz: ON' : 'Ovoz: OFF';
+            if (soundEnabled) initAudio();
+        }
+
+        function toggleMusic() {
+            musicEnabled = !musicEnabled;
+            document.getElementById('music-icon').textContent = musicEnabled ? '🎵' : '🔇';
+            const lbl = document.getElementById('music-label');
+            if (lbl) lbl.textContent = musicEnabled ? 'Musiqa: ON' : 'Musiqa: OFF';
+            if (musicEnabled) initAudio();
+        }
+
+        function toggleSiren() {
+            sirenEnabled = !sirenEnabled;
+            const lbl = document.getElementById('siren-label');
+            if (lbl) lbl.textContent = sirenEnabled ? 'Sirena: ON' : 'Sirena: OFF';
+            if (sirenEnabled) initAudio();
+        }
+
+        function playSirenTone() {
+            if (!soundEnabled || !sirenEnabled || !audioCtx || gameMode !== 'playing' || !isInsideCar) return;
+            try {
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(sirenHigh ? 780 : 585, audioCtx.currentTime);
+                gain.gain.setValueAtTime(0.022, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.34);
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                osc.start();
+                osc.stop(audioCtx.currentTime + 0.35);
+                sirenHigh = !sirenHigh;
+            } catch (e) {}
+        }
+
+        function playGunshotSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const bufferSize = audioCtx.sampleRate * 0.18;
+                const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) {
+                    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (audioCtx.sampleRate * 0.04));
+                }
+                const noise = audioCtx.createBufferSource();
+                noise.buffer = buffer;
+
+                const filter = audioCtx.createBiquadFilter();
+                filter.type = 'bandpass';
+                filter.frequency.value = 1150;
+
+                const gain = audioCtx.createGain();
+                gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.18);
+
+                noise.connect(filter);
+                filter.connect(gain);
+                gain.connect(audioCtx.destination);
+                noise.start();
+            } catch (e) {}
+        }
+
+        function playRewardSound() {
+            if (!soundEnabled) return;
+            initAudio();
+            if (!audioCtx) return;
+            try {
+                const notes = [523.25, 659.25, 783.99, 1046.50, 1318.5];
+                notes.forEach((freq, idx) => {
+                    const osc = audioCtx.createOscillator();
+                    const gain = audioCtx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, audioCtx.currentTime + idx * 0.08);
+                    gain.gain.setValueAtTime(0.14, audioCtx.currentTime + idx * 0.08);
+                    gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + idx * 0.08 + 0.32);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start(audioCtx.currentTime + idx * 0.08);
+                    osc.stop(audioCtx.currentTime + idx * 0.08 + 0.34);
+                });
+            } catch (e) {}
+        }
+
+        // ============================================================================
+        // 3. THREE.JS 3D MORNING CITY, COCKPIT INTERIOR, CARS & PEDESTRIANS
+        // ============================================================================
+        let scene, camera, renderer;
+        let gameMode = 'menu';      // 'menu', 'playing', 'victory'
+        let cameraViewMode = 'cockpit'; // 'cockpit' (Mashina ichidan) or 'chase' (Tashqaridan)
+        let isInsideCar = true;     // Player is seated inside the car or walking beside it
+
+        const BLOCK_SIZE = 34;
+        const ROAD_WIDTH = 12;
+        const GRID_HALF = 4;
+
+        let buildingColliders = [];
+        let roadNodes = [];
+        let pedestrians = [];
+        let trafficCars = []; // 18+ AI Civilian Traffic Cars in the City
+        let bullets = [];
+        let particles = [];
+        let showcaseCars = [];
+
+        // Smooth camera state to completely eliminate any jitter/shaking
+        let smoothCamPos = new THREE.Vector3(0, 12, 22);
+        let smoothCamLook = new THREE.Vector3(0, 1.4, 0);
+        let smoothDashboardSpeed = 0;
+
+        // Player Car + Detailed 3D Interior Cockpit Objects
+        let playerCar = {
+            mesh: null,
+            cockpitGroup: null,
+            steeringWheel: null,
+            cockpitRifle: null,
+            dashSpeedCanvas: null,
+            dashSpeedTex: null,
+            sirenRed: null,
+            sirenBlue: null,
+            wheels: [],
+            x: 0,
+            z: 0,
+            angle: 0,
+            speed: 0,
+            steerAngle: 0,
+            shootCooldown: 0,
+            rifleRecoil: 0
+        };
+
+        // Player On-Foot Officer Mesh (when stepping out of the car)
+        let officerMesh = null;
+        let officerPos = { x: 2.5, z: 0, angle: 0 };
+
+        let criminalCar = {
+            mesh: null,
+            x: 0,
+            z: -68,
+            angle: 0,
+            speed: 46, // <= 50 km/h
+            hp: 100,
+            maxHp: 100,
+            targetNode: null,
+            hitPedestriansCount: 0
+        };
+
+        const keys = { up: false, down: false, left: false, right: false };
+
+        function initThreeJS() {
+            const canvas = document.getElementById('game-canvas');
+            scene = new THREE.Scene();
+
+            // Beautiful Morning Sky & Golden Sunrise Atmosphere
+            scene.background = new THREE.Color(0x7dd3fc);
+            scene.fog = new THREE.FogExp2(0xbae6fd, 0.0038);
+
+            camera = new THREE.PerspectiveCamera(64, window.innerWidth / window.innerHeight, 0.15, 450);
+            camera.position.set(0, 12, 22);
+
+            renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            // Morning Hemisphere & Warm Golden Sunlight
+            const hemiLight = new THREE.HemisphereLight(0xfffbeb, 0x334155, 0.85);
+            hemiLight.position.set(0, 100, 0);
+            scene.add(hemiLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfef08a, 1.2);
+            sunLight.position.set(95, 130, 75);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            sunLight.shadow.camera.near = 10;
+            sunLight.shadow.camera.far = 360;
+            const d = 150;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            // Morning Sun Disc
+            const sunSphere = new THREE.Mesh(
+                new THREE.SphereGeometry(14, 16, 16),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            sunSphere.position.set(185, 135, -185);
+            scene.add(sunSphere);
+
+            buildMorningCity();
+            createPlayerPoliceCar();
+            createOfficerMesh();
+            createCriminalCar();
+            spawnPedestrians(55);
+            spawnTrafficCars(20);
+            setupShowcaseCars();
+
+            window.addEventListener('resize', onWindowResize);
+            setupInputs();
+        }
+
+        // Procedural Window Texture for Realistic Modern Skyscrapers
+        function createBuildingTexture(baseColorHex, winColorHex) {
+            const c = document.createElement('canvas');
+            c.width = 128;
+            c.height = 256;
+            const ctx = c.getContext('2d');
+
+            ctx.fillStyle = baseColorHex;
+            ctx.fillRect(0, 0, 128, 256);
+
+            ctx.fillStyle = winColorHex;
+            for (let y = 12; y < 244; y += 22) {
+                for (let x = 10; x < 118; x += 22) {
+                    ctx.fillRect(x, y, 14, 14);
+                }
+            }
+            const tex = new THREE.CanvasTexture(c);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            return tex;
+        }
+
+        function buildMorningCity() {
+            buildingColliders = [];
+            roadNodes = [];
+
+            const citySpan = (GRID_HALF * 2 + 1) * BLOCK_SIZE + 40;
+
+            // Lush Green Park Ground
+            const ground = new THREE.Mesh(
+                new THREE.PlaneGeometry(citySpan + 120, citySpan + 120),
+                new THREE.MeshLambertMaterial({ color: 0x4ade80 })
+            );
+            ground.rotation.x = -Math.PI / 2;
+            ground.receiveShadow = true;
+            scene.add(ground);
+
+            const roadMat = new THREE.MeshLambertMaterial({ color: 0x1e293b });
+            const lineMat = new THREE.MeshBasicMaterial({ color: 0xf8fafc });
+            const yellowLineMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+            const sidewalkMat = new THREE.MeshLambertMaterial({ color: 0xe2e8f0 });
+
+            for (let i = -GRID_HALF; i <= GRID_HALF; i++) {
+                const pos = i * BLOCK_SIZE;
+
+                const hRoad = new THREE.Mesh(new THREE.PlaneGeometry(citySpan, ROAD_WIDTH), roadMat);
+                hRoad.rotation.x = -Math.PI / 2;
+                hRoad.position.set(0, 0.03, pos);
+                hRoad.receiveShadow = true;
+                scene.add(hRoad);
+
+                const vRoad = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, citySpan), roadMat);
+                vRoad.rotation.x = -Math.PI / 2;
+                vRoad.position.set(pos, 0.035, 0);
+                vRoad.receiveShadow = true;
+                scene.add(vRoad);
+
+                for (let s = -citySpan / 2 + 6; s < citySpan / 2 - 6; s += 8) {
+                    const stripeH = new THREE.Mesh(new THREE.PlaneGeometry(3.2, 0.35), lineMat);
+                    stripeH.rotation.x = -Math.PI / 2;
+                    stripeH.position.set(s, 0.05, pos);
+                    scene.add(stripeH);
+
+                    const stripeV = new THREE.Mesh(new THREE.PlaneGeometry(0.35, 3.2), yellowLineMat);
+                    stripeV.rotation.x = -Math.PI / 2;
+                    stripeV.position.set(pos, 0.05, s);
+                    scene.add(stripeV);
+                }
+
+                for (let j = -GRID_HALF; j <= GRID_HALF; j++) {
+                    roadNodes.push({ x: i * BLOCK_SIZE, z: j * BLOCK_SIZE });
+                }
+            }
+
+            const bPalettes = [
+                { wall: '#f8fafc', win: '#38bdf8' },
+                { wall: '#e2e8f0', win: '#0284c7' },
+                { wall: '#fef3c7', win: '#0ea5e9' },
+                { wall: '#dbeafe', win: '#1d4ed8' },
+                { wall: '#f1f5f9', win: '#f59e0b' }
+            ];
+            const bTextures = bPalettes.map(p => createBuildingTexture(p.wall, p.win));
+            const roofColors = [0x334155, 0x1e3a8a, 0x475569, 0x0f172a];
+            const blockLotSize = BLOCK_SIZE - ROAD_WIDTH;
+
+            for (let bx = -GRID_HALF; bx < GRID_HALF; bx++) {
+                for (let bz = -GRID_HALF; bz < GRID_HALF; bz++) {
+                    const centerX = (bx + 0.5) * BLOCK_SIZE;
+                    const centerZ = (bz + 0.5) * BLOCK_SIZE;
+
+                    const swMesh = new THREE.Mesh(
+                        new THREE.BoxGeometry(blockLotSize, 0.25, blockLotSize),
+                        sidewalkMat
+                    );
+                    swMesh.position.set(centerX, 0.125, centerZ);
+                    swMesh.receiveShadow = true;
+                    scene.add(swMesh);
+
+                    const isPlaza = (bx === 0 && bz === 0);
+
+                    if (!isPlaza) {
+                        const subOffsets = [
+                            { dx: -4.8, dz: -4.8 },
+                            { dx: 4.8, dz: -4.8 },
+                            { dx: -4.8, dz: 4.8 },
+                            { dx: 4.8, dz: 4.8 }
+                        ];
+
+                        subOffsets.forEach((off, idx) => {
+                            const seed = Math.abs(Math.sin((bx * 17 + bz * 31 + idx * 7) * 12.9898) * 43758.5453);
+                            const frac = seed - Math.floor(seed);
+
+                            if (frac < 0.88) {
+                                const w = 7.4 + (frac * 1.6);
+                                const d = 7.4 + ((1 - frac) * 1.6);
+                                const h = 11 + Math.floor(frac * 32);
+
+                                const tex = bTextures[Math.floor(frac * bTextures.length)];
+                                const rColor = roofColors[Math.floor((frac * 10) % roofColors.length)];
+
+                                const bX = centerX + off.dx;
+                                const bZ = centerZ + off.dz;
+
+                                const bGroup = new THREE.Group();
+                                bGroup.position.set(bX, 0.25, bZ);
+
+                                const tower = new THREE.Mesh(
+                                    new THREE.BoxGeometry(w, h, d),
+                                    new THREE.MeshLambertMaterial({ map: tex })
+                                );
+                                tower.position.y = h / 2;
+                                tower.castShadow = true;
+                                tower.receiveShadow = true;
+                                bGroup.add(tower);
+
+                                const roof = new THREE.Mesh(
+                                    new THREE.BoxGeometry(w + 0.4, 0.65, d + 0.4),
+                                    new THREE.MeshLambertMaterial({ color: rColor })
+                                );
+                                roof.position.y = h + 0.32;
+                                bGroup.add(roof);
+
+                                scene.add(bGroup);
+
+                                buildingColliders.push({
+                                    minX: bX - w / 2 - 0.9,
+                                    maxX: bX + w / 2 + 0.9,
+                                    minZ: bZ - d / 2 - 0.9,
+                                    maxZ: bZ + d / 2 + 0.9
+                                });
+                            } else {
+                                addTree(centerX + off.dx, centerZ + off.dz);
+                            }
+                        });
+                    } else {
+                        addTree(centerX - 8, centerZ - 8);
+                        addTree(centerX + 8, centerZ - 8);
+                        addTree(centerX - 8, centerZ + 8);
+                        addTree(centerX + 8, centerZ + 8);
+                    }
+                }
+            }
+
+            const limit = GRID_HALF * BLOCK_SIZE + 14;
+            buildingColliders.push({ minX: -limit - 10, maxX: -limit, minZ: -limit - 10, maxZ: limit + 10 });
+            buildingColliders.push({ minX: limit, maxX: limit + 10, minZ: -limit - 10, maxZ: limit + 10 });
+            buildingColliders.push({ minX: -limit - 10, maxX: limit + 10, minZ: -limit - 10, maxZ: -limit });
+            buildingColliders.push({ minX: -limit - 10, maxX: limit + 10, minZ: limit, maxZ: limit + 10 });
+        }
+
+        function addTree(x, z) {
+            const tree = new THREE.Group();
+            tree.position.set(x, 0.25, z);
+
+            const trunk = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.35, 0.5, 2.6, 8),
+                new THREE.MeshLambertMaterial({ color: 0x78350f })
+            );
+            trunk.position.y = 1.3;
+            trunk.castShadow = true;
+            tree.add(trunk);
+
+            const foliage = new THREE.Mesh(
+                new THREE.DodecahedronGeometry(2.1, 1),
+                new THREE.MeshLambertMaterial({ color: 0x16a34a })
+            );
+            foliage.position.y = 3.6;
+            foliage.castShadow = true;
+            tree.add(foliage);
+
+            scene.add(tree);
+        }
+
+        // ============================================================================
+        // 4. DETAILED CAR EXTERIOR + FIRST-PERSON COCKPIT ("MASHINA ICHIGA KIRISH")
+        // ============================================================================
+        function buildCarMesh(bodyColor, accentColor, isPolice = true, interiorTrimColor = 0xfacc15) {
+            const carGroup = new THREE.Group();
+
+            // Lower Chassis
+            const chassis = new THREE.Mesh(
+                new THREE.BoxGeometry(2.25, 0.78, 4.5),
+                new THREE.MeshLambertMaterial({ color: bodyColor })
+            );
+            chassis.position.y = 0.62;
+            chassis.castShadow = true;
+            chassis.receiveShadow = true;
+            carGroup.add(chassis);
+
+            // Hood (Visible from inside cockpit!)
+            const hood = new THREE.Mesh(
+                new THREE.BoxGeometry(2.05, 0.14, 1.45),
+                new THREE.MeshLambertMaterial({ color: bodyColor })
+            );
+            hood.position.set(0, 1.04, 1.42);
+            carGroup.add(hood);
+
+            // Side Racing / Police Stripe
+            const stripe = new THREE.Mesh(
+                new THREE.BoxGeometry(2.3, 0.28, 3.4),
+                new THREE.MeshLambertMaterial({ color: accentColor })
+            );
+            stripe.position.y = 0.65;
+            carGroup.add(stripe);
+
+            // Cabin Structure (Semi-transparent glass so interior is visible!)
+            const cabinGroup = new THREE.Group();
+            const roofTop = new THREE.Mesh(
+                new THREE.BoxGeometry(1.88, 0.12, 2.0),
+                new THREE.MeshLambertMaterial({ color: bodyColor })
+            );
+            roofTop.position.set(0, 1.72, -0.2);
+            cabinGroup.add(roofTop);
+
+            // Windshield & Side Glass
+            const glassMat = new THREE.MeshLambertMaterial({
+                color: 0x93c5fd,
+                transparent: true,
+                opacity: 0.28
+            });
+            const windshield = new THREE.Mesh(new THREE.BoxGeometry(1.82, 0.65, 0.08), glassMat);
+            windshield.position.set(0, 1.38, 0.82);
+            windshield.rotation.x = -0.32;
+            cabinGroup.add(windshield);
+
+            // A-Pillars
+            const pillarMat = new THREE.MeshLambertMaterial({ color: 0x0f172a });
+            const pLeft = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), pillarMat);
+            pLeft.position.set(-0.88, 1.38, 0.78);
+            pLeft.rotation.x = -0.32;
+            const pRight = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.72, 0.1), pillarMat);
+            pRight.position.set(0.88, 1.38, 0.78);
+            pRight.rotation.x = -0.32;
+            cabinGroup.add(pLeft, pRight);
+
+            carGroup.add(cabinGroup);
+
+            // Headlights & Taillights
+            const headMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+            const hlL = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 0.1), headMat);
+            hlL.position.set(-0.72, 0.7, 2.26);
+            const hlR = new THREE.Mesh(new THREE.BoxGeometry(0.45, 0.2, 0.1), headMat);
+            hlR.position.set(0.72, 0.7, 2.26);
+            carGroup.add(hlL, hlR);
+
+            const tailMat = new THREE.MeshBasicMaterial({ color: 0xef4444 });
+            const tlL = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.2, 0.1), tailMat);
+            tlL.position.set(-0.72, 0.7, -2.26);
+            const tlR = new THREE.Mesh(new THREE.BoxGeometry(0.48, 0.2, 0.1), tailMat);
+            tlR.position.set(0.72, 0.7, -2.26);
+            carGroup.add(tlL, tlR);
+
+            // 4 Wheels
+            const wheels = [];
+            const wheelGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.36, 14);
+            const wheelMat = new THREE.MeshLambertMaterial({ color: 0x111827 });
+            const wheelPositions = [
+                [-1.14, 0.42, 1.38],
+                [1.14, 0.42, 1.38],
+                [-1.14, 0.42, -1.38],
+                [1.14, 0.42, -1.38]
+            ];
+            wheelPositions.forEach(pos => {
+                const w = new THREE.Mesh(wheelGeo, wheelMat);
+                w.rotation.z = Math.PI / 2;
+                w.position.set(pos[0], pos[1], pos[2]);
+                carGroup.add(w);
+                wheels.push(w);
+            });
+
+            // Police Roof Lightbar + Detailed Interior Cockpit
+            let sirenRed = null, sirenBlue = null;
+            let cockpitGroup = null, steeringWheel = null, cockpitRifle = null;
+            let dashSpeedCanvas = null, dashSpeedTex = null;
+
+            if (isPolice) {
+                const barBase = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.32, 0.12, 0.32),
+                    new THREE.MeshLambertMaterial({ color: 0x334155 })
+                );
+                barBase.position.set(0, 1.82, -0.2);
+                carGroup.add(barBase);
+
+                sirenRed = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.56, 0.18, 0.28),
+                    new THREE.MeshBasicMaterial({ color: 0xef4444 })
+                );
+                sirenRed.position.set(-0.36, 1.92, -0.2);
+                carGroup.add(sirenRed);
+
+                sirenBlue = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.56, 0.18, 0.28),
+                    new THREE.MeshBasicMaterial({ color: 0x3b82f6 })
+                );
+                sirenBlue.position.set(0.36, 1.92, -0.2);
+                carGroup.add(sirenBlue);
+
+                // --- BUILD LUXURY VIP INTERIOR COCKPIT (Salon ichi) ---
+                cockpitGroup = new THREE.Group();
+
+                // Leather Dashboard
+                const dashboard = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.78, 0.34, 0.55),
+                    new THREE.MeshLambertMaterial({ color: 0x0f172a })
+                );
+                dashboard.position.set(0, 1.06, 0.58);
+                cockpitGroup.add(dashboard);
+
+                // VIP Gold / Accent Trim Strip along Dashboard
+                const dashTrim = new THREE.Mesh(
+                    new THREE.BoxGeometry(1.76, 0.04, 0.57),
+                    new THREE.MeshBasicMaterial({ color: interiorTrimColor })
+                );
+                dashTrim.position.set(0, 1.15, 0.57);
+                cockpitGroup.add(dashTrim);
+
+                // Digital Speedometer Screen inside Cockpit
+                dashSpeedCanvas = document.createElement('canvas');
+                dashSpeedCanvas.width = 256;
+                dashSpeedCanvas.height = 128;
+                dashSpeedTex = new THREE.CanvasTexture(dashSpeedCanvas);
+
+                const clusterScreen = new THREE.Mesh(
+                    new THREE.PlaneGeometry(0.46, 0.22),
+                    new THREE.MeshBasicMaterial({ map: dashSpeedTex })
+                );
+                clusterScreen.position.set(0.36, 1.24, 0.34);
+                clusterScreen.rotation.y = Math.PI;
+                clusterScreen.rotation.x = 0.22;
+                cockpitGroup.add(clusterScreen);
+
+                // Interactive Steering Wheel
+                steeringWheel = new THREE.Group();
+                steeringWheel.position.set(0.36, 1.18, 0.26);
+                steeringWheel.rotation.x = -0.38;
+
+                const rim = new THREE.Mesh(
+                    new THREE.TorusGeometry(0.21, 0.028, 10, 24),
+                    new THREE.MeshLambertMaterial({ color: 0x111827 })
+                );
+                steeringWheel.add(rim);
+
+                const spokeH = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.38, 0.04, 0.02),
+                    new THREE.MeshBasicMaterial({ color: interiorTrimColor })
+                );
+                const spokeV = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.05, 0.18, 0.02),
+                    new THREE.MeshLambertMaterial({ color: 0x334155 })
+                );
+                spokeV.position.y = -0.09;
+                const centerBadge = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.055, 0.055, 0.03, 12),
+                    new THREE.MeshBasicMaterial({ color: 0xfacc15 })
+                );
+                centerBadge.rotation.x = Math.PI / 2;
+                steeringWheel.add(spokeH, spokeV, centerBadge);
+                cockpitGroup.add(steeringWheel);
+
+                // First-Person Tactical Police Rifle mounted on right side of cockpit
+                cockpitRifle = new THREE.Group();
+                cockpitRifle.position.set(-0.32, 1.16, 0.45);
+
+                const barrel = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.025, 0.032, 0.95, 8),
+                    new THREE.MeshLambertMaterial({ color: 0x090d16 })
+                );
+                barrel.rotation.x = Math.PI / 2;
+                barrel.position.z = 0.35;
+
+                const scope = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.06, 0.07, 0.26),
+                    new THREE.MeshBasicMaterial({ color: 0x38bdf8 })
+                );
+                scope.position.set(0, 0.06, 0.1);
+
+                cockpitRifle.add(barrel, scope);
+                cockpitGroup.add(cockpitRifle);
+
+                carGroup.add(cockpitGroup);
+            }
+
+            return {
+                group: carGroup,
+                cockpitGroup,
+                steeringWheel,
+                cockpitRifle,
+                dashSpeedCanvas,
+                dashSpeedTex,
+                sirenRed,
+                sirenBlue,
+                wheels
+            };
+        }
+
+        function updateCockpitDashboard(speedKmh, maxKmh) {
+            if (!playerCar.dashSpeedCanvas || !playerCar.dashSpeedTex) return;
+            const ctx = playerCar.dashSpeedCanvas.getContext('2d');
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, 256, 128);
+
+            ctx.strokeStyle = '#facc15';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(4, 4, 248, 120);
+
+            ctx.fillStyle = '#facc15';
+            ctx.font = 'bold 18px Montserrat, sans-serif';
+            ctx.fillText('👑 VIP PATRUL', 18, 30);
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.font = '900 54px Montserrat, sans-serif';
+            ctx.fillText(`${Math.round(speedKmh)}`, 20, 88);
+
+            ctx.fillStyle = '#94a3b8';
+            ctx.font = 'bold 20px Inter, sans-serif';
+            ctx.fillText(`km/s (MAX ${maxKmh})`, 115, 84);
+
+            playerCar.dashSpeedTex.needsUpdate = true;
+        }
+
+        function createPlayerPoliceCar() {
+            if (playerCar.mesh) scene.remove(playerCar.mesh);
+            const selected = getSelectedCar();
+            const built = buildCarMesh(selected.color, selected.accentColor, true, selected.interiorTrim);
+            playerCar.mesh = built.group;
+            playerCar.cockpitGroup = built.cockpitGroup;
+            playerCar.steeringWheel = built.steeringWheel;
+            playerCar.cockpitRifle = built.cockpitRifle;
+            playerCar.dashSpeedCanvas = built.dashSpeedCanvas;
+            playerCar.dashSpeedTex = built.dashSpeedTex;
+            playerCar.sirenRed = built.sirenRed;
+            playerCar.sirenBlue = built.sirenBlue;
+            playerCar.wheels = built.wheels;
+
+            playerCar.mesh.position.set(playerCar.x, 0, playerCar.z);
+            playerCar.mesh.rotation.y = playerCar.angle;
+            scene.add(playerCar.mesh);
+            updateCockpitDashboard(0, selected.maxSpeed);
+        }
+
+        function createOfficerMesh() {
+            if (officerMesh) scene.remove(officerMesh);
+            const group = new THREE.Group();
+
+            const torso = new THREE.Mesh(
+                new THREE.BoxGeometry(0.55, 0.85, 0.32),
+                new THREE.MeshLambertMaterial({ color: 0x1e3a8a })
+            );
+            torso.position.y = 1.05;
+            torso.castShadow = true;
+            group.add(torso);
+
+            const head = new THREE.Mesh(
+                new THREE.SphereGeometry(0.22, 12, 12),
+                new THREE.MeshLambertMaterial({ color: 0xfde68a })
+            );
+            head.position.y = 1.68;
+            group.add(head);
+
+            const cap = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.25, 0.24, 0.12, 12),
+                new THREE.MeshLambertMaterial({ color: 0x0f172a })
+            );
+            cap.position.y = 1.86;
+            group.add(cap);
+
+            const gun = new THREE.Mesh(
+                new THREE.BoxGeometry(0.08, 0.1, 0.85),
+                new THREE.MeshLambertMaterial({ color: 0x090d16 })
+            );
+            gun.position.set(0.32, 1.15, 0.35);
+            group.add(gun);
+
+            group.visible = false;
+            scene.add(group);
+            officerMesh = group;
+        }
+
+        function createCriminalCar() {
+            if (criminalCar.mesh) scene.remove(criminalCar.mesh);
+            const built = buildCarMesh(0xdc2626, 0x111827, false);
+            criminalCar.mesh = built.group;
+            scene.add(criminalCar.mesh);
+        }
+
+        function setupShowcaseCars() {
+            showcaseCars.forEach(c => scene.remove(c));
+            showcaseCars = [];
+
+            const showcaseModels = [
+                CARS_CATALOG[1],
+                CARS_CATALOG[4],
+                CARS_CATALOG[5],
+                CARS_CATALOG[8],
+                CARS_CATALOG[10],
+                CARS_CATALOG[11]
+            ];
+
+            showcaseModels.forEach((carData, idx) => {
+                const built = buildCarMesh(carData.color, carData.accentColor, true, carData.interiorTrim);
+                const xOffset = (idx - 2.5) * 3.8;
+                built.group.position.set(xOffset, 0, -11);
+                built.group.rotation.y = 0.16 * (idx - 2.5);
+                scene.add(built.group);
+                showcaseCars.push(built.group);
+            });
+        }
+
+        function spawnTrafficCars(count) {
+            trafficCars.forEach(tc => scene.remove(tc.mesh));
+            trafficCars = [];
+
+            const civColors = [
+                0xffffff, 0xe2e8f0, 0x0f172a, 0x3b82f6, 0x10b981,
+                0xf59e0b, 0x64748b, 0x8b5cf6, 0x06b6d4, 0xfacc15
+            ];
+
+            for (let i = 0; i < count; i++) {
+                const bodyCol = civColors[i % civColors.length];
+                const isTaxi = (bodyCol === 0xfacc15);
+                const built = buildCarMesh(bodyCol, isTaxi ? 0x0f172a : 0x334155, false);
+
+                const node = roadNodes[Math.floor(Math.random() * roadNodes.length)];
+                const px = node.x;
+                const pz = node.z;
+                built.group.position.set(px, 0, pz);
+                scene.add(built.group);
+
+                trafficCars.push({
+                    mesh: built.group,
+                    wheels: built.wheels,
+                    x: px,
+                    z: pz,
+                    angle: Math.random() * Math.PI * 2,
+                    speed: 25 + Math.random() * 20,
+                    targetNode: null
+                });
+            }
+        }
+
+        function spawnPedestrians(count) {
+            pedestrians = [];
+            const pedGeo = new THREE.BoxGeometry(0.5, 1.4, 0.35);
+            const pedMat = new THREE.MeshLambertMaterial({ color: 0xef4444 });
+
+            for (let i = 0; i < count; i++) {
+                const mesh = new THREE.Mesh(pedGeo, pedMat);
+                mesh.castShadow = true;
+                const node = roadNodes[Math.floor(Math.random() * roadNodes.length)];
+                const px = node.x + (Math.random() - 0.5) * 8;
+                const pz = node.z + (Math.random() - 0.5) * 8;
+                mesh.position.set(px, 0.7, pz);
+                scene.add(mesh);
+
+                const ang = Math.random() * Math.PI * 2;
+                pedestrians.push({
+                    mesh: mesh,
+                    x: px,
+                    z: pz,
+                    dirX: Math.sin(ang),
+                    dirZ: Math.cos(ang),
+                    speed: 1.6 + Math.random() * 1.4,
+                    hitTimer: 0
+                });
+            }
+        }
+
+        // ============================================================================
+        // 5. GAMEPLAY FLOW: START, SHOOTING, VICTORY & SHOP FUNCTIONS (GLOBAL SCOPE)
+        // ============================================================================
+        window.startGame = function() {
+            initAudio();
+            gameMode = 'playing';
+            isInsideCar = true;
+            cameraViewMode = 'cockpit';
+
+            showcaseCars.forEach(c => c.visible = false);
+            if (officerMesh) officerMesh.visible = false;
+
+            createPlayerPoliceCar();
+            playerCar.x = 0;
+            playerCar.z = 0;
+            playerCar.angle = Math.PI;
+            playerCar.speed = 0;
+            playerCar.steerAngle = 0;
+            playerCar.shootCooldown = 0;
+            smoothDashboardSpeed = 0;
+
+            smoothCamPos.set(0.36, 1.44, 0.06);
+            smoothCamLook.set(0.36, 1.32, -25);
+
+            criminalCar.x = 0;
+            criminalCar.z = -BLOCK_SIZE * 2;
+            criminalCar.angle = Math.PI;
+            criminalCar.speed = 46;
+            criminalCar.hp = 100;
+            criminalCar.maxHp = 100;
+            criminalCar.hitPedestriansCount = 0;
+            criminalCar.targetNode = { x: BLOCK_SIZE, z: -BLOCK_SIZE * 2 };
+
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('victory-modal').classList.add('hidden');
+            document.getElementById('shop-modal').classList.add('hidden');
+            document.getElementById('foot-mode-banner').classList.add('hidden');
+            document.getElementById('game-hud').classList.remove('hidden');
+            document.getElementById('enter-exit-label').textContent = 'TUSHISH (F)';
+
+            updateCameraUI();
+            updateAllUI();
+        };
+
+        window.nextMission = function() {
+            window.startGame();
+        };
+
+        window.toggleCameraMode = function() {
+            cameraViewMode = (cameraViewMode === 'cockpit') ? 'chase' : 'cockpit';
+            updateCameraUI();
+        };
+
+        window.toggleEnterExitCar = function() {
+            if (gameMode !== 'playing') return;
+
+            if (isInsideCar) {
+                isInsideCar = false;
+                playerCar.speed = 0;
+                officerPos.x = playerCar.x + Math.cos(playerCar.angle) * 2.2;
+                officerPos.z = playerCar.z - Math.sin(playerCar.angle) * 2.2;
+                officerPos.angle = playerCar.angle;
+                officerMesh.position.set(officerPos.x, 0, officerPos.z);
+                officerMesh.rotation.y = officerPos.angle;
+                officerMesh.visible = true;
+
+                document.getElementById('foot-mode-banner').classList.remove('hidden');
+                document.getElementById('enter-exit-label').textContent = 'MINISH (F)';
+                document.getElementById('cockpit-reticle').classList.add('hidden');
+            } else {
+                const distToCar = Math.hypot(officerPos.x - playerCar.x, officerPos.z - playerCar.z);
+                if (distToCar < 8.5) {
+                    isInsideCar = true;
+                    officerMesh.visible = false;
+                    cameraViewMode = 'cockpit';
+                    document.getElementById('foot-mode-banner').classList.add('hidden');
+                    document.getElementById('enter-exit-label').textContent = 'TUSHISH (F)';
+                    updateCameraUI();
+                } else {
+                    document.getElementById('alert-text').textContent = '⚠️ Mashinaga yaqinroq keling va F tugmasini bosing!';
+                }
+            }
+        };
+
+        window.fireRifle = function() {
+            if (gameMode !== 'playing') return;
+            if (playerCar.shootCooldown > 0) return;
+
+            playerCar.shootCooldown = 0.22;
+            playerCar.rifleRecoil = 0.18;
+            playGunshotSound();
+
+            const originX = isInsideCar ? playerCar.x : officerPos.x;
+            const originZ = isInsideCar ? playerCar.z : officerPos.z;
+            const originAngle = isInsideCar ? playerCar.angle : officerPos.angle;
+
+            const dx = criminalCar.x - originX;
+            const dz = criminalCar.z - originZ;
+            const dist = Math.hypot(dx, dz);
+
+            let shootAngle = originAngle;
+            if (dist < 70) {
+                shootAngle = Math.atan2(dx, dz);
+            }
+
+            const bulletMesh = new THREE.Mesh(
+                new THREE.SphereGeometry(0.24, 6, 6),
+                new THREE.MeshBasicMaterial({ color: 0xfef08a })
+            );
+            const startX = originX + Math.sin(originAngle) * 1.6;
+            const startZ = originZ + Math.cos(originAngle) * 1.6;
+            bulletMesh.position.set(startX, 1.32, startZ);
+            scene.add(bulletMesh);
+
+            bullets.push({
+                mesh: bulletMesh,
+                x: startX,
+                z: startZ,
+                vx: Math.sin(shootAngle) * 145,
+                vz: Math.cos(shootAngle) * 145,
+                life: 0.75
+            });
+        };
+
+        window.openShop = function() {
+            renderShopItems();
+            document.getElementById('shop-money').textContent = '$' + playerState.money;
+            document.getElementById('shop-toast').classList.add('hidden');
+            document.getElementById('shop-modal').classList.remove('hidden');
+        };
+
+        window.openShopFromVictory = function() {
+            document.getElementById('victory-modal').classList.add('hidden');
+            window.openShop();
+            if (gameMode === 'victory') {
+                gameMode = 'menu';
+                showcaseCars.forEach(c => c.visible = true);
+                document.getElementById('start-screen').classList.remove('hidden');
+            }
+        };
+
+        window.closeShop = function() {
+            document.getElementById('shop-modal').classList.add('hidden');
+            createPlayerPoliceCar();
+            updateAllUI();
+        };
+
+        window.claimVipBonus = function(silent = false) {
+            playerState.money += 1000;
+            saveState();
+            updateAllUI();
+            playRewardSound();
+            if (!silent) {
+                showShopToast('💎 Tabriklaymiz! Hisobingizga +$1000 VIP Bonus qo\'shildi!', true);
+            }
+        };
+
+        window.buyOrSelectCar = function(carId) {
+            const car = CARS_CATALOG.find(c => c.id === carId);
+            if (!car) return;
+
+            const isOwned = playerState.ownedCars.includes(car.id);
+
+            if (isOwned) {
+                playerState.selectedCarId = car.id;
+                saveState();
+                createPlayerPoliceCar();
+                renderShopItems();
+                showShopToast(`✅ ${car.name} tanlandi! Salon va tezlik (${car.maxSpeed} km/s) yangilandi!`, true);
+            } else {
+                if (playerState.money >= car.price) {
+                    playerState.money -= car.price;
+                    playerState.ownedCars.push(car.id);
+                    playerState.selectedCarId = car.id;
+                    saveState();
+                    createPlayerPoliceCar();
+                    playRewardSound();
+                    document.getElementById('shop-money').textContent = '$' + playerState.money;
+                    renderShopItems();
+                    showShopToast(`👑 Tabriklaymiz! ${car.name} ($${car.price}) sotib olindi!`, true);
+                } else {
+                    const needed = car.price - playerState.money;
+                    showShopToast(`❌ Mablag' yetarli emas! Yana $${needed} kerak.`, false);
+                }
+            }
+        };
+
+        function updateCameraUI() {
+            const label = document.getElementById('cam-mode-label');
+            const reticle = document.getElementById('cockpit-reticle');
+            if (cameraViewMode === 'cockpit') {
+                if (label) label.textContent = 'SALON ICHIDAN';
+                if (gameMode === 'playing' && isInsideCar) {
+                    reticle.classList.remove('hidden');
+                } else {
+                    reticle.classList.add('hidden');
+                }
+            } else {
+                if (label) label.textContent = 'TASHQI KO\'RINISH';
+                reticle.classList.add('hidden');
+            }
+        }
+
+        function spawnExplosion(x, z, colorHex = 0xf97316, count = 18) {
+            for (let i = 0; i < count; i++) {
+                const pMesh = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.45, 0.45, 0.45),
+                    new THREE.MeshBasicMaterial({ color: colorHex })
+                );
+                pMesh.position.set(x, 1.0, z);
+                scene.add(pMesh);
+
+                const ang = Math.random() * Math.PI * 2;
+                const spd = 4 + Math.random() * 14;
+                particles.push({
+                    mesh: pMesh,
+                    vx: Math.cos(ang) * spd,
+                    vy: 5 + Math.random() * 10,
+                    vz: Math.sin(ang) * spd,
+                    life: 0.65
+                });
+            }
+        }
+
+        function triggerVictory() {
+            gameMode = 'victory';
+            document.getElementById('cockpit-reticle').classList.add('hidden');
+            spawnExplosion(criminalCar.x, criminalCar.z, 0xef4444, 38);
+            playRewardSound();
+
+            const reward = 1234 + 1234;
+            playerState.money += reward;
+            saveState();
+
+            document.getElementById('victory-total-money').textContent = '$' + playerState.money;
+            document.getElementById('game-hud').classList.add('hidden');
+            document.getElementById('victory-modal').classList.remove('hidden');
+        }
+
+        function showShopToast(msg, isSuccess = true) {
+            const toast = document.getElementById('shop-toast');
+            toast.textContent = msg;
+            toast.className = `mx-4 mt-3 px-4 py-2 rounded-xl text-xs sm:text-sm font-bold text-center ${
+                isSuccess
+                    ? 'bg-emerald-500/20 border border-emerald-500/50 text-emerald-300'
+                    : 'bg-red-500/20 border border-red-500/50 text-red-300'
+            }`;
+            toast.classList.remove('hidden');
+        }
+
+        function renderShopItems() {
+            const grid = document.getElementById('shop-cars-grid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            CARS_CATALOG.forEach(car => {
+                const isOwned = playerState.ownedCars.includes(car.id);
+                const isSelected = playerState.selectedCarId === car.id;
+                const canAfford = playerState.money >= car.price;
+
+                const card = document.createElement('div');
+                card.className = `rounded-2xl p-4 border transition flex flex-col justify-between ${
+                    isSelected
+                        ? 'bg-blue-950/75 border-amber-400 shadow-lg shadow-amber-900/30'
+                        : 'bg-slate-900/80 border-slate-700/80 hover:border-amber-400/50'
+                }`;
+
+                let actionBtn = '';
+                if (isSelected) {
+                    actionBtn = `<button disabled class="w-full py-2.5 rounded-xl bg-emerald-600/30 border border-emerald-500/50 text-emerald-300 font-display font-bold text-xs sm:text-sm cursor-default">✓ TANLANGAN</button>`;
+                } else if (isOwned) {
+                    actionBtn = `<button onclick="buyOrSelectCar('${car.id}')" class="w-full py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-display font-bold text-xs sm:text-sm transition active:scale-95">TANLASH</button>`;
+                } else {
+                    actionBtn = `<button onclick="buyOrSelectCar('${car.id}')" class="w-full py-2.5 rounded-xl ${
+                        canAfford
+                            ? 'vip-shimmer'
+                            : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-600'
+                    } font-display font-extrabold text-xs sm:text-sm transition active:scale-95">SOTIB OLISH — $${car.price}</button>`;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex items-start justify-between gap-2 mb-2">
+                            <span class="text-3xl">${car.icon}</span>
+                            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-800 border border-amber-400/40 text-amber-300">${car.badge}</span>
+                        </div>
+                        <h3 class="font-display font-extrabold text-base sm:text-lg text-white">${car.name}</h3>
+                        <p class="text-xs text-slate-400 mt-0.5 mb-3">${car.subtitle}</p>
+                        
+                        <div class="space-y-1.5 mb-4 bg-slate-950/70 p-2.5 rounded-xl border border-slate-800">
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-400">Maksimal Tezlik:</span>
+                                <span class="font-bold text-cyan-400">${car.maxSpeed} km/s</span>
+                            </div>
+                            <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-cyan-400 to-amber-400" style="width: ${Math.min(100, (car.maxSpeed / 300) * 100)}%"></div>
+                            </div>
+                            <div class="flex justify-between text-xs pt-1">
+                                <span class="text-slate-400">VIP Narxi:</span>
+                                <span class="font-bold text-amber-300">${car.price === 0 ? 'Bepul' : '$' + car.price}</span>
+                            </div>
+                        </div>
+                    </div>
+                    ${actionBtn}
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function updateAllUI() {
+            const car = getSelectedCar();
+            const mEl = document.getElementById('hud-money');
+            if (mEl) mEl.textContent = '$' + playerState.money;
+            const cEl = document.getElementById('hud-current-car');
+            if (cEl) cEl.textContent = `Mashina: ${car.name} (${car.maxSpeed} km/s)`;
+            const mnEl = document.getElementById('menu-car-name');
+            if (mnEl) mnEl.textContent = car.name;
+            const msEl = document.getElementById('menu-car-speed');
+            if (msEl) msEl.textContent = `${car.maxSpeed} km/s`;
+            const hmsEl = document.getElementById('hud-max-speed');
+            if (hmsEl) hmsEl.textContent = car.maxSpeed;
+        }
+
+        // ============================================================================
+        // 6. PHYSICS & GAME LOOP
+        // ============================================================================
+        function checkBuildingCollision(x, z, radius = 1.45) {
+            for (let i = 0; i < buildingColliders.length; i++) {
+                const b = buildingColliders[i];
+                if (x + radius > b.minX && x - radius < b.maxX &&
+                    z + radius > b.minZ && z - radius < b.maxZ) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function updatePhysics(dt) {
+            const selectedCar = getSelectedCar();
+
+            const sirenBlink = Math.floor(performance.now() / 160) % 2 === 0;
+            if (playerCar.sirenRed && playerCar.sirenBlue) {
+                playerCar.sirenRed.material.color.setHex(sirenBlink ? 0xff2222 : 0x450a0a);
+                playerCar.sirenBlue.material.color.setHex(!sirenBlink ? 0x3b82f6 : 0x172554);
+            }
+
+            pedestrians.forEach(ped => {
+                if (ped.hitTimer > 0) {
+                    ped.hitTimer -= dt;
+                    ped.mesh.rotation.z = Math.PI / 2;
+                    if (ped.hitTimer <= 0) ped.mesh.rotation.z = 0;
+                    return;
+                }
+
+                ped.x += ped.dirX * ped.speed * dt;
+                ped.z += ped.dirZ * ped.speed * dt;
+
+                const maxCity = GRID_HALF * BLOCK_SIZE;
+                if (Math.abs(ped.x) > maxCity || Math.abs(ped.z) > maxCity || checkBuildingCollision(ped.x, ped.z, 0.7)) {
+                    ped.dirX = -ped.dirX;
+                    ped.dirZ = -ped.dirZ;
+                    ped.x += ped.dirX * 1.5;
+                    ped.z += ped.dirZ * 1.5;
+                }
+                ped.mesh.position.set(ped.x, 0, ped.z);
+            });
+
+            trafficCars.forEach(tc => {
+                if (!tc.targetNode) {
+                    tc.targetNode = roadNodes[Math.floor(Math.random() * roadNodes.length)];
+                }
+                const dx = tc.targetNode.x - tc.x;
+                const dz = tc.targetNode.z - tc.z;
+                const dist = Math.hypot(dx, dz);
+
+                if (dist < 3.0) {
+                    const neighbors = roadNodes.filter(n => {
+                        const d = Math.hypot(n.x - tc.targetNode.x, n.z - tc.targetNode.z);
+                        return d > 10 && d <= BLOCK_SIZE + 2;
+                    });
+                    if (neighbors.length > 0) {
+                        tc.targetNode = neighbors[Math.floor(Math.random() * neighbors.length)];
+                    }
+                }
+
+                const desired = Math.atan2(dx, dz);
+                let diff = desired - tc.angle;
+                while (diff > Math.PI) diff -= Math.PI * 2;
+                while (diff < -Math.PI) diff += Math.PI * 2;
+                tc.angle += Math.sign(diff) * Math.min(Math.abs(diff), 3.2 * dt);
+
+                const laneOffset = 2.4;
+                const vel = (tc.speed / 150) * 36;
+                tc.x += Math.sin(tc.angle) * vel * dt;
+                tc.z += Math.cos(tc.angle) * vel * dt;
+
+                const renderX = tc.x - Math.cos(tc.angle) * laneOffset;
+                const renderZ = tc.z + Math.sin(tc.angle) * laneOffset;
+                tc.mesh.position.set(renderX, 0, renderZ);
+                tc.mesh.rotation.y = tc.angle;
+
+                tc.wheels.forEach(w => {
+                    w.rotation.x += (tc.speed / 40) * dt * 8;
+                });
+            });
+
+            if (gameMode === 'menu') {
+                updateEngineSound(0, selectedCar.maxSpeed);
+                const t = performance.now() * 0.00032;
+                camera.position.x = Math.sin(t) * 20;
+                camera.position.z = Math.cos(t) * 20 - 5;
+                camera.position.y = 8.5;
+                camera.lookAt(0, 1.5, -7);
+                return;
+            }
+
+            if (gameMode !== 'playing') {
+                updateEngineSound(0, selectedCar.maxSpeed);
+                return;
+            }
+
+            sirenTimer += dt;
+            if (sirenTimer >= 0.36) {
+                sirenTimer = 0;
+                playSirenTone();
+            }
+
+            if (playerCar.shootCooldown > 0) playerCar.shootCooldown -= dt;
+            if (playerCar.rifleRecoil > 0) playerCar.rifleRecoil = Math.max(0, playerCar.rifleRecoil - dt * 1.2);
+
+            if (isInsideCar) {
+                const maxSpd = selectedCar.maxSpeed;
+                const accelRate = selectedCar.accel * 1.65;
+
+                if (keys.up) {
+                    playerCar.speed = Math.min(maxSpd, playerCar.speed + accelRate * dt);
+                } else if (keys.down) {
+                    playerCar.speed = Math.max(-45, playerCar.speed - accelRate * 1.4 * dt);
+                } else {
+                    if (playerCar.speed > 0) playerCar.speed = Math.max(0, playerCar.speed - 38 * dt);
+                    if (playerCar.speed < 0) playerCar.speed = Math.min(0, playerCar.speed + 38 * dt);
+                }
+
+                let targetSteer = 0;
+                if (keys.left) targetSteer = 1;
+                if (keys.right) targetSteer = -1;
+                playerCar.steerAngle += (targetSteer - playerCar.steerAngle) * Math.min(1, 10 * dt);
+
+                if (playerCar.steeringWheel) {
+                    playerCar.steeringWheel.rotation.z = playerCar.steerAngle * 0.85;
+                }
+                if (playerCar.cockpitRifle) {
+                    playerCar.cockpitRifle.position.z = 0.45 - playerCar.rifleRecoil;
+                }
+
+                if (Math.abs(playerCar.speed) > 1.5) {
+                    const steerFactor = Math.min(1, Math.abs(playerCar.speed) / 45);
+                    const dirSign = playerCar.speed >= 0 ? 1 : -1;
+                    const turnSpeed = 2.65 * steerFactor * dirSign;
+                    playerCar.angle += playerCar.steerAngle * turnSpeed * dt;
+                }
+
+                playerCar.wheels.forEach(w => {
+                    w.rotation.x += (playerCar.speed / 40) * dt * 8;
+                });
+
+                const worldVel = (playerCar.speed / 150) * 36;
+                const nextX = playerCar.x + Math.sin(playerCar.angle) * worldVel * dt;
+                const nextZ = playerCar.z + Math.cos(playerCar.angle) * worldVel * dt;
+
+                if (!checkBuildingCollision(nextX, playerCar.z)) {
+                    playerCar.x = nextX;
+                } else {
+                    playerCar.speed *= 0.45;
+                }
+                if (!checkBuildingCollision(playerCar.x, nextZ)) {
+                    playerCar.z = nextZ;
+                } else {
+                    playerCar.speed *= 0.45;
+                }
+
+                playerCar.mesh.position.set(playerCar.x, 0, playerCar.z);
+                playerCar.mesh.rotation.y = playerCar.angle;
+
+                updateEngineSound(Math.abs(playerCar.speed), maxSpd);
+                const roundedSpd = Math.round(Math.abs(playerCar.speed));
+                if (roundedSpd !== smoothDashboardSpeed) {
+                    smoothDashboardSpeed = roundedSpd;
+                    updateCockpitDashboard(roundedSpd, maxSpd);
+                }
+            } else {
+                updateEngineSound(0, selectedCar.maxSpeed);
+                const walkSpeed = 10;
+                if (keys.left) officerPos.angle += 3.0 * dt;
+                if (keys.right) officerPos.angle -= 3.0 * dt;
+                let moveDir = 0;
+                if (keys.up) moveDir = 1;
+                if (keys.down) moveDir = -0.6;
+
+                if (moveDir !== 0) {
+                    const nx = officerPos.x + Math.sin(officerPos.angle) * walkSpeed * moveDir * dt;
+                    const nz = officerPos.z + Math.cos(officerPos.angle) * walkSpeed * moveDir * dt;
+                    if (!checkBuildingCollision(nx, nz, 0.5)) {
+                        officerPos.x = nx;
+                        officerPos.z = nz;
+                    }
+                }
+                officerMesh.position.set(officerPos.x, 0, officerPos.z);
+                officerMesh.rotation.y = officerPos.angle;
+            }
+
+            criminalCar.speed = 46;
+            const crimWorldVel = (criminalCar.speed / 150) * 36;
+
+            if (!criminalCar.targetNode) {
+                criminalCar.targetNode = roadNodes[Math.floor(Math.random() * roadNodes.length)];
+            }
+
+            const toTargetX = criminalCar.targetNode.x - criminalCar.x;
+            const toTargetZ = criminalCar.targetNode.z - criminalCar.z;
+            const distToNode = Math.hypot(toTargetX, toTargetZ);
+
+            if (distToNode < 3.5) {
+                const neighbors = roadNodes.filter(n => {
+                    const d = Math.hypot(n.x - criminalCar.targetNode.x, n.z - criminalCar.targetNode.z);
+                    return d > 10 && d <= BLOCK_SIZE + 2;
+                });
+
+                if (neighbors.length > 0) {
+                    neighbors.sort((a, b) => {
+                        const da = Math.hypot(a.x - playerCar.x, a.z - playerCar.z) + (Math.random() * 25);
+                        const db = Math.hypot(b.x - playerCar.x, b.z - playerCar.z) + (Math.random() * 25);
+                        return db - da;
+                    });
+                    criminalCar.targetNode = neighbors[0];
+                }
+            }
+
+            const desiredAngle = Math.atan2(toTargetX, toTargetZ);
+            let angleDiff = desiredAngle - criminalCar.angle;
+            while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+            while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+            criminalCar.angle += Math.sign(angleDiff) * Math.min(Math.abs(angleDiff), 3.4 * dt);
+
+            criminalCar.x += Math.sin(criminalCar.angle) * crimWorldVel * dt;
+            criminalCar.z += Math.cos(criminalCar.angle) * crimWorldVel * dt;
+
+            criminalCar.mesh.position.set(criminalCar.x, 0, criminalCar.z);
+            criminalCar.mesh.rotation.y = criminalCar.angle;
+
+            const activeX = isInsideCar ? playerCar.x : officerPos.x;
+            const activeZ = isInsideCar ? playerCar.z : officerPos.z;
+            const distBetween = Math.hypot(activeX - criminalCar.x, activeZ - criminalCar.z);
+
+            if (isInsideCar) {
+                trafficCars.forEach(tc => {
+                    const renderX = tc.x - Math.cos(tc.angle) * 2.4;
+                    const renderZ = tc.z + Math.sin(tc.angle) * 2.4;
+                    const dTraffic = Math.hypot(playerCar.x - renderX, playerCar.z - renderZ);
+                    if (dTraffic < 3.1 && dTraffic > 0.01) {
+                        const pushA = Math.atan2(playerCar.x - renderX, playerCar.z - renderZ);
+                        playerCar.x += Math.sin(pushA) * (3.1 - dTraffic) * 0.5;
+                        playerCar.z += Math.cos(pushA) * (3.1 - dTraffic) * 0.5;
+                        playerCar.speed *= 0.92;
+                    }
+                });
+            }
+
+            if (isInsideCar && distBetween < 3.4) {
+                const pushAngle = Math.atan2(criminalCar.x - playerCar.x, criminalCar.z - playerCar.z);
+                criminalCar.x += Math.sin(pushAngle) * 1.4;
+                criminalCar.z += Math.cos(pushAngle) * 1.4;
+                criminalCar.hp -= 18 * dt;
+                spawnExplosion((playerCar.x + criminalCar.x) / 2, (playerCar.z + criminalCar.z) / 2, 0xfacc15, 3);
+            }
+
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                const b = bullets[i];
+                b.x += b.vx * dt;
+                b.z += b.vz * dt;
+                b.life -= dt;
+                b.mesh.position.set(b.x, 1.32, b.z);
+
+                const hitDist = Math.hypot(b.x - criminalCar.x, b.z - criminalCar.z);
+                if (hitDist < 2.6) {
+                    criminalCar.hp -= 20;
+                    spawnExplosion(b.x, b.z, 0xf97316, 10);
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                    if (criminalCar.hp <= 0) {
+                        triggerVictory();
+                    }
+                    continue;
+                }
+
+                if (b.life <= 0 || checkBuildingCollision(b.x, b.z, 0.2)) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                }
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.mesh.position.x += p.vx * dt;
+                p.mesh.position.y += p.vy * dt;
+                p.mesh.position.z += p.vz * dt;
+                p.vy -= 22 * dt;
+                p.life -= dt;
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+
+            if (isInsideCar && cameraViewMode === 'cockpit') {
+                const sinA = Math.sin(playerCar.angle);
+                const cosA = Math.cos(playerCar.angle);
+                const seatLocalX = 0.36;
+                const seatLocalZ = -0.06;
+
+                const camX = playerCar.x + (seatLocalX * cosA + seatLocalZ * sinA);
+                const camZ = playerCar.z + (-seatLocalX * sinA + seatLocalZ * cosA);
+                const camY = 1.44;
+
+                camera.position.set(camX, camY, camZ);
+
+                const targetLookX = camX + sinA * 28 - (playerCar.steerAngle * cosA * 1.8);
+                const targetLookZ = camZ + cosA * 28 + (playerCar.steerAngle * sinA * 1.8);
+                smoothCamLook.lerp(new THREE.Vector3(targetLookX, 1.32, targetLookZ), Math.min(1, 22 * dt));
+                camera.lookAt(smoothCamLook);
+            } else if (isInsideCar) {
+                const camDist = 11.2;
+                const camHeight = 5.8;
+                const targetCamX = playerCar.x - Math.sin(playerCar.angle) * camDist;
+                const targetCamZ = playerCar.z - Math.cos(playerCar.angle) * camDist;
+
+                const lerpAlpha = 1 - Math.exp(-12 * dt);
+                smoothCamPos.x += (targetCamX - smoothCamPos.x) * lerpAlpha;
+                smoothCamPos.z += (targetCamZ - smoothCamPos.z) * lerpAlpha;
+                smoothCamPos.y += (camHeight - smoothCamPos.y) * lerpAlpha;
+                camera.position.copy(smoothCamPos);
+
+                const lookAheadX = playerCar.x + Math.sin(playerCar.angle) * 9;
+                const lookAheadZ = playerCar.z + Math.cos(playerCar.angle) * 9;
+                smoothCamLook.lerp(new THREE.Vector3(lookAheadX, 1.4, lookAheadZ), lerpAlpha);
+                camera.lookAt(smoothCamLook);
+            } else {
+                const targetCamX = officerPos.x - Math.sin(officerPos.angle) * 6.5;
+                const targetCamZ = officerPos.z - Math.cos(officerPos.angle) * 6.5;
+                const lerpAlpha = 1 - Math.exp(-10 * dt);
+                smoothCamPos.x += (targetCamX - smoothCamPos.x) * lerpAlpha;
+                smoothCamPos.z += (targetCamZ - smoothCamPos.z) * lerpAlpha;
+                smoothCamPos.y += (3.4 - smoothCamPos.y) * lerpAlpha;
+                camera.position.copy(smoothCamPos);
+
+                smoothCamLook.lerp(
+                    new THREE.Vector3(officerPos.x + Math.sin(officerPos.angle) * 5, 1.4, officerPos.z + Math.cos(officerPos.angle) * 5),
+                    lerpAlpha
+                );
+                camera.lookAt(smoothCamLook);
+            }
+
+            updateHUD(distBetween);
+            drawMiniMap();
+        }
+
+        function updateHUD(distMeters) {
+            const spd = isInsideCar ? Math.round(Math.abs(playerCar.speed)) : 0;
+            document.getElementById('hud-speed').textContent = spd;
+            document.getElementById('mobile-speed').textContent = spd;
+
+            const distInt = Math.round(distMeters);
+            document.getElementById('hud-distance').textContent = `Masofa: ${distInt} m`;
+
+            const hpPct = Math.max(0, Math.min(100, (criminalCar.hp / criminalCar.maxHp) * 100));
+            document.getElementById('criminal-hp-bar').style.width = hpPct + '%';
+
+            const hintEl = document.getElementById('shoot-ready-hint');
+            if (distInt <= 65) {
+                hintEl.textContent = '🎯 NISHONDA! PROBEL yoki OTISH tugmasini bosib miltiqda oting!';
+                hintEl.className = 'text-[11px] text-center mt-1 text-emerald-300 font-bold animate-pulse';
+            } else {
+                hintEl.textContent = 'Gazni bosing! Jinoyatchiga yaqinlashib miltiqda oting!';
+                hintEl.className = 'text-[11px] text-center mt-1 text-slate-300';
+            }
+        }
+
+        function drawMiniMap() {
+            const canvas = document.getElementById('minimap-canvas');
+            if (!canvas) return;
+            const ctx = canvas.getContext('2d');
+            const w = canvas.width;
+            const h = canvas.height;
+
+            ctx.fillStyle = '#090d16';
+            ctx.fillRect(0, 0, w, h);
+
+            const scale = 0.46;
+            const cx = w / 2;
+            const cy = h / 2;
+            const refX = isInsideCar ? playerCar.x : officerPos.x;
+            const refZ = isInsideCar ? playerCar.z : officerPos.z;
+
+            ctx.strokeStyle = '#334155';
+            ctx.lineWidth = 4;
+            for (let i = -GRID_HALF; i <= GRID_HALF; i++) {
+                const pos = i * BLOCK_SIZE;
+                const rx = cx + (pos - refX) * scale;
+                const rz = cy + (pos - refZ) * scale;
+
+                ctx.beginPath();
+                ctx.moveTo(0, rz);
+                ctx.lineTo(w, rz);
+                ctx.stroke();
+
+                ctx.beginPath();
+                ctx.moveTo(rx, 0);
+                ctx.lineTo(rx, h);
+                ctx.stroke();
+            }
+
+            ctx.fillStyle = '#34d399';
+            pedestrians.forEach(p => {
+                const px = cx + (p.x - refX) * scale;
+                const pz = cy + (p.z - refZ) * scale;
+                if (px > 0 && px < w && pz > 0 && pz < h) {
+                    ctx.fillRect(px - 1, pz - 1, 2, 2);
+                }
+            });
+
+            ctx.fillStyle = '#fbbf24';
+            trafficCars.forEach(tc => {
+                const tx = cx + (tc.x - refX) * scale;
+                const tz = cy + (tc.z - refZ) * scale;
+                if (tx > 2 && tx < w - 2 && tz > 2 && tz < h - 2) {
+                    ctx.fillRect(tx - 1.5, tz - 1.5, 3, 3);
+                }
+            });
+
+            let crimX = cx + (criminalCar.x - refX) * scale;
+            let crimZ = cy + (criminalCar.z - refZ) * scale;
+            crimX = Math.max(6, Math.min(w - 6, crimX));
+            crimZ = Math.max(6, Math.min(h - 6, crimZ));
+
+            ctx.fillStyle = '#ef4444';
+            ctx.beginPath();
+            ctx.arc(crimX, crimZ, 5, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#38bdf8';
+            ctx.beginPath();
+            ctx.arc(cx, cy, 4.5, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        // ============================================================================
+        // 7. SETUP & INITIALIZATION
+        // ============================================================================
+        function setupInputs() {
+            window.addEventListener('keydown', (e) => {
+                const code = e.code;
+                if (code === 'KeyW' || code === 'ArrowUp') keys.up = true;
+                if (code === 'KeyS' || code === 'ArrowDown') keys.down = true;
+                if (code === 'KeyA' || code === 'ArrowLeft') keys.left = true;
+                if (code === 'KeyD' || code === 'ArrowRight') keys.right = true;
+                if (code === 'KeyC') window.toggleCameraMode();
+                if (code === 'KeyH') window.toggleSiren();
+                if (code === 'KeyF' || code === 'KeyE') window.toggleEnterExitCar();
+                if (code === 'Space') {
+                    e.preventDefault();
+                    window.fireRifle();
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                const code = e.code;
+                if (code === 'KeyW' || code === 'ArrowUp') keys.up = false;
+                if (code === 'KeyS' || code === 'ArrowDown') keys.down = false;
+                if (code === 'KeyA' || code === 'ArrowLeft') keys.left = false;
+                if (code === 'KeyD' || code === 'ArrowRight') keys.right = false;
+            });
+
+            const bindTouch = (id, keyName) => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('touchstart', (e) => { e.preventDefault(); keys[keyName] = true; });
+                el.addEventListener('touchend', (e) => { e.preventDefault(); keys[keyName] = false; });
+                el.addEventListener('mousedown', () => { keys[keyName] = true; });
+                el.addEventListener('mouseup', () => { keys[keyName] = false; });
+                el.addEventListener('mouseleave', () => { keys[keyName] = false; });
+            };
+
+            bindTouch('touch-up', 'up');
+            bindTouch('touch-down', 'down');
+            bindTouch('touch-left', 'left');
+            bindTouch('touch-right', 'right');
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        let lastTime = performance.now();
+        function animate() {
+            requestAnimationFrame(animate);
+            const now = performance.now();
+            const dt = Math.min(0.05, (now - lastTime) / 1000);
+            lastTime = now;
+
+            updatePhysics(dt);
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            loadState();
+            initThreeJS();
+            updateAllUI();
+            animate();
+        };
+    </script>
+</body>
+</html>

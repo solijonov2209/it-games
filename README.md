@@ -136,7 +136,7 @@ Quyidagilar `localStorage` da saqlanadi (faqat shu kompyuter va brauzerda):
 | Azizbek  | `azizbek-bekinmachoq`, `azizbek-iloncha`, `azizbek-kosmik` |
 | Dinislom | `dinislom-cars`, `dinislom-goyalar`, `dinislom-bilimdon`, `dinislom-xotira`, `dinislom-15` |
 | Dovudxon | `dovudxon-futbol`, `dovudxon-sprinter`, `dovudxon-shaxmat`, `dovudxon-sakrovchi`, `dovudxon-hisob` |
-| Ibrohim  | `ibrohim-skuter`, `ibrohim-velo`, `ibrohim-kosmik`, `ibrohim-x-va-o`, `ibrohim-tosh-qaychi` |
+| Ibrohim  | `ibrohim-skuter`, `ibrohim-velo`, `ibrohim-kosmik`, `ibrohim-x-va-o`, `ibrohim-tosh-qaychi`, `ibrohim-militsiya` |
 | Tohirjon | `tohirjon-racing`, `tohirjon-scooter`, `tohirjon-ilon`, `tohirjon-kukilar`, `tohirjon-sonni-top` |
 | Temur    | `temur-minecraft` |
 

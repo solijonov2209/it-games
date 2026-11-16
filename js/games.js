@@ -261,6 +261,17 @@ window.GAMES = [
     controls: "Sichqoncha yoki 1 — tosh, 2 — qaychi, 3 — qog'oz",
     orientation: "landscape"
   },
+  {
+    id: "ibrohim-militsiya",
+    title: "Jinoyatchini o'ldir",
+    author: "Ibrohim",
+    category: "Action",
+    description: "3D militsiya o'yini: xizmat mashinasiga o'tiring, sirenani yoqing, shaharda jinoyatchini quvib yeting va to'xtating. Do'konda 12 ta mashina!",
+    path: "games/ibrohim-militsiya/index.html",
+    thumb: "games/ibrohim-militsiya/thumb.png",
+    controls: "W A S D / strelkalar — haydash, Probel — otish, F — tushish/minish, C — salon ko'rinishi, H — sirena",
+    orientation: "landscape"
+  },
 
   /* ---------- Tohirjon ---------- */
   {
