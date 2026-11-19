@@ -1,0 +1,1555 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Toshkent 3D Poyga: Ultra Realistik</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;800;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #030712;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .font-racing {
+            font-family: 'Orbitron', sans-serif;
+        }
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        .hud-glass {
+            background: rgba(10, 15, 30, 0.78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        @keyframes nitroGlow {
+            0%, 100% { box-shadow: 0 0 15px rgba(14, 165, 233, 0.7), inset 0 0 10px rgba(56, 189, 248, 0.4); }
+            50% { box-shadow: 0 0 30px rgba(56, 189, 248, 1), inset 0 0 20px rgba(125, 211, 252, 0.7); }
+        }
+        .nitro-active {
+            animation: nitroGlow 0.35s infinite alternate;
+        }
+        .touch-btn:active {
+            transform: scale(0.92);
+            background: rgba(56, 189, 248, 0.35);
+        }
+    </style>
+</head>
+<body class="text-white">
+
+<div id="game-container">
+    <div id="canvas-wrapper" class="w-full h-full"></div>
+
+    <!-- HUD Top Bar -->
+    <div id="hud" class="hidden absolute top-0 left-0 right-0 p-3 sm:p-5 flex flex-wrap justify-between items-start gap-2 pointer-events-none z-10">
+        <div class="flex flex-wrap gap-2 sm:gap-3">
+            <div class="hud-glass rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 border-sky-500/30">
+                <div class="text-[10px] sm:text-xs uppercase tracking-wider text-sky-400 font-semibold">Masofa (Toshkent)</div>
+                <div id="distance-display" class="font-racing text-lg sm:text-2xl font-extrabold text-white">0.00 <span class="text-xs font-normal text-sky-300">km</span></div>
+            </div>
+            <div class="hud-glass rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 border-amber-500/30">
+                <div class="text-[10px] sm:text-xs uppercase tracking-wider text-amber-400 font-semibold">Keyingi Chorraha</div>
+                <div id="next-turn-display" class="font-racing text-lg sm:text-2xl font-extrabold text-amber-300">10.00 <span class="text-xs font-normal text-amber-200">km</span></div>
+            </div>
+            <div class="hud-glass rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 hidden sm:block border-slate-700">
+                <div class="text-[10px] sm:text-xs uppercase tracking-wider text-slate-300 font-semibold">Ball / Tangalar</div>
+                <div class="font-racing text-base sm:text-xl font-extrabold text-white">
+                    <span id="score-display">0</span> <span class="text-amber-400 text-sm ml-1">● <span id="coins-display">0</span></span>
+                </div>
+            </div>
+            <div class="hud-glass rounded-2xl px-3.5 py-2 sm:px-4 sm:py-2.5 border-rose-500/30">
+                <div class="text-[10px] sm:text-xs uppercase tracking-wider text-rose-400 font-semibold">Mustahkamlik</div>
+                <div id="lives-display" class="font-racing text-base sm:text-xl font-extrabold text-rose-500 tracking-wider">♥♥♥</div>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 pointer-events-auto">
+            <div class="hud-glass rounded-2xl px-4 py-2 sm:px-5 sm:py-2.5 text-right min-w-[130px] sm:min-w-[160px] border-sky-500/30">
+                <div class="text-[10px] sm:text-xs uppercase tracking-wider text-sky-400 font-semibold">Tezlik</div>
+                <div class="font-racing text-lg sm:text-2xl font-extrabold text-white">
+                    <span id="speed-display">0</span> <span class="text-xs font-normal text-slate-300">km/soat</span>
+                </div>
+                <div class="w-full h-2 bg-slate-900 rounded-full mt-1.5 overflow-hidden border border-slate-700">
+                    <div id="nitro-bar" class="h-full bg-gradient-to-r from-sky-400 to-cyan-200 transition-all duration-75" style="width: 100%;"></div>
+                </div>
+            </div>
+
+            <div class="flex flex-col sm:flex-row gap-2">
+                <button id="btn-camera" title="Kamera (C)" class="hud-glass hover:bg-slate-800 active:scale-95 transition p-2.5 sm:p-3 rounded-xl flex items-center justify-center text-sky-300 border-sky-500/30">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                </button>
+                <button id="btn-mute" title="Ovoz (M)" class="hud-glass hover:bg-slate-800 active:scale-95 transition p-2.5 sm:p-3 rounded-xl flex items-center justify-center text-amber-300 border-amber-500/30">
+                    <svg id="icon-sound-on" class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/>
+                    </svg>
+                    <svg id="icon-sound-off" class="w-5 h-5 sm:w-6 sm:h-6 hidden text-rose-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15zM17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"/>
+                    </svg>
+                </button>
+                <button id="btn-pause" title="Pauza (P)" class="hud-glass hover:bg-slate-800 active:scale-95 transition p-2.5 sm:p-3 rounded-xl flex items-center justify-center text-white border-slate-700">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 10 KM Turn Warning Banner -->
+    <div id="turn-warning" class="hidden absolute top-24 sm:top-28 left-1/2 -translate-x-1/2 pointer-events-none z-10 w-[94%] max-w-lg">
+        <div class="hud-glass px-5 py-3 rounded-2xl border-2 border-amber-400 flex flex-col items-center gap-1.5 shadow-[0_0_35px_rgba(251,191,36,0.6)]">
+            <div class="flex items-center gap-3">
+                <span id="turn-arrow-left" class="hidden font-racing text-2xl sm:text-3xl font-extrabold text-amber-400 animate-bounce">◀ 90°</span>
+                <span id="turn-text" class="font-racing text-xs sm:text-sm font-extrabold tracking-wider text-white uppercase text-center">TOSHKENT CHORRAHASI! 90° BURILISH!</span>
+                <span id="turn-arrow-right" class="hidden font-racing text-2xl sm:text-3xl font-extrabold text-amber-400 animate-bounce">90° ▶</span>
+            </div>
+            <div class="text-[11px] text-amber-200 font-medium">A / D yoki ◀ / ▶ tugmalari bilan aniq buriling!</div>
+        </div>
+    </div>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast-banner" class="hidden absolute top-40 left-1/2 -translate-x-1/2 pointer-events-none z-10">
+        <div id="toast-text" class="hud-glass px-6 py-2.5 rounded-full border border-emerald-400/80 font-racing text-xs sm:text-sm font-bold text-emerald-300 shadow-xl">
+            YANGI SHOH KO'CHAGA O'TILDl! +500 BALL
+        </div>
+    </div>
+
+    <!-- On-Screen Touch Controls -->
+    <div id="touch-controls" class="hidden absolute bottom-5 left-0 right-0 px-4 sm:px-8 flex justify-between items-end pointer-events-none z-10">
+        <div class="flex gap-3 pointer-events-auto">
+            <button id="touch-left" class="touch-btn hud-glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white border-2 border-white/20 shadow-2xl">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 19l-7-7 7-7"/>
+                </svg>
+            </button>
+            <button id="touch-right" class="touch-btn hud-glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white border-2 border-white/20 shadow-2xl">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex gap-2.5 sm:gap-3 items-end pointer-events-auto">
+            <button id="touch-brake" class="touch-btn hud-glass w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex flex-col items-center justify-center text-rose-400 border border-rose-500/40 font-bold text-xs shadow-lg">
+                TORMOZ
+            </button>
+            <button id="touch-nitro" class="touch-btn hud-glass w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex flex-col items-center justify-center text-sky-300 border-2 border-sky-400/60 font-racing font-bold text-xs shadow-[0_0_20px_rgba(56,189,248,0.4)]">
+                <svg class="w-6 h-6 mb-0.5 text-sky-400" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd"/>
+                </svg>
+                NITRO
+            </button>
+            <button id="touch-gas" class="touch-btn hud-glass w-16 h-20 sm:w-20 sm:h-24 rounded-2xl flex flex-col items-center justify-center text-emerald-400 border-2 border-emerald-400/60 font-bold text-xs shadow-2xl">
+                <svg class="w-7 h-7 mb-1" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M5 15l7-7 7 7"/>
+                </svg>
+                GAZ
+            </button>
+        </div>
+    </div>
+
+    <!-- Start Menu -->
+    <div id="start-screen" class="absolute inset-0 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 z-20">
+        <div class="hud-glass max-w-lg w-full rounded-3xl p-6 sm:p-9 text-center border border-sky-500/40 shadow-2xl">
+            <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-sky-500/20 text-sky-300 text-xs font-semibold uppercase tracking-widest mb-3 border border-sky-400/30">
+                Toshkent Shahar Realistik Poygasi
+            </div>
+            <h1 class="font-racing text-3xl sm:text-5xl font-black bg-gradient-to-r from-white via-sky-200 to-cyan-400 bg-clip-text text-transparent mb-3">
+                TOSHKENT 3D
+            </h1>
+            <p class="text-slate-300 text-sm sm:text-base mb-6 leading-relaxed">
+                Amir Temur va Mustaqillik shoh ko'chalarida ultra-realistik 3D muhitda poyga qiling! <b>Har 10 km da</b> chorraha keladi — rulni <span class="text-amber-300 font-semibold">90° burib</span> o'zingiz boshqaring.
+            </p>
+
+            <div class="mb-6">
+                <div class="text-xs uppercase tracking-wider text-slate-400 font-semibold mb-2.5">Mashina Rangini Tanlang</div>
+                <div class="flex justify-center gap-3.5" id="color-picker">
+                    <button data-color="#f8fafc" class="color-opt w-10 h-10 rounded-full bg-white ring-2 ring-offset-2 ring-offset-slate-950 ring-sky-400 transition transform scale-110 shadow-lg" title="Oq (Pearl White)"></button>
+                    <button data-color="#ef4444" class="color-opt w-10 h-10 rounded-full bg-red-600 opacity-85 hover:opacity-100 transition shadow-lg" title="Qizil"></button>
+                    <button data-color="#3b82f6" class="color-opt w-10 h-10 rounded-full bg-blue-600 opacity-85 hover:opacity-100 transition shadow-lg" title="Ko'k"></button>
+                    <button data-color="#10b981" class="color-opt w-10 h-10 rounded-full bg-emerald-600 opacity-85 hover:opacity-100 transition shadow-lg" title="Yashil"></button>
+                    <button data-color="#0f172a" class="color-opt w-10 h-10 rounded-full bg-slate-900 border border-slate-600 opacity-85 hover:opacity-100 transition shadow-lg" title="Qora"></button>
+                </div>
+            </div>
+
+            <div class="bg-slate-900/90 rounded-2xl p-4 mb-6 border border-slate-800 text-xs text-slate-300 grid grid-cols-2 gap-2.5 text-left">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-slate-800 rounded font-mono text-sky-300 font-bold">A / D / ◀ ▶</span>
+                    <span>Rul / Burilish</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-slate-800 rounded font-mono text-emerald-300 font-bold">W / S / ▲ ▼</span>
+                    <span>Gaz / Tormoz</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-slate-800 rounded font-mono text-amber-300 font-bold">SPACE / SHIFT</span>
+                    <span>Nitro / Drift</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-1 bg-slate-800 rounded font-mono text-purple-300 font-bold">C / P</span>
+                    <span>Kamera / Pauza</span>
+                </div>
+            </div>
+
+            <button id="btn-start" class="w-full py-4 rounded-2xl font-racing font-bold text-lg tracking-wider bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 text-white shadow-[0_0_30px_rgba(14,165,233,0.55)] active:scale-[0.98] transition cursor-pointer">
+                PWOYGANI BOSHLASH
+            </button>
+        </div>
+    </div>
+
+    <!-- Pause Menu -->
+    <div id="pause-screen" class="hidden absolute inset-0 bg-slate-950/80 backdrop-blur-xl flex items-center justify-center p-4 z-20">
+        <div class="hud-glass max-w-sm w-full rounded-3xl p-7 text-center border border-slate-700">
+            <h2 class="font-racing text-2xl sm:text-3xl font-extrabold text-white mb-2">PAUZA</h2>
+            <p class="text-slate-400 text-sm mb-6">O'yin to'xtatildi</p>
+            <div class="flex flex-col gap-3">
+                <button id="btn-resume" class="w-full py-3.5 rounded-xl font-racing font-bold bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-400 hover:to-teal-500 text-white shadow-lg transition">
+                    DAVOM ETTIRISH
+                </button>
+                <button id="btn-restart-pause" class="w-full py-3.5 rounded-xl font-racing font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-600 transition">
+                    QAYTA BOSHLASH
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Over Menu -->
+    <div id="gameover-screen" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-xl flex items-center justify-center p-4 z-20">
+        <div class="hud-glass max-w-md w-full rounded-3xl p-6 sm:p-9 text-center border border-rose-500/40 shadow-2xl">
+            <div class="w-16 h-16 mx-auto mb-3 rounded-2xl bg-rose-500/20 border border-rose-500/40 flex items-center justify-center text-rose-400">
+                <svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                </svg>
+            </div>
+            <h2 class="font-racing text-3xl sm:text-4xl font-extrabold text-rose-400 mb-1">O'YIN TUGADI</h2>
+            <p id="gameover-reason" class="text-slate-300 text-sm mb-6">Mashina jiddiy shikastlandi</p>
+
+            <div class="grid grid-cols-3 gap-2.5 mb-6">
+                <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
+                    <div class="text-[11px] text-sky-400 uppercase">Masofa</div>
+                    <div id="final-distance" class="font-racing text-base sm:text-lg font-bold text-white mt-0.5">0.00 km</div>
+                </div>
+                <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
+                    <div class="text-[11px] text-amber-400 uppercase">Ball</div>
+                    <div id="final-score" class="font-racing text-base sm:text-lg font-bold text-amber-300 mt-0.5">0</div>
+                </div>
+                <div class="bg-slate-900/90 p-3 rounded-2xl border border-slate-800">
+                    <div class="text-[11px] text-emerald-400 uppercase">Rekord</div>
+                    <div id="final-highscore" class="font-racing text-base sm:text-lg font-bold text-emerald-300 mt-0.5">0</div>
+                </div>
+            </div>
+
+            <button id="btn-restart" class="w-full py-4 rounded-2xl font-racing font-bold text-lg tracking-wider bg-gradient-to-r from-rose-500 to-orange-500 hover:from-rose-400 hover:to-orange-400 text-white shadow-[0_0_25px_rgba(244,63,94,0.45)] active:scale-[0.98] transition cursor-pointer">
+                QAYTA O'YNASH
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+/**
+ * TOSHKENT 3D POYGA O'YINI - ULTRA REALISTIK THREE.JS ARXITEKTURASI
+ */
+
+// ==================== AUDIO ENGINE (Web Audio API) ====================
+class SoundEngine {
+    constructor() {
+        this.ctx = null;
+        this.muted = false;
+        this.engineOsc = null;
+        this.engineGain = null;
+        this.nitroOsc = null;
+        this.nitroGain = null;
+        this.initialized = false;
+    }
+
+    init() {
+        if (this.initialized) return;
+        try {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            this.ctx = new AudioCtx();
+
+            this.engineOsc = this.ctx.createOscillator();
+            this.engineOsc.type = 'sawtooth';
+            this.engineOsc.frequency.value = 50;
+
+            const filter = this.ctx.createBiquadFilter();
+            filter.type = 'lowpass';
+            filter.frequency.value = 160;
+
+            this.engineGain = this.ctx.createGain();
+            this.engineGain.gain.value = 0;
+
+            this.engineOsc.connect(filter);
+            filter.connect(this.engineGain);
+            this.engineGain.connect(this.ctx.destination);
+            this.engineOsc.start();
+
+            this.nitroOsc = this.ctx.createOscillator();
+            this.nitroOsc.type = 'triangle';
+            this.nitroOsc.frequency.value = 130;
+
+            this.nitroGain = this.ctx.createGain();
+            this.nitroGain.gain.value = 0;
+
+            this.nitroOsc.connect(this.nitroGain);
+            this.nitroGain.connect(this.ctx.destination);
+            this.nitroOsc.start();
+
+            this.initialized = true;
+        } catch (e) {
+            console.warn("Audio Context init error:", e);
+        }
+    }
+
+    updateEngine(speedRatio, isNitro, isPlaying) {
+        if (!this.initialized || !this.ctx) return;
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+
+        if (this.muted || !isPlaying) {
+            this.engineGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08);
+            this.nitroGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08);
+            return;
+        }
+
+        const targetFreq = 48 + speedRatio * 115 + (isNitro ? 50 : 0);
+        this.engineOsc.frequency.setTargetAtTime(targetFreq, this.ctx.currentTime, 0.06);
+        this.engineGain.gain.setTargetAtTime(0.07 + speedRatio * 0.06, this.ctx.currentTime, 0.08);
+
+        if (isNitro) {
+            this.nitroOsc.frequency.setTargetAtTime(240 + Math.random() * 50, this.ctx.currentTime, 0.05);
+            this.nitroGain.gain.setTargetAtTime(0.08, this.ctx.currentTime, 0.05);
+        } else {
+            this.nitroGain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.08);
+        }
+    }
+
+    playCoin() {
+        if (!this.initialized || this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(880, now);
+        osc.frequency.exponentialRampToValueAtTime(1320, now + 0.15);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.2);
+    }
+
+    playCrash() {
+        if (!this.initialized || this.muted || !this.ctx) return;
+        const now = this.ctx.currentTime;
+        const bufferSize = this.ctx.sampleRate * 0.6;
+        const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+            data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (this.ctx.sampleRate * 0.12));
+        }
+
+        const noise = this.ctx.createBufferSource();
+        noise.buffer = buffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(550, now);
+        filter.frequency.exponentialRampToValueAtTime(70, now + 0.5);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.5, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.55);
+
+        noise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        noise.start(now);
+    }
+
+    playTireScreech(intensity) {
+        if (!this.initialized || this.muted || !this.ctx || intensity <= 0.1) return;
+        if (Math.random() > 0.4) return;
+        const now = this.ctx.currentTime;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(480 + Math.random() * 160, now);
+        osc.frequency.exponentialRampToValueAtTime(320, now + 0.08);
+        gain.gain.setValueAtTime(Math.min(0.06, intensity * 0.05), now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.09);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.09);
+    }
+
+    toggleMute() {
+        this.muted = !this.muted;
+        return this.muted;
+    }
+}
+
+// ==================== GAME STATE & CONSTANTS ====================
+const ROAD_WIDTH = 20;
+const LANES = [-7.0, -2.3, 2.3, 7.0];
+const KM_SCALE = 190;
+const TURN_INTERVAL_KM = 10.0;
+
+const TASHKENT_STREETS = [
+    "AMIR TEMUR SHOH KO'CHASI",
+    "MUSTAQILLIK SHOH KO'CHASI",
+    "ALISHER NAVOIY KO'CHASI",
+    "BUNYODKOR SHOH KO'CHASI",
+    "MIRZO ULUG'BEK KO'CHASI",
+    "SHOTA RUSTAVELI KO'CHASI",
+    "BERUNIY SHOH KO'CHASI"
+];
+
+const state = {
+    status: 'start',
+    score: 0,
+    coins: 0,
+    lives: 3,
+    highScore: parseInt(localStorage.getItem('uz_3d_racing_highscore_v2') || '0', 10),
+    speed: 0,
+    baseMaxSpeed: 1.75,
+    nitroMaxSpeed: 2.6,
+    nitroFuel: 100,
+    isNitro: false,
+    cameraMode: 0,
+    playerColor: 0xf8fafc,
+    carX: 0,
+    carZ: 0,
+    carHeading: 0,
+    carTilt: 0,
+    roadStartX: 0,
+    roadStartZ: 0,
+    roadHeading: 0,
+    segmentDist: 0,
+    totalDistKm: 0,
+    nextTurnDir: 1,
+    streetIndex: 0,
+    invulnTimer: 0,
+    spawnTimer: 0,
+    coinSpawnTimer: 0,
+    nitroSpawnTimer: 0
+};
+
+const keys = { left: false, right: false, up: false, down: false, nitro: false, drift: false };
+const sound = new SoundEngine();
+
+// ==================== THREE.JS SCENE, CAMERA & RENDERER ====================
+const container = document.getElementById('canvas-wrapper');
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0f172a);
+scene.fog = new THREE.FogExp2(0x1e293b, 0.0035);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 500);
+camera.position.set(0, 4.6, 9.8);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.outputEncoding = THREE.sRGBEncoding;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+container.appendChild(renderer.domElement);
+
+// ==================== ADVANCED LIGHTING ====================
+const ambientLight = new THREE.AmbientLight(0xddeeff, 0.85);
+scene.add(ambientLight);
+
+const dirLight = new THREE.DirectionalLight(0xfffbf0, 1.45);
+dirLight.position.set(60, 90, 40);
+dirLight.castShadow = true;
+dirLight.shadow.mapSize.width = 2048;
+dirLight.shadow.mapSize.height = 2048;
+dirLight.shadow.camera.near = 1;
+dirLight.shadow.camera.far = 180;
+const d = 50;
+dirLight.shadow.camera.left = -d;
+dirLight.shadow.camera.right = d;
+dirLight.shadow.camera.top = d;
+dirLight.shadow.camera.bottom = -d;
+dirLight.shadow.bias = -0.0005;
+scene.add(dirLight);
+
+const hemiLight = new THREE.HemisphereLight(0x38bdf8, 0x1e293b, 0.65);
+scene.add(hemiLight);
+
+// ==================== TEXTURES & ROAD SIGNS ====================
+function createSignTexture(title, subtitle, bgColor = '#0284c7') {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 192;
+    const ctx = canvas.getContext('2d');
+
+    ctx.fillStyle = bgColor;
+    ctx.beginPath();
+    ctx.roundRect(8, 8, 496, 176, 20);
+    ctx.fill();
+
+    ctx.lineWidth = 8;
+    ctx.strokeStyle = '#ffffff';
+    ctx.stroke();
+
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 34px Inter, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(title, 256, subtitle ? 70 : 96);
+
+    if (subtitle) {
+        ctx.fillStyle = '#fef08a';
+        ctx.font = 'bold 26px Inter, sans-serif';
+        ctx.fillText(subtitle, 256, 130);
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.encoding = THREE.sRGBEncoding;
+    tex.needsUpdate = true;
+    return tex;
+}
+
+// ==================== REALISTIC 3D CAR MODEL ====================
+function createCarModel(colorHex, isPlayer = false) {
+    const group = new THREE.Group();
+
+    const paintMat = new THREE.MeshStandardMaterial({
+        color: colorHex,
+        metalness: 0.75,
+        roughness: 0.18,
+        envMapIntensity: 1.2
+    });
+    const darkMat = new THREE.MeshStandardMaterial({ color: 0x090d16, roughness: 0.8, metalness: 0.2 });
+    const glassMat = new THREE.MeshStandardMaterial({ color: 0x0f172a, metalness: 0.95, roughness: 0.05, transparent: true, opacity: 0.85 });
+    const chromeMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, metalness: 0.9, roughness: 0.1 });
+
+    // Chassis
+    const chassis = new THREE.Mesh(new THREE.BoxGeometry(2.15, 0.58, 4.5), paintMat);
+    chassis.position.y = 0.62;
+    chassis.castShadow = true;
+    chassis.receiveShadow = true;
+    group.add(chassis);
+
+    // Cabin
+    const cabin = new THREE.Mesh(new THREE.BoxGeometry(1.74, 0.52, 2.25), glassMat);
+    cabin.position.set(0, 1.15, -0.15);
+    group.add(cabin);
+
+    // Roof & Spoiler
+    const roof = new THREE.Mesh(new THREE.BoxGeometry(1.68, 0.07, 1.8), paintMat);
+    roof.position.set(0, 1.44, -0.18);
+    group.add(roof);
+
+    const spoilerWing = new THREE.Mesh(new THREE.BoxGeometry(2.0, 0.07, 0.38), darkMat);
+    spoilerWing.position.set(0, 1.16, 2.08);
+    group.add(spoilerWing);
+
+    const strutGeo = new THREE.BoxGeometry(0.08, 0.24, 0.18);
+    const sL = new THREE.Mesh(strutGeo, chromeMat);
+    sL.position.set(-0.68, 1.02, 2.08);
+    const sR = new THREE.Mesh(strutGeo, chromeMat);
+    sR.position.set(0.68, 1.02, 2.08);
+    group.add(sL, sR);
+
+    // Lights
+    const hlMat = new THREE.MeshBasicMaterial({ color: 0xfffbeb });
+    const hlGeo = new THREE.BoxGeometry(0.44, 0.15, 0.08);
+    const hlL = new THREE.Mesh(hlGeo, hlMat);
+    hlL.position.set(-0.7, 0.68, -2.28);
+    const hlR = new THREE.Mesh(hlGeo, hlMat);
+    hlR.position.set(0.7, 0.68, -2.28);
+    group.add(hlL, hlR);
+
+    const tlMat = new THREE.MeshBasicMaterial({ color: 0xdc2626 });
+    const tlGeo = new THREE.BoxGeometry(0.52, 0.15, 0.08);
+    const tlL = new THREE.Mesh(tlGeo, tlMat);
+    tlL.position.set(-0.66, 0.72, 2.28);
+    const tlR = new THREE.Mesh(tlGeo, tlMat);
+    tlR.position.set(0.66, 0.72, 2.28);
+    group.add(tlL, tlR);
+    group.userData.tailLightMat = tlMat;
+
+    if (isPlayer) {
+        const flameGeo = new THREE.ConeGeometry(0.18, 1.1, 8);
+        flameGeo.rotateX(Math.PI / 2);
+        const flameMat = new THREE.MeshBasicMaterial({ color: 0x38bdf8, transparent: true, opacity: 0.95 });
+        const flameL = new THREE.Mesh(flameGeo, flameMat);
+        flameL.position.set(-0.5, 0.45, 2.7);
+        flameL.visible = false;
+        const flameR = new THREE.Mesh(flameGeo, flameMat);
+        flameR.position.set(0.5, 0.45, 2.7);
+        flameR.visible = false;
+        group.add(flameL, flameR);
+        group.userData.flames = [flameL, flameR];
+    }
+
+    // Wheels
+    const wheels = [];
+    const wheelGeo = new THREE.CylinderGeometry(0.44, 0.44, 0.36, 20);
+    wheelGeo.rotateZ(Math.PI / 2);
+    const rimGeo = new THREE.CylinderGeometry(0.25, 0.25, 0.38, 12);
+    rimGeo.rotateZ(Math.PI / 2);
+
+    const wheelPos = [
+        [-1.08, 0.44, -1.38],
+        [1.08, 0.44, -1.38],
+        [-1.08, 0.44, 1.38],
+        [1.08, 0.44, 1.38]
+    ];
+
+    wheelPos.forEach(pos => {
+        const wGroup = new THREE.Group();
+        const tire = new THREE.Mesh(wheelGeo, darkMat);
+        const rim = new THREE.Mesh(rimGeo, chromeMat);
+        tire.castShadow = true;
+        wGroup.add(tire, rim);
+        wGroup.position.set(...pos);
+        group.add(wGroup);
+        wheels.push(wGroup);
+    });
+
+    group.userData.wheels = wheels;
+    group.userData.frontWheels = [wheels[0], wheels[1]];
+    group.userData.paintMat = paintMat;
+    return group;
+}
+
+const playerCar = createCarModel(state.playerColor, true);
+scene.add(playerCar);
+
+// ==================== ENVIRONMENT: TASHKENT CITY & SKYLINE ====================
+const groundGeo = new THREE.PlaneGeometry(1600, 1600);
+const groundMat = new THREE.MeshStandardMaterial({ color: 0x273510, roughness: 0.92 });
+const groundMesh = new THREE.Mesh(groundGeo, groundMat);
+groundMesh.rotation.x = -Math.PI / 2;
+groundMesh.position.y = -0.05;
+scene.add(groundMesh);
+
+const skylineGroup = new THREE.Group();
+scene.add(skylineGroup);
+
+// Mountains
+const mtnMat = new THREE.MeshStandardMaterial({ color: 0x475569, roughness: 0.85 });
+const snowMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
+for (let i = 0; i < 20; i++) {
+    const ang = (i / 20) * Math.PI * 2;
+    const dist = 380;
+    const h = 50 + (i % 5) * 20;
+    const r = 60 + (i % 3) * 18;
+    const mtn = new THREE.Mesh(new THREE.ConeGeometry(r, h, 6), mtnMat);
+    mtn.position.set(Math.sin(ang) * dist, h / 2 - 2, Math.cos(ang) * dist);
+    skylineGroup.add(mtn);
+
+    const snow = new THREE.Mesh(new THREE.ConeGeometry(r * 0.35, h * 0.35, 6), snowMat);
+    snow.position.set(Math.sin(ang) * dist, h - h * 0.18 - 2, Math.cos(ang) * dist);
+    skylineGroup.add(snow);
+}
+
+// Tashkent TV Tower
+function createTVTower() {
+    const tower = new THREE.Group();
+    const steelMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, metalness: 0.75, roughness: 0.25 });
+    const blueMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.6, roughness: 0.2 });
+
+    for (let i = 0; i < 3; i++) {
+        const a = (i * Math.PI * 2) / 3;
+        const leg = new THREE.Mesh(new THREE.CylinderGeometry(1.2, 2.4, 45, 8), steelMat);
+        leg.position.set(Math.sin(a) * 6.5, 22.5, Math.cos(a) * 6.5);
+        leg.rotation.z = -Math.sin(a) * 0.24;
+        leg.rotation.x = Math.cos(a) * 0.24;
+        tower.add(leg);
+    }
+
+    const shaft = new THREE.Mesh(new THREE.CylinderGeometry(1.8, 3.4, 100, 14), steelMat);
+    shaft.position.y = 50;
+    tower.add(shaft);
+
+    const deck1 = new THREE.Mesh(new THREE.CylinderGeometry(7.2, 5.8, 5, 18), blueMat);
+    deck1.position.y = 55;
+    const deck2 = new THREE.Mesh(new THREE.CylinderGeometry(5.6, 5.6, 3.2, 18), steelMat);
+    deck2.position.y = 60;
+    tower.add(deck1, deck2);
+
+    const spire = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 1.4, 50, 8), steelMat);
+    spire.position.y = 118;
+    tower.add(spire);
+
+    return tower;
+}
+
+const tvTower = createTVTower();
+tvTower.position.set(90, 0, -280);
+skylineGroup.add(tvTower);
+
+// Roadside Props Chunks
+const propChunkGroup = new THREE.Group();
+scene.add(propChunkGroup);
+const PROP_CHUNK_LEN = 40;
+const PROP_CHUNK_COUNT = 14;
+const propChunks = [];
+
+const trunkMat = new THREE.MeshStandardMaterial({ color: 0x4d3319, roughness: 0.9 });
+const leafMat = new THREE.MeshStandardMaterial({ color: 0x166534, roughness: 0.8 });
+const poleMat = new THREE.MeshStandardMaterial({ color: 0x334155, metalness: 0.6 });
+const lampMat = new THREE.MeshBasicMaterial({ color: 0xfef08a });
+const sidewalkMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.75 });
+
+for (let i = 0; i < PROP_CHUNK_COUNT; i++) {
+    const chunk = new THREE.Group();
+    [-1, 1].forEach(side => {
+        const sidewalk = new THREE.Mesh(new THREE.BoxGeometry(6.0, 0.18, PROP_CHUNK_LEN), sidewalkMat);
+        sidewalk.position.set(side * (ROAD_WIDTH / 2 + 3.0), 0.09, 0);
+        chunk.add(sidewalk);
+
+        [-10, 10].forEach(zOff => {
+            const tx = side * (ROAD_WIDTH / 2 + 2.6);
+            const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.5, 3.4, 8), trunkMat);
+            trunk.position.set(tx, 1.7, zOff);
+            const crown1 = new THREE.Mesh(new THREE.DodecahedronGeometry(2.8, 1), leafMat);
+            crown1.position.set(tx, 4.6, zOff);
+            chunk.add(trunk, crown1);
+        });
+
+        const px = side * (ROAD_WIDTH / 2 + 0.6);
+        const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.16, 7.5, 8), poleMat);
+        pole.position.set(px, 3.75, 0);
+        const arm = new THREE.Mesh(new THREE.BoxGeometry(1.9, 0.12, 0.12), poleMat);
+        arm.position.set(px - side * 0.85, 7.4, 0);
+        const bulb = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.15, 0.3), lampMat);
+        bulb.position.set(px - side * 1.5, 7.3, 0);
+        chunk.add(pole, arm, bulb);
+
+        const bx = side * (ROAD_WIDTH / 2 + 13.5);
+        const bw = 11;
+        const bd = 26;
+        const bh = 16 + ((i * 4 + (side > 0 ? 2 : 0)) % 20);
+        const isGlass = (i + (side > 0 ? 1 : 0)) % 2 === 0;
+        const bMat = new THREE.MeshStandardMaterial({
+            color: isGlass ? 0x0284c7 : 0xfef9c3,
+            metalness: isGlass ? 0.8 : 0.1,
+            roughness: isGlass ? 0.15 : 0.8
+        });
+        const building = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), bMat);
+        building.position.set(bx, bh / 2, 0);
+        chunk.add(building);
+    });
+    propChunkGroup.add(chunk);
+    propChunks.push(chunk);
+}
+
+// ==================== ROAD & 10 KM INTERSECTION ====================
+const roadGroup = new THREE.Group();
+scene.add(roadGroup);
+
+const FULL_STRAIGHT_LEN = TURN_INTERVAL_KM * KM_SCALE + 60;
+const asphaltMat = new THREE.MeshStandardMaterial({ color: 0x111827, roughness: 0.8, metalness: 0.1 });
+const roadAsphalt = new THREE.Mesh(new THREE.PlaneGeometry(ROAD_WIDTH, FULL_STRAIGHT_LEN), asphaltMat);
+roadAsphalt.rotation.x = -Math.PI / 2;
+roadAsphalt.position.set(0, 0.01, -FULL_STRAIGHT_LEN / 2 + 40);
+roadAsphalt.receiveShadow = true;
+roadGroup.add(roadAsphalt);
+
+const yellowMat = new THREE.MeshBasicMaterial({ color: 0xfacc15 });
+const yL1 = new THREE.Mesh(new THREE.PlaneGeometry(0.2, FULL_STRAIGHT_LEN), yellowMat);
+yL1.rotation.x = -Math.PI / 2;
+yL1.position.set(-0.25, 0.025, -FULL_STRAIGHT_LEN / 2 + 40);
+const yL2 = new THREE.Mesh(new THREE.PlaneGeometry(0.2, FULL_STRAIGHT_LEN), yellowMat);
+yL2.rotation.x = -Math.PI / 2;
+yL2.position.set(0.25, 0.025, -FULL_STRAIGHT_LEN / 2 + 40);
+roadGroup.add(yL1, yL2);
+
+const dashCount = Math.floor(FULL_STRAIGHT_LEN / 8);
+const dashGeo = new THREE.PlaneGeometry(0.22, 3.8);
+const dashMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+const dashInstanced = new THREE.InstancedMesh(dashGeo, dashMat, dashCount * 2);
+const dummy = new THREE.Object3D();
+let dIdx = 0;
+for (let i = 0; i < dashCount; i++) {
+    const zPos = 30 - i * 8;
+    [-4.8, 4.8].forEach(x => {
+        dummy.position.set(x, 0.025, zPos);
+        dummy.rotation.set(-Math.PI / 2, 0, 0);
+        dummy.updateMatrix();
+        dashInstanced.setMatrixAt(dIdx++, dummy.matrix);
+    });
+}
+roadGroup.add(dashInstanced);
+
+// Overhead Sign
+const overheadGroup = new THREE.Group();
+const pGeo = new THREE.CylinderGeometry(0.24, 0.28, 8.5, 8);
+const pMat = new THREE.MeshStandardMaterial({ color: 0x64748b, metalness: 0.7 });
+const pl = new THREE.Mesh(pGeo, pMat);
+pl.position.set(-ROAD_WIDTH / 2 - 0.6, 4.25, 0);
+const pr = new THREE.Mesh(pGeo, pMat);
+pr.position.set(ROAD_WIDTH / 2 + 0.6, 4.25, 0);
+const beam = new THREE.Mesh(new THREE.BoxGeometry(ROAD_WIDTH + 1.6, 0.4, 0.4), pMat);
+beam.position.set(0, 8.2, 0);
+const signMat = new THREE.MeshBasicMaterial({ map: createSignTexture("TOSHKENT", "AMIR TEMUR SHOH KO'CHASI", "#0284c7") });
+const signMesh = new THREE.Mesh(new THREE.BoxGeometry(12, 2.8, 0.25), signMat);
+signMesh.position.set(0, 7.0, 0);
+overheadGroup.add(pl, pr, beam, signMesh);
+scene.add(overheadGroup);
+
+// Intersection at 10 KM
+const intersectionGroup = new THREE.Group();
+scene.add(intersectionGroup);
+const crossRoad = new THREE.Mesh(new THREE.PlaneGeometry(280, ROAD_WIDTH), asphaltMat);
+crossRoad.rotation.x = -Math.PI / 2;
+crossRoad.position.set(0, 0.015, 0);
+intersectionGroup.add(crossRoad);
+
+const barrierGroup = new THREE.Group();
+const bGeo = new THREE.BoxGeometry(2.8, 1.4, 1.2);
+const rMat = new THREE.MeshStandardMaterial({ color: 0xef4444, roughness: 0.4 });
+const wMat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.4 });
+for (let b = -3; b <= 3; b++) {
+    const blk = new THREE.Mesh(bGeo, Math.abs(b) % 2 === 0 ? rMat : wMat);
+    blk.position.set(b * 2.85, 0.7, -ROAD_WIDTH / 2 - 1.3);
+    barrierGroup.add(blk);
+}
+const turnSignMat = new THREE.MeshBasicMaterial({ map: createSignTexture("10 KM — CHORRAHA", "90° BURILISH ▶▶", "#15803d") });
+const turnSign = new THREE.Mesh(new THREE.BoxGeometry(14, 3.4, 0.35), turnSignMat);
+turnSign.position.set(0, 3.4, -ROAD_WIDTH / 2 - 1.4);
+barrierGroup.add(turnSign);
+intersectionGroup.add(barrierGroup);
+
+const sideBlocker = new THREE.Group();
+for (let b = -3; b <= 3; b++) {
+    const blk = new THREE.Mesh(bGeo, Math.abs(b) % 2 === 0 ? rMat : wMat);
+    blk.rotation.y = Math.PI / 2;
+    blk.position.set(0, 0.7, b * 2.85);
+    sideBlocker.add(blk);
+}
+intersectionGroup.add(sideBlocker);
+
+// Particle Systems (Smoke & Drift Sparks)
+const sparkParticles = [];
+const sparkGeo = new THREE.BoxGeometry(0.15, 0.15, 0.3);
+const sparkMat = new THREE.MeshBasicMaterial({ color: 0xfacc15, transparent: true, opacity: 0.95 });
+
+function emitSpark(wx, wz) {
+    const p = new THREE.Mesh(sparkGeo, sparkMat.clone());
+    p.position.set(wx + (Math.random() - 0.5) * 0.6, 0.15, wz + (Math.random() - 0.5) * 0.6);
+    p.userData.vx = (Math.random() - 0.5) * 3.5;
+    p.userData.vy = 1.5 + Math.random() * 2.0;
+    p.userData.vz = (Math.random() - 0.5) * 3.5;
+    p.userData.life = 0.3;
+    scene.add(p);
+    sparkParticles.push(p);
+}
+
+// ==================== TRAFFIC, COINS & NITRO ====================
+const trafficCars = [];
+const coinsList = [];
+const nitroItems = [];
+const CAR_COLORS = [0xf8fafc, 0x3b82f6, 0x10b981, 0xf59e0b, 0x1e293b, 0xec4899];
+
+function spawnTraffic() {
+    const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+    const along = state.segmentDist + 240;
+    if (along > turnDist - 70) return;
+
+    const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    for (let c of trafficCars) {
+        if (Math.abs(c.userData.along - along) < 32 && Math.abs(c.userData.lateral - lane) < 2.5) return;
+    }
+
+    const col = CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)];
+    const car = createCarModel(col, false);
+    car.userData.along = along;
+    car.userData.lateral = lane;
+    car.userData.speed = 0.5 + Math.random() * 0.45;
+    car.userData.roadStartX = state.roadStartX;
+    car.userData.roadStartZ = state.roadStartZ;
+    car.userData.roadHeading = state.roadHeading;
+    scene.add(car);
+    trafficCars.push(car);
+}
+
+const coinGeo = new THREE.CylinderGeometry(0.8, 0.8, 0.22, 20);
+coinGeo.rotateX(Math.PI / 2);
+const coinMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, emissive: 0xd97706, emissiveIntensity: 0.5, metalness: 0.9, roughness: 0.1 });
+
+function spawnCoins() {
+    const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+    const baseAlong = state.segmentDist + 220;
+    if (baseAlong > turnDist - 60) return;
+
+    const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    const count = 3 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < count; i++) {
+        const coin = new THREE.Mesh(coinGeo, coinMat);
+        const pos = roadToWorld(baseAlong + i * 7, lane);
+        coin.position.set(pos.x, 1.05, pos.z);
+        scene.add(coin);
+        coinsList.push(coin);
+    }
+}
+
+const nitroGeo = new THREE.OctahedronGeometry(0.8, 0);
+const nitroMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, emissive: 0x38bdf8, emissiveIntensity: 0.7, metalness: 0.7, roughness: 0.15 });
+
+function spawnNitro() {
+    const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+    const along = state.segmentDist + 230;
+    if (along > turnDist - 60) return;
+
+    const lane = LANES[Math.floor(Math.random() * LANES.length)];
+    const item = new THREE.Mesh(nitroGeo, nitroMat);
+    const pos = roadToWorld(along, lane);
+    item.position.set(pos.x, 1.1, pos.z);
+    scene.add(item);
+    nitroItems.push(item);
+}
+
+// ==================== COORDINATE HELPERS ====================
+function roadToWorld(along, lateral, startX = state.roadStartX, startZ = state.roadStartZ, heading = state.roadHeading) {
+    const fwdX = Math.sin(heading);
+    const fwdZ = -Math.cos(heading);
+    const rightX = Math.cos(heading);
+    const rightZ = Math.sin(heading);
+    return {
+        x: startX + fwdX * along + rightX * lateral,
+        z: startZ + fwdZ * along + rightZ * lateral
+    };
+}
+
+function worldToRoad(wx, wz, startX = state.roadStartX, startZ = state.roadStartZ, heading = state.roadHeading) {
+    const dx = wx - startX;
+    const dz = wz - startZ;
+    const fwdX = Math.sin(heading);
+    const fwdZ = -Math.cos(heading);
+    const rightX = Math.cos(heading);
+    const rightZ = Math.sin(heading);
+    return { along: dx * fwdX + dz * fwdZ, lateral: dx * rightX + dz * rightZ };
+}
+
+function normalizeAngle(a) {
+    while (a > Math.PI) a -= Math.PI * 2;
+    while (a < -Math.PI) a += Math.PI * 2;
+    return a;
+}
+
+function setupCurrentStreetVisuals() {
+    roadGroup.position.set(state.roadStartX, 0, state.roadStartZ);
+    roadGroup.rotation.y = -state.roadHeading;
+
+    const name = TASHKENT_STREETS[state.streetIndex % TASHKENT_STREETS.length];
+    signMat.map = createSignTexture("TOSHKENT", name, "#0284c7");
+    signMat.needsUpdate = true;
+    const sPos = roadToWorld(70, 0);
+    overheadGroup.position.set(sPos.x, 0, sPos.z);
+    overheadGroup.rotation.y = -state.roadHeading;
+
+    const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+    const tCenter = roadToWorld(turnDist, 0);
+    intersectionGroup.position.set(tCenter.x, 0, tCenter.z);
+    intersectionGroup.rotation.y = -state.roadHeading;
+
+    sideBlocker.position.set(-state.nextTurnDir * (ROAD_WIDTH / 2 + 1.3), 0, 0);
+
+    const dirLbl = state.nextTurnDir === 1 ? "90° O'NGGA BURILING ▶▶" : "◀◀ 90° CHAPGA BURILING";
+    turnSignMat.map = createSignTexture("10 KM — CHORRAHA", dirLbl, "#15803d");
+    turnSignMat.needsUpdate = true;
+}
+
+// ==================== UI & CONTROLS ====================
+const ui = {
+    hud: document.getElementById('hud'),
+    touchControls: document.getElementById('touch-controls'),
+    startScreen: document.getElementById('start-screen'),
+    pauseScreen: document.getElementById('pause-screen'),
+    gameoverScreen: document.getElementById('gameover-screen'),
+    turnWarning: document.getElementById('turn-warning'),
+    turnArrowLeft: document.getElementById('turn-arrow-left'),
+    turnArrowRight: document.getElementById('turn-arrow-right'),
+    turnText: document.getElementById('turn-text'),
+    toastBanner: document.getElementById('toast-banner'),
+    toastText: document.getElementById('toast-text'),
+    distance: document.getElementById('distance-display'),
+    nextTurn: document.getElementById('next-turn-display'),
+    score: document.getElementById('score-display'),
+    coins: document.getElementById('coins-display'),
+    lives: document.getElementById('lives-display'),
+    speed: document.getElementById('speed-display'),
+    nitroBar: document.getElementById('nitro-bar'),
+    finalDistance: document.getElementById('final-distance'),
+    finalScore: document.getElementById('final-score'),
+    finalHighScore: document.getElementById('final-highscore'),
+    gameoverReason: document.getElementById('gameover-reason')
+};
+
+let toastTimeout = null;
+function showToast(msg) {
+    ui.toastText.textContent = msg;
+    ui.toastBanner.classList.remove('hidden');
+    if (toastTimeout) clearTimeout(toastTimeout);
+    toastTimeout = setTimeout(() => ui.toastBanner.classList.add('hidden'), 2800);
+}
+
+document.querySelectorAll('.color-opt').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('.color-opt').forEach(b => {
+            b.classList.remove('ring-2', 'ring-offset-2', 'ring-offset-slate-950', 'ring-sky-400', 'scale-110');
+            b.classList.add('opacity-85');
+        });
+        btn.classList.add('ring-2', 'ring-offset-2', 'ring-offset-slate-950', 'ring-sky-400', 'scale-110');
+        btn.classList.remove('opacity-85');
+
+        const hex = parseInt(btn.dataset.color.replace('#', '0x'), 16);
+        state.playerColor = hex;
+        playerCar.userData.paintMat.color.setHex(hex);
+    });
+});
+
+function clearDynamics() {
+    trafficCars.forEach(c => scene.remove(c));
+    trafficCars.length = 0;
+    coinsList.forEach(c => scene.remove(c));
+    coinsList.length = 0;
+    nitroItems.forEach(n => scene.remove(n));
+    nitroItems.length = 0;
+    sparkParticles.forEach(p => scene.remove(p));
+    sparkParticles.length = 0;
+}
+
+function startGame() {
+    sound.init();
+    clearDynamics();
+
+    state.status = 'playing';
+    state.score = 0;
+    state.coins = 0;
+    state.lives = 3;
+    state.speed = 0.9;
+    state.nitroFuel = 100;
+    state.isNitro = false;
+
+    state.carX = 0;
+    state.carZ = 0;
+    state.carHeading = 0;
+    state.carTilt = 0;
+
+    state.roadStartX = 0;
+    state.roadStartZ = 0;
+    state.roadHeading = 0;
+    state.segmentDist = 0;
+    state.totalDistKm = 0;
+    state.nextTurnDir = Math.random() < 0.5 ? 1 : -1;
+    state.streetIndex = 0;
+    state.invulnTimer = 0;
+    state.spawnTimer = 0;
+    state.coinSpawnTimer = 0;
+    state.nitroSpawnTimer = 0;
+
+    setupCurrentStreetVisuals();
+    playerCar.position.set(0, 0, 0);
+    playerCar.rotation.set(0, 0, 0);
+    playerCar.visible = true;
+
+    ui.startScreen.classList.add('hidden');
+    ui.pauseScreen.classList.add('hidden');
+    ui.gameoverScreen.classList.add('hidden');
+    ui.turnWarning.classList.add('hidden');
+    ui.hud.classList.remove('hidden');
+    ui.touchControls.classList.remove('hidden');
+
+    showToast("AMIR TEMUR SHOH KO'CHASI — 10 KM OLDINDA CHORRAHA!");
+    updateHUD();
+}
+
+function togglePause() {
+    if (state.status === 'playing') {
+        state.status = 'paused';
+        ui.pauseScreen.classList.remove('hidden');
+        sound.updateEngine(0, false, false);
+    } else if (state.status === 'paused') {
+        state.status = 'playing';
+        ui.pauseScreen.classList.add('hidden');
+    }
+}
+
+function triggerGameOver(reason) {
+    state.status = 'gameover';
+    sound.playCrash();
+    sound.updateEngine(0, false, false);
+    ui.turnWarning.classList.add('hidden');
+
+    const finalScr = Math.floor(state.score);
+    if (finalScr > state.highScore) {
+        state.highScore = finalScr;
+        localStorage.setItem('uz_3d_racing_highscore_v2', state.highScore.toString());
+    }
+
+    ui.gameoverReason.textContent = reason;
+    ui.finalDistance.textContent = `${state.totalDistKm.toFixed(2)} km`;
+    ui.finalScore.textContent = finalScr;
+    ui.finalHighScore.textContent = state.highScore;
+
+    ui.touchControls.classList.add('hidden');
+    ui.gameoverScreen.classList.remove('hidden');
+}
+
+function toggleCamera() {
+    state.cameraMode = (state.cameraMode + 1) % 3;
+}
+
+document.getElementById('btn-start').addEventListener('click', startGame);
+document.getElementById('btn-restart').addEventListener('click', startGame);
+document.getElementById('btn-restart-pause').addEventListener('click', startGame);
+document.getElementById('btn-resume').addEventListener('click', togglePause);
+document.getElementById('btn-pause').addEventListener('click', togglePause);
+document.getElementById('btn-camera').addEventListener('click', toggleCamera);
+
+document.getElementById('btn-mute').addEventListener('click', () => {
+    sound.init();
+    const muted = sound.toggleMute();
+    document.getElementById('icon-sound-on').classList.toggle('hidden', muted);
+    document.getElementById('icon-sound-off').classList.toggle('hidden', !muted);
+});
+
+window.addEventListener('keydown', (e) => {
+    const c = e.code;
+    if (c === 'ArrowLeft' || c === 'KeyA') keys.left = true;
+    if (c === 'ArrowRight' || c === 'KeyD') keys.right = true;
+    if (c === 'ArrowUp' || c === 'KeyW') keys.up = true;
+    if (c === 'ArrowDown' || c === 'KeyS') keys.down = true;
+    if (c === 'ShiftLeft' || c === 'ShiftRight') keys.drift = true;
+    if (c === 'Space') { keys.nitro = true; if (state.status === 'playing') e.preventDefault(); }
+    if (c === 'KeyC') toggleCamera();
+    if (c === 'KeyP' || c === 'Escape') { if (state.status === 'playing' || state.status === 'paused') togglePause(); }
+});
+
+window.addEventListener('keyup', (e) => {
+    const c = e.code;
+    if (c === 'ArrowLeft' || c === 'KeyA') keys.left = false;
+    if (c === 'ArrowRight' || c === 'KeyD') keys.right = false;
+    if (c === 'ArrowUp' || c === 'KeyW') keys.up = false;
+    if (c === 'ArrowDown' || c === 'KeyS') keys.down = false;
+    if (c === 'ShiftLeft' || c === 'ShiftRight') keys.drift = false;
+    if (c === 'Space') keys.nitro = false;
+});
+
+function bindTouch(id, key) {
+    const el = document.getElementById(id);
+    const p = (e) => { e.preventDefault(); keys[key] = true; };
+    const r = (e) => { e.preventDefault(); keys[key] = false; };
+    el.addEventListener('touchstart', p, { passive: false });
+    el.addEventListener('touchend', r, { passive: false });
+    el.addEventListener('touchcancel', r, { passive: false });
+    el.addEventListener('mousedown', p);
+    el.addEventListener('mouseup', r);
+    el.addEventListener('mouseleave', r);
+}
+
+bindTouch('touch-left', 'left');
+bindTouch('touch-right', 'right');
+bindTouch('touch-gas', 'up');
+bindTouch('touch-brake', 'down');
+bindTouch('touch-nitro', 'nitro');
+
+function updateHUD() {
+    ui.distance.innerHTML = `${state.totalDistKm.toFixed(2)} <span class="text-xs font-normal text-sky-300">km</span>`;
+    const segKm = state.segmentDist / KM_SCALE;
+    const remKm = Math.max(0, TURN_INTERVAL_KM - segKm);
+    ui.nextTurn.innerHTML = `${remKm.toFixed(2)} <span class="text-xs font-normal text-amber-200">km</span>`;
+
+    ui.score.textContent = Math.floor(state.score);
+    ui.coins.textContent = state.coins;
+    ui.lives.textContent = "♥".repeat(Math.max(0, state.lives)) + "♡".repeat(Math.max(0, 3 - state.lives));
+
+    ui.speed.textContent = Math.round(state.speed * 140);
+    ui.nitroBar.style.width = `${Math.max(0, Math.min(100, state.nitroFuel))}%`;
+    ui.nitroBar.parentElement.classList.toggle('nitro-active', state.isNitro);
+}
+
+function updateRoadsideProps() {
+    const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+    const baseIdx = Math.floor(state.segmentDist / PROP_CHUNK_LEN);
+    for (let i = 0; i < PROP_CHUNK_COUNT; i++) {
+        const cIdx = baseIdx + i - 2;
+        const along = cIdx * PROP_CHUNK_LEN;
+        const chunk = propChunks[i];
+        if (Math.abs(along - turnDist) < 38) {
+            chunk.visible = false;
+            continue;
+        }
+        chunk.visible = true;
+        const wPos = roadToWorld(along, 0);
+        chunk.position.set(wPos.x, 0, wPos.z);
+        chunk.rotation.y = -state.roadHeading;
+    }
+    groundMesh.position.set(state.carX, -0.05, state.carZ);
+    skylineGroup.position.set(state.carX, 0, state.carZ);
+}
+
+// ==================== ANIMATION LOOP (PHYSICS & RENDER) ====================
+const clock = new THREE.Clock();
+
+function animate() {
+    requestAnimationFrame(animate);
+    const delta = Math.min(clock.getDelta(), 0.05);
+
+    if (state.status === 'start') {
+        state.segmentDist += 16 * delta;
+        if (state.segmentDist > 600) state.segmentDist = 0;
+        const pos = roadToWorld(state.segmentDist, 0);
+        state.carX = pos.x;
+        state.carZ = pos.z;
+        playerCar.position.set(state.carX, 0, state.carZ);
+        playerCar.rotation.set(0, 0, 0);
+        updateRoadsideProps();
+
+        const t = performance.now() * 0.0004;
+        camera.position.set(state.carX + Math.sin(t) * 9.0, 4.2, state.carZ + Math.cos(t) * 9.0);
+        camera.lookAt(state.carX, 1.2, state.carZ - 5);
+        playerCar.userData.wheels.forEach(w => w.rotation.x -= 0.08);
+        renderer.render(scene, camera);
+        return;
+    }
+
+    if (state.status === 'paused') {
+        renderer.render(scene, camera);
+        return;
+    }
+
+    if (state.status === 'playing') {
+        if (state.invulnTimer > 0) {
+            state.invulnTimer -= delta;
+            playerCar.visible = Math.floor(state.invulnTimer * 16) % 2 === 0;
+        } else {
+            playerCar.visible = true;
+        }
+
+        // Nitro & Physics
+        if (keys.nitro && state.nitroFuel > 1.5 && state.speed > 0.4) {
+            state.isNitro = true;
+            state.nitroFuel -= 22 * delta;
+        } else {
+            state.isNitro = false;
+            state.nitroFuel = Math.min(100, state.nitroFuel + 8 * delta);
+        }
+
+        const diffBonus = Math.min(0.5, state.totalDistKm / 110);
+        const maxNorm = state.baseMaxSpeed + diffBonus;
+        const maxNitro = state.nitroMaxSpeed + diffBonus;
+
+        if (state.isNitro) {
+            state.speed += (maxNitro - state.speed) * 1.5 * delta + 0.6 * delta;
+        } else if (keys.up) {
+            if (state.speed < maxNorm) {
+                state.speed += (maxNorm - state.speed) * 1.2 * delta + 0.3 * delta;
+            } else {
+                state.speed -= (state.speed - maxNorm) * 0.35 * delta;
+            }
+        } else if (keys.down) {
+            state.speed -= 2.0 * delta;
+        } else {
+            // Inertia coasting
+            const minRoll = 0.22;
+            if (state.speed > minRoll) {
+                state.speed -= (0.05 + state.speed * 0.04) * delta;
+            }
+        }
+        state.speed = Math.max(0.18, Math.min(maxNitro, state.speed));
+        playerCar.userData.tailLightMat.color.setHex(keys.down ? 0xffffff : 0xdc2626);
+
+        // Steering & 10 KM turns
+        const turnDist = TURN_INTERVAL_KM * KM_SCALE;
+        const distToTurn = turnDist - state.segmentDist;
+        const inIntersection = distToTurn <= 34;
+
+        const steerInput = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
+
+        if (inIntersection) {
+            const turnRate = (1.9 + Math.min(0.9, state.speed * 0.4)) * steerInput;
+            state.carHeading = normalizeAngle(state.carHeading + turnRate * delta);
+            if (Math.abs(steerInput) > 0 && state.speed > 0.7) {
+                emitSpark(state.carX, state.carZ);
+                sound.playTireScreech(Math.abs(steerInput) * 0.85);
+            }
+        } else {
+            const desiredHeading = state.roadHeading + steerInput * (keys.drift ? 0.55 : 0.36);
+            const hDiff = normalizeAngle(desiredHeading - state.carHeading);
+            state.carHeading = normalizeAngle(state.carHeading + hDiff * 10 * delta);
+        }
+
+        const moveStep = state.speed * 60 * delta;
+        state.carX += Math.sin(state.carHeading) * moveStep;
+        state.carZ -= Math.cos(state.carHeading) * moveStep;
+
+        const rel = worldToRoad(state.carX, state.carZ);
+        const prevSeg = state.segmentDist;
+        state.segmentDist = Math.max(0, rel.along);
+        if (state.segmentDist > prevSeg) {
+            const dDist = state.segmentDist - prevSeg;
+            state.totalDistKm += dDist / KM_SCALE;
+            state.score += (dDist / KM_SCALE) * 130;
+        }
+
+        // Turn warning UI
+        const kmRem = (turnDist - rel.along) / KM_SCALE;
+        if (kmRem <= 1.3 && kmRem > -0.25) {
+            ui.turnWarning.classList.remove('hidden');
+            if (state.nextTurnDir === -1) {
+                ui.turnArrowLeft.classList.remove('hidden');
+                ui.turnArrowRight.classList.add('hidden');
+                ui.turnText.textContent = `10 KM CHORRAHA (${Math.max(0, kmRem).toFixed(2)} KM) — CHAPGA BURILING!`;
+            } else {
+                ui.turnArrowRight.classList.remove('hidden');
+                ui.turnArrowLeft.classList.add('hidden');
+                ui.turnText.textContent = `10 KM CHORRAHA (${Math.max(0, kmRem).toFixed(2)} KM) — O'NGGA BURILING!`;
+            }
+        } else {
+            ui.turnWarning.classList.add('hidden');
+        }
+
+        if (!inIntersection) {
+            const maxLat = ROAD_WIDTH / 2 - 1.3;
+            if (Math.abs(rel.lateral) > maxLat) {
+                const clampLat = Math.sign(rel.lateral) * maxLat;
+                const fixedW = roadToWorld(rel.along, clampLat);
+                state.carX = fixedW.x;
+                state.carZ = fixedW.z;
+                state.carHeading = normalizeAngle(state.roadHeading + (state.carHeading - state.roadHeading) * 0.4);
+                state.speed *= (1 - 0.35 * delta);
+                emitSpark(state.carX, state.carZ);
+            }
+        } else {
+            const targetH = normalizeAngle(state.roadHeading + state.nextTurnDir * (Math.PI / 2));
+            const angleErr = Math.abs(normalizeAngle(state.carHeading - targetH));
+            const turnedLat = rel.lateral * state.nextTurnDir;
+
+            if (angleErr < 0.6 && turnedLat > 7.0) {
+                const tCenter = roadToWorld(turnDist, 0);
+                state.roadStartX = tCenter.x;
+                state.roadStartZ = tCenter.z;
+                state.roadHeading = targetH;
+                state.streetIndex += 1;
+                state.nextTurnDir = Math.random() < 0.5 ? 1 : -1;
+
+                const newRel = worldToRoad(state.carX, state.carZ);
+                state.segmentDist = Math.max(0, newRel.along);
+
+                clearDynamics();
+                setupCurrentStreetVisuals();
+
+                state.score += 600;
+                state.nitroFuel = Math.min(100, state.nitroFuel + 35);
+                sound.playCoin();
+                ui.turnWarning.classList.add('hidden');
+                const nextStr = TASHKENT_STREETS[state.streetIndex % TASHKENT_STREETS.length];
+                showToast(`${nextStr}! +600 BALL`);
+            } else if (rel.along > turnDist + ROAD_WIDTH / 2 - 0.7 || turnedLat < -ROAD_WIDTH / 2 + 0.5) {
+                sound.playCrash();
+                state.lives -= 1;
+                if (state.lives <= 0) {
+                    triggerGameOver("Chorraha to'sig'iga urildingiz! Har 10 km da rulni 90° buring.");
+                    return;
+                }
+                const tCenter = roadToWorld(turnDist, 0);
+                state.roadStartX = tCenter.x;
+                state.roadStartZ = tCenter.z;
+                state.roadHeading = targetH;
+                state.streetIndex += 1;
+                state.nextTurnDir = Math.random() < 0.5 ? 1 : -1;
+
+                const rPos = roadToWorld(14, 0);
+                state.carX = rPos.x;
+                state.carZ = rPos.z;
+                state.carHeading = state.roadHeading;
+                state.segmentDist = 14;
+                state.speed = 0.7;
+                state.invulnTimer = 2.0;
+
+                clearDynamics();
+                setupCurrentStreetVisuals();
+                ui.turnWarning.classList.add('hidden');
+                showToast("TO'SIQQA URILDINGIZ! -1 MUSTAHKAMLIK");
+            }
+        }
+
+        // Render Car Transform
+        playerCar.position.set(state.carX, 0, state.carZ);
+        playerCar.rotation.y = -state.carHeading;
+
+        const targetTilt = steerInput * 0.085 * Math.min(1.25, state.speed);
+        state.carTilt += (targetTilt - state.carTilt) * 12 * delta;
+        playerCar.rotation.z = state.carTilt;
+
+        playerCar.userData.frontWheels.forEach(fw => fw.rotation.y = -steerInput * 0.38);
+        playerCar.userData.wheels.forEach(w => w.rotation.x -= state.speed * 0.55);
+        if (playerCar.userData.flames) {
+            playerCar.userData.flames.forEach(f => {
+                f.visible = state.isNitro;
+                if (state.isNitro) f.scale.set(1, 0.9 + Math.random() * 0.6, 1);
+            });
+        }
+
+        updateRoadsideProps();
+
+        for (let i = sparkParticles.length - 1; i >= 0; i--) {
+            const sp = sparkParticles[i];
+            sp.position.x += sp.userData.vx * delta;
+            sp.position.y += sp.userData.vy * delta;
+            sp.position.z += sp.userData.vz * delta;
+            sp.userData.life -= delta;
+            sp.material.opacity = Math.max(0, sp.userData.life * 3.3);
+            if (sp.userData.life <= 0) {
+                scene.remove(sp);
+                sparkParticles.splice(i, 1);
+            }
+        }
+
+        // Traffic & Pickups
+        state.spawnTimer += delta * (0.65 + state.speed * 0.45);
+        if (state.spawnTimer >= Math.max(0.6, 1.4 - diffBonus * 0.7)) {
+            spawnTraffic();
+            state.spawnTimer = 0;
+        }
+
+        for (let i = trafficCars.length - 1; i >= 0; i--) {
+            const tc = trafficCars[i];
+            tc.userData.along += tc.userData.speed * 60 * delta;
+            const wPos = roadToWorld(tc.userData.along, tc.userData.lateral, tc.userData.roadStartX, tc.userData.roadStartZ, tc.userData.roadHeading);
+            tc.position.set(wPos.x, 0, wPos.z);
+            tc.rotation.y = -tc.userData.roadHeading;
+            tc.userData.wheels.forEach(w => w.rotation.x -= tc.userData.speed * 0.45);
+
+            const dx = state.carX - tc.position.x;
+            const dz = state.carZ - tc.position.z;
+            if (dx * dx + dz * dz < 9.5 && state.invulnTimer <= 0) {
+                sound.playCrash();
+                scene.remove(tc);
+                trafficCars.splice(i, 1);
+                state.lives -= 1;
+                state.speed *= 0.5;
+                state.invulnTimer = 1.8;
+                if (state.lives <= 0) {
+                    triggerGameOver("Trafik mashinasi bilan to'qnashdingiz!");
+                    return;
+                }
+                showToast("TO'QNASHUV! -1 MUSTAHKAMLIK");
+                continue;
+            }
+
+            if (tc.userData.along < state.segmentDist - 35 || tc.userData.along > turnDist - 15) {
+                scene.remove(tc);
+                trafficCars.splice(i, 1);
+                state.score += 30;
+            }
+        }
+
+        state.coinSpawnTimer += delta;
+        if (state.coinSpawnTimer > 2.2) { spawnCoins(); state.coinSpawnTimer = 0; }
+        state.nitroSpawnTimer += delta;
+        if (state.nitroSpawnTimer > 7.0) { spawnNitro(); state.nitroSpawnTimer = 0; }
+
+        for (let i = coinsList.length - 1; i >= 0; i--) {
+            const coin = coinsList[i];
+            coin.rotation.y += 4 * delta;
+            const dx = state.carX - coin.position.x;
+            const dz = state.carZ - coin.position.z;
+            if (dx * dx + dz * dz < 7.0) {
+                state.coins += 1;
+                state.score += 60;
+                state.nitroFuel = Math.min(100, state.nitroFuel + 12);
+                sound.playCoin();
+                scene.remove(coin);
+                coinsList.splice(i, 1);
+                continue;
+            }
+            const relC = worldToRoad(coin.position.x, coin.position.z);
+            if (relC.along < state.segmentDist - 25) { scene.remove(coin); coinsList.splice(i, 1); }
+        }
+
+        for (let i = nitroItems.length - 1; i >= 0; i--) {
+            const item = nitroItems[i];
+            item.position.y = 1.1 + Math.sin(performance.now() * 0.007) * 0.22;
+            item.rotation.y += 3 * delta;
+            const dx = state.carX - item.position.x;
+            const dz = state.carZ - item.position.z;
+            if (dx * dx + dz * dz < 7.4) {
+                state.nitroFuel = Math.min(100, state.nitroFuel + 50);
+                state.score += 80;
+                sound.playCoin();
+                scene.remove(item);
+                nitroItems.splice(i, 1);
+                continue;
+            }
+            const relN = worldToRoad(item.position.x, item.position.z);
+            if (relN.along < state.segmentDist - 25) { scene.remove(item); nitroItems.splice(i, 1); }
+        }
+
+        // Camera Follow
+        const fovTarget = state.isNitro ? 74 : (58 + state.speed * 4);
+        camera.fov += (fovTarget - camera.fov) * 5 * delta;
+        camera.updateProjectionMatrix();
+
+        const fwdX = Math.sin(state.carHeading);
+        const fwdZ = -Math.cos(state.carHeading);
+
+        if (state.cameraMode === 0) {
+            const dBack = 9.5 + (state.isNitro ? 0.8 : 0);
+            const cx = state.carX - fwdX * dBack;
+            const cz = state.carZ - fwdZ * dBack;
+            camera.position.x += (cx - camera.position.x) * 12 * delta;
+            camera.position.y += (4.5 - camera.position.y) * 10 * delta;
+            camera.position.z += (cz - camera.position.z) * 12 * delta;
+            camera.lookAt(state.carX + fwdX * 18, 1.3, state.carZ + fwdZ * 18);
+        } else if (state.cameraMode === 1) {
+            camera.position.set(state.carX + fwdX * 0.38, 1.88, state.carZ + fwdZ * 0.38);
+            camera.lookAt(state.carX + fwdX * 25, 1.4, state.carZ + fwdZ * 25);
+        } else {
+            const dBack = 13.0;
+            const cx = state.carX - fwdX * dBack;
+            const cz = state.carZ - fwdZ * dBack;
+            camera.position.x += (cx - camera.position.x) * 10 * delta;
+            camera.position.y += (7.5 - camera.position.y) * 10 * delta;
+            camera.position.z += (cz - camera.position.z) * 10 * delta;
+            camera.lookAt(state.carX + fwdX * 20, 1.0, state.carZ + fwdZ * 20);
+        }
+
+        const spdRatio = Math.min(1, (state.speed - 0.18) / (state.nitroMaxSpeed - 0.18));
+        sound.updateEngine(spdRatio, state.isNitro, true);
+        updateHUD();
+    }
+
+    renderer.render(scene, camera);
+}
+
+window.addEventListener('resize', () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+window.onload = function () {
+    animate();
+};
+</script>
+</body>
+</html>

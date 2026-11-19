@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dream Weaver — 400 Bemor Tushi</title>
+    <link rel="stylesheet" href="./main.css">
+</head>
+<body>
+    <div class="game-wrapper">
+        <header class="game-header">
+            <div class="title-block">
+                <h1>🌙 Dream Weaver</h1>
+                <span class="patient-badge">Uyg'otilgan odamlar: <b id="awakened-display">0 / 400</b></span>
+            </div>
+            <div class="stats">
+                <span>Bemor: <b id="patient-num-display">#1</b></span>
+                <span>Bosqich: <b id="level-display">1 / 7</b></span>
+                <span>Xotiralar: <b id="memory-display">0/3</b></span>
+                <span>Holat: <b id="state-display">Tinch tush</b></span>
+            </div>
+        </header>
+
+        <!-- 400 ta odam progress bar -->
+        <div class="progress-wrapper">
+            <div id="progress-bar" class="progress-bar"></div>
+        </div>
+
+        <div class="canvas-container">
+            <canvas id="gameCanvas" width="800" height="450"></canvas>
+            
+            <!-- O'yin boshlanish / tugash oynasi -->
+            <div id="overlay" class="overlay">
+                <h2 id="overlay-title">1-bemorning tushi</h2>
+                <p id="overlay-desc">
+                    Jami 400 ta odam chuqur uyquda.<br>
+                    Har bir odamni uyg'otish uchun <b>7 ta bosqich</b>dan o'tib, uning barcha xotiralarini tiklang!
+                </p>
+                <button id="start-btn">Tushga kirish</button>
+            </div>
+        </div>
+
+        <footer class="controls-info">
+            <p>
+                <b>Harakatlanish:</b> ⬅️ ➡️ (yoki A / D) &nbsp;|&nbsp; 
+                <b>Sakrash:</b> ⬆️ (yoki W) &nbsp;|&nbsp; 
+                <b>Tushni aylantirish (Gravitatsiya):</b> <kbd>Space</kbd> (Probel)
+            </p>
+        </footer>
+    </div>
+
+    <script src="./main.js"></script>
+</body>
+</html>

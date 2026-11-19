@@ -134,11 +134,12 @@ Quyidagilar `localStorage` da saqlanadi (faqat shu kompyuter va brauzerda):
 |----------|---------------------|
 | Abubakir | `abubakir-moto`, `abubakir-futbol`, `abubakir-retro` |
 | Azizbek  | `azizbek-bekinmachoq`, `azizbek-iloncha`, `azizbek-kosmik` |
-| Dinislom | `dinislom-cars`, `dinislom-goyalar`, `dinislom-bilimdon`, `dinislom-xotira`, `dinislom-15` |
+| Dinislom | `dinislom-cars`, `dinislom-goyalar`, `dinislom-bilimdon`, `dinislom-dream-weaver`, `dinislom-dengiz-jangi`, `dinislom-detektiv`, `dinislom-xotira`, `dinislom-15` |
 | Dovudxon | `dovudxon-futbol`, `dovudxon-sprinter`, `dovudxon-shaxmat`, `dovudxon-sakrovchi`, `dovudxon-hisob` |
-| Ibrohim  | `ibrohim-skuter`, `ibrohim-velo`, `ibrohim-kosmik`, `ibrohim-x-va-o`, `ibrohim-tosh-qaychi`, `ibrohim-militsiya` |
+| Ibrohim  | `ibrohim-skuter`, `ibrohim-velo`, `ibrohim-kosmik`, `ibrohim-x-va-o`, `ibrohim-tosh-qaychi`, `ibrohim-militsiya`, `ibrohim-askarlar` |
 | Tohirjon | `tohirjon-racing`, `tohirjon-scooter`, `tohirjon-ilon`, `tohirjon-kukilar`, `tohirjon-sonni-top` |
-| Temur    | `temur-minecraft` |
+| Temur    | `temur-minecraft`, `temur-mini-minecraft` |
+| Kamron   | `kamron-3d-poyga`, `kamron-dr-driving`, `kamron-kosmik-urush`, `kamron-sakrash` |
 
 O'yinni boshqa o'quvchiga o'tkazish uchun: papka nomini o'zgartiring va `games.js` dagi
 `id`, `author`, `path`, `thumb` maydonlarini yangilang.

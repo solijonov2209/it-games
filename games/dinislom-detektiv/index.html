@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chrono-Detective: 1888 — London Tergovi</title>
+    <link rel="stylesheet" href="./main.css">
+</head>
+<body>
+    <div class="detective-desk">
+        <!-- Yuqori panel -->
+        <header class="top-bar">
+            <div class="logo">
+                <span class="badge">1888-YIL • LONDON</span>
+                <h1>🕰️ Chrono-Detective: Qirollik Olmosi Ishi</h1>
+            </div>
+            <div class="status-panel">
+                <span>Vaqt qoldig'i: <b id="time-display">06:00</b></span>
+                <span>Dalillar: <b id="clues-count">0 / 4</b></span>
+                <button id="accuse-open-btn" class="danger-btn">⚖️ Ayblov e'lon qilish</button>
+            </div>
+        </header>
+
+        <!-- Asosiy 3 ustunli ishchi maydon -->
+        <main class="workspace">
+            <!-- 1-ustun: Joylar va Guvohlar -->
+            <section class="panel locations-panel">
+                <h2>📍 Manzil va Guvohlar</h2>
+                <div class="location-list" id="location-list">
+                    <!-- JS orqali to'ldiriladi -->
+                </div>
+
+                <div class="scene-box" id="scene-box">
+                    <h3 id="scene-title">Manzil tanlang</h3>
+                    <p id="scene-desc">Tergovni boshlash uchun chap tomondagi manzillardan birini bosing.</p>
+                    <button id="inspect-btn" class="secondary-btn hidden">🔍 Joyni ko'zdan kechirish</button>
+                </div>
+            </section>
+
+            <!-- 2-ustun: Jonli So'roq (Suhbat oynasi) -->
+            <section class="panel interrogation-panel">
+                <div class="suspect-header" id="suspect-header">
+                    <div class="avatar" id="suspect-avatar">🕵️</div>
+                    <div>
+                        <h2 id="suspect-name">Guvoh tanlanmagan</h2>
+                        <p id="suspect-role">Suhbatlashish uchun biror manzilga boring</p>
+                    </div>
+                </div>
+
+                <div class="chat-box" id="chat-box">
+                    <div class="msg system">
+                        <b>Tergov jurnali:</b> 1888-yil 14-noyabr, tungi soat 01:00. Lord Blackwoodning seyfidagi noyob "Ko'k Oy" olmosi g'oyib bo'ldi. Tong otguncha (06:00 gacha) haqiqiy o'g'rini toping!
+                    </div>
+                </div>
+
+                <!-- Tezkor savollar -->
+                <div class="quick-questions" id="quick-questions"></div>
+
+                <!-- Erkin savol yozish -->
+                <form class="chat-input-area" id="chat-form">
+                    <input type="text" id="user-question" placeholder="Guvohga savol bering (masalan: soat, kalit, izlar, alibi)..." autocomplete="off" disabled>
+                    <button type="submit" id="send-btn" disabled>So'rash</button>
+                </form>
+            </section>
+
+            <!-- 3-ustun: Detektiv Bloknoti (Dalillar) -->
+            <section class="panel notebook-panel">
+                <h2>📓 Dalillar Bloknoti</h2>
+                <ul class="clues-list" id="clues-list">
+                    <li class="empty-note">Hali hech qanday dalil topilmadi...</li>
+                </ul>
+            </section>
+        </main>
+    </div>
+
+    <!-- Ayblov e'lon qilish va Natija modal oynasi -->
+    <div id="modal-overlay" class="modal-overlay hidden">
+        <div class="modal-box" id="modal-box">
+            <h2 id="modal-title">Kimni hibsga olasiz?</h2>
+            <p id="modal-desc">To'plagan dalillaringizga asoslanib, haqiqiy jinoyatchini tanlang. Ehtiyot bo'ling, xato qilsangiz jinoyatchi qochib ketadi!</p>
+            <div id="suspects-choice" class="suspects-choice"></div>
+            <button id="close-modal-btn" class="secondary-btn">Ortga qaytish</button>
+        </div>
+    </div>
+
+    <script src="./main.js"></script>
+</body>
+</html> 

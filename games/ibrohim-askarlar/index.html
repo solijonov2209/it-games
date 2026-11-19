@@ -1,0 +1,1799 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>ASKARLAR - Qadimgi Saroy Qamali & Cho'l Jangi</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Three.js 3D Engine -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Google Fonts: Cinzel & Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #140d07;
+            font-family: 'Inter', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .font-epic {
+            font-family: 'Cinzel', serif;
+        }
+        #game-canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            cursor: crosshair;
+        }
+        .epic-panel {
+            background: linear-gradient(145deg, rgba(32, 20, 12, 0.90), rgba(16, 10, 6, 0.94));
+            border: 1.5px solid rgba(217, 159, 67, 0.75);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), inset 0 0 18px rgba(217, 159, 67, 0.15);
+            backdrop-filter: blur(8px);
+        }
+        .epic-btn {
+            background: linear-gradient(180deg, #eab308 0%, #a16207 100%);
+            border: 1px solid #fef08a;
+            color: #180f07;
+            text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+            transition: all 0.15s ease;
+        }
+        .epic-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 22px rgba(234, 179, 8, 0.55);
+            filter: brightness(1.08);
+        }
+        .epic-btn:active {
+            transform: translateY(1px);
+        }
+        .class-card {
+            background: rgba(42, 27, 16, 0.8);
+            border: 2px solid rgba(217, 159, 67, 0.35);
+            transition: all 0.2s ease;
+        }
+        .class-card:hover, .class-card.selected {
+            border-color: #facc15;
+            background: rgba(78, 50, 26, 0.95);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(250, 204, 21, 0.3);
+        }
+        #crosshair {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            width: 26px;
+            height: 26px;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+            z-index: 25;
+        }
+        #damage-vignette {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 15;
+            background: radial-gradient(circle, transparent 55%, rgba(220, 38, 38, 0.55) 100%);
+            opacity: 0;
+            transition: opacity 0.2s ease-out;
+        }
+    </style>
+</head>
+<body class="text-amber-50">
+
+    <!-- 3D WebGL Canvas -->
+    <canvas id="game-canvas"></canvas>
+
+    <!-- Damage Screen Vignette -->
+    <div id="damage-vignette"></div>
+
+    <!-- Center Aiming Reticle -->
+    <div id="crosshair" class="hidden flex items-center justify-center">
+        <div class="w-5 h-5 rounded-full border-2 border-amber-300/80 flex items-center justify-center shadow">
+            <div class="w-1.5 h-1.5 rounded-full bg-rose-500"></div>
+        </div>
+    </div>
+
+    <!-- TOP HUD: Phase, Army Force Bar & Camera Controls -->
+    <div id="hud-top" class="hidden fixed top-0 left-0 right-0 z-20 p-2 sm:p-3 pointer-events-none flex flex-col items-center">
+        <div class="w-full max-w-6xl epic-panel rounded-2xl p-2 sm:p-3 flex flex-col gap-2 pointer-events-auto">
+            <!-- Phase & Army Balance Header -->
+            <div class="flex items-center justify-between text-xs sm:text-sm font-bold px-1">
+                <div class="flex items-center gap-2 text-sky-400">
+                    <span class="w-3 h-3 rounded-full bg-sky-400 inline-block shadow-[0_0_8px_#38bdf8]"></span>
+                    <span>BIZNING LASHKAR: <span id="blue-total-text" class="text-base sm:text-lg text-white">5,000</span></span>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span id="phase-title-badge" class="font-epic text-amber-400 tracking-wider text-xs sm:text-base px-3 py-0.5 rounded-full bg-amber-500/20 border border-amber-400/50">
+                        ⚔️ 1-BOSQICH: CHO'L JANGI ⚔️
+                    </span>
+                    <!-- Camera Mode Toggle Button -->
+                    <button onclick="cycleCameraMode()" id="btn-camera-mode" class="px-2.5 py-1 rounded-lg bg-amber-500/25 hover:bg-amber-500/45 border border-amber-400/70 text-amber-200 text-xs font-bold transition cursor-pointer">
+                        👁️ Kamera: Yelka ortidan [V]
+                    </button>
+                    <!-- Audio Mute Toggle -->
+                    <button onclick="toggleMute()" id="btn-mute" class="px-2.5 py-1 rounded-lg bg-stone-800/80 hover:bg-stone-700 border border-amber-500/40 text-amber-200 text-xs font-bold cursor-pointer">
+                        🔊 Ovoz
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 text-rose-400">
+                    <span>DUSHMAN LASHKARI: <span id="red-total-text" class="text-base sm:text-lg text-white">5,000</span></span>
+                    <span class="w-3 h-3 rounded-full bg-rose-500 inline-block shadow-[0_0_8px_#f43f5e]"></span>
+                </div>
+            </div>
+
+            <!-- Army Tug-of-War Progress Bar -->
+            <div class="w-full h-3 sm:h-3.5 bg-rose-950 rounded-full overflow-hidden border border-amber-500/50 flex relative">
+                <div id="army-bar-blue" class="h-full bg-gradient-to-r from-sky-600 to-sky-400 transition-all duration-300" style="width: 50%;"></div>
+                <div id="army-bar-red" class="h-full bg-gradient-to-l from-rose-600 to-rose-400 transition-all duration-300" style="width: 50%;"></div>
+                <div class="absolute inset-0 flex justify-center items-center pointer-events-none">
+                    <div class="w-0.5 h-full bg-amber-200"></div>
+                </div>
+            </div>
+
+            <!-- Unit Counts & Player Kills -->
+            <div class="grid grid-cols-4 gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-center">
+                <div class="bg-black/40 rounded-lg py-1 px-2 border border-amber-500/20">
+                    <span class="text-amber-300/80">⚔️ Qilichbozlar:</span>
+                    <span id="stat-swords" class="font-bold text-white">1,000+</span>
+                </div>
+                <div class="bg-black/40 rounded-lg py-1 px-2 border border-amber-500/20">
+                    <span class="text-amber-300/80">🐎 Otliqlar:</span>
+                    <span id="stat-horses" class="font-bold text-white">100</span>
+                </div>
+                <div class="bg-black/40 rounded-lg py-1 px-2 border border-amber-500/20">
+                    <span class="text-amber-300/80">🏹 Kamonchilar:</span>
+                    <span id="stat-archers" class="font-bold text-white">1,500</span>
+                </div>
+                <div class="bg-amber-950/70 rounded-lg py-1 px-2 border border-amber-400/60 flex items-center justify-center gap-1.5">
+                    <span class="text-amber-300">💀 O'ldirildi:</span>
+                    <span id="player-kills" class="font-extrabold text-amber-400 text-sm">0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOP-RIGHT MINIMAP & HERO SWITCHER -->
+    <div id="hud-right" class="hidden fixed top-28 sm:top-32 right-2 sm:right-4 z-20 flex flex-col items-end gap-2">
+        <div class="epic-panel rounded-2xl p-1.5 shadow-2xl">
+            <canvas id="minimap-canvas" width="124" height="124" class="rounded-xl bg-[#2a1c0f] block"></canvas>
+            <div id="minimap-label" class="text-[10px] text-center text-amber-300/90 mt-1 font-bold">CHO'L JANGI</div>
+        </div>
+
+        <!-- Switch Role or Possess Any Soldier -->
+        <div class="epic-panel rounded-2xl p-2 flex flex-col gap-1.5 text-xs">
+            <span class="text-[10px] uppercase tracking-wider text-amber-400 font-bold text-center">Jangchi tanlash</span>
+            <div class="flex gap-1">
+                <button onclick="switchHeroClass('swordsman')" id="btn-role-swordsman" class="px-2 py-1.5 rounded-lg bg-amber-600/40 hover:bg-amber-500/60 border border-amber-400/50 font-bold transition cursor-pointer" title="1 tugmasi">⚔️ Qilich</button>
+                <button onclick="switchHeroClass('cavalry')" id="btn-role-cavalry" class="px-2 py-1.5 rounded-lg bg-amber-600/40 hover:bg-amber-500/60 border border-amber-400/50 font-bold transition cursor-pointer" title="2 tugmasi">🐎 Otliq</button>
+                <button onclick="switchHeroClass('archer')" id="btn-role-archer" class="px-2 py-1.5 rounded-lg bg-amber-600/40 hover:bg-amber-500/60 border border-amber-400/50 font-bold transition cursor-pointer" title="3 tugmasi">🏹 Kamon</button>
+            </div>
+            <button onclick="possessNearestAlly()" class="w-full py-1.5 px-2 rounded-lg bg-sky-600/40 hover:bg-sky-500/60 border border-sky-400/60 text-sky-200 font-bold text-[11px] transition cursor-pointer">
+                👤 Boshqa askarga o'tish [F]
+            </button>
+        </div>
+    </div>
+
+    <!-- BOTTOM HUD: Hero Health, Controls & Mobile Touch Pad -->
+    <div id="hud-bottom" class="hidden fixed bottom-0 left-0 right-0 z-20 p-3 sm:p-4 pointer-events-none flex flex-col items-center">
+        <div class="epic-panel rounded-2xl px-4 py-2.5 w-full max-w-xl pointer-events-auto flex flex-col gap-2">
+            <div class="flex justify-between items-center text-xs sm:text-sm font-bold">
+                <div class="flex items-center gap-2">
+                    <span id="hero-icon" class="text-lg">⚔️</span>
+                    <span id="hero-title" class="text-amber-300 font-epic">SARKARDA (QILICHBOZ)</span>
+                </div>
+                <span id="hero-hp-text" class="text-emerald-400">1200 / 1200 JON</span>
+            </div>
+
+            <!-- Health Bar -->
+            <div class="w-full h-3 bg-stone-900 rounded-full overflow-hidden border border-amber-500/40">
+                <div id="hero-hp-bar" class="h-full bg-gradient-to-r from-emerald-600 to-lime-400 transition-all duration-150" style="width: 100%;"></div>
+            </div>
+
+            <!-- Controls Hint & Special Ability -->
+            <div class="flex flex-wrap justify-between items-center gap-2 text-[11px] text-amber-200/85">
+                <span>[WASD] Yurish • [Shift] Yugurish • [Sichqoncha] Qarash/Hujum • [V] Ko'zdan ko'rish</span>
+                <button onclick="triggerSpecialAbility()" id="special-btn" class="px-3 py-1 rounded-lg bg-amber-500 text-stone-950 font-extrabold shadow hover:bg-amber-400 transition cursor-pointer">
+                    ⚡ MAXSUS ZARBA [E]
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Touch Controls -->
+        <div class="w-full flex justify-between items-end mt-2 md:hidden pointer-events-none">
+            <div id="joystick-zone" class="w-28 h-28 rounded-full bg-amber-500/15 border-2 border-amber-400/40 relative pointer-events-auto flex items-center justify-center">
+                <div id="joystick-knob" class="w-11 h-11 rounded-full bg-amber-400/85 shadow-lg"></div>
+            </div>
+            <div class="flex gap-2.5 pointer-events-auto">
+                <button id="mobile-cam-btn" onclick="cycleCameraMode()" class="w-14 h-14 rounded-full bg-amber-700/85 border-2 border-amber-300 text-white font-bold text-xs shadow-xl">
+                    👁️ KO'Z
+                </button>
+                <button id="mobile-special-btn" class="w-14 h-14 rounded-full bg-purple-700/85 border-2 border-amber-300 text-white font-bold text-xs shadow-xl">
+                    ⚡ ZARBA
+                </button>
+                <button id="mobile-attack-btn" class="w-20 h-20 rounded-full bg-rose-600/90 border-2 border-amber-300 text-white font-extrabold text-sm shadow-xl">
+                    ⚔️ HUJUM
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- START SCREEN -->
+    <div id="start-screen" class="fixed inset-0 z-30 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm overflow-y-auto">
+        <div class="epic-panel rounded-3xl max-w-3xl w-full p-6 sm:p-8 text-center my-auto">
+            <div class="inline-block px-4 py-1 rounded-full bg-amber-500/20 border border-amber-400/50 text-amber-300 text-xs font-bold tracking-widest mb-2">
+                QADIMGI CHO'L JANGI VA SAROY QAMALI
+            </div>
+            <h1 class="font-epic text-4xl sm:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-amber-200 via-amber-400 to-amber-700 drop-shadow-lg mb-2">
+                ASKARLAR
+            </h1>
+            <p class="text-amber-100/85 text-sm sm:text-base max-w-2xl mx-auto mb-5">
+                <span class="text-amber-400 font-bold">10,000 lashkarlik</span> shiddatli cho'l urushida g'alaba qozonib, <span class="text-sky-300 font-bold">ulkan Saroy qamaliga</span> o'ting! Devorlardan o'q otib yoki darvozadan chiqib dushmanlarni tor-mor qiling!
+            </p>
+
+            <!-- Hero Class Selection -->
+            <h2 class="font-epic text-base sm:text-lg text-amber-300 font-bold mb-3">QAYSI JANGCHI BO'LIB JANG QILASIZ?</h2>
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mb-6 text-left">
+                <div onclick="selectStartClass('swordsman')" id="card-swordsman" class="class-card selected rounded-2xl p-4 cursor-pointer">
+                    <div class="text-3xl mb-1.5">⚔️🛡️</div>
+                    <h3 class="font-epic font-bold text-lg text-amber-300">SARKARDA</h3>
+                    <p class="text-xs text-amber-100/80 mt-1">Po'lat qilich va qalqonli og'ir jangchi. Dushmanlar bilan yuzma-yuz qilichbozlik qiladi.</p>
+                    <div class="mt-2.5 text-[11px] font-semibold text-emerald-400">★ Jon: 1200 • Qilich bo'roni</div>
+                </div>
+
+                <div onclick="selectStartClass('cavalry')" id="card-cavalry" class="class-card rounded-2xl p-4 cursor-pointer">
+                    <div class="text-3xl mb-1.5">🐎🔱</div>
+                    <h3 class="font-epic font-bold text-lg text-amber-300">OTLIQ JANGCHI</h3>
+                    <p class="text-xs text-amber-100/80 mt-1">Haqiqiy 4 oyoqli chopqir ot ustida dushman safini yorib o'tadi va qilich soladi.</p>
+                    <div class="mt-2.5 text-[11px] font-semibold text-sky-400">★ Tezlik: Juda yuqori • Otliq hujum</div>
+                </div>
+
+                <div onclick="selectStartClass('archer')" id="card-archer" class="class-card rounded-2xl p-4 cursor-pointer">
+                    <div class="text-3xl mb-1.5">🏹🔥</div>
+                    <h3 class="font-epic font-bold text-lg text-amber-300">MOHIR KAMONCHI</h3>
+                    <p class="text-xs text-amber-100/80 mt-1">Qo'lidagi kamon bilan uzoqdan o'q uzadi. Ko'zdan ko'rish rejimida aniq nishonga oladi!</p>
+                    <div class="mt-2.5 text-[11px] font-semibold text-amber-400">★ Uzoq masofa • O'q yomg'iri</div>
+                </div>
+            </div>
+
+            <!-- Initial Camera Mode Selector -->
+            <div class="flex flex-wrap justify-center gap-2 mb-6 text-xs">
+                <span class="text-amber-300/80 py-1.5 font-semibold">Ko'rish burchagi:</span>
+                <button onclick="setInitialCamera('third')" id="init-cam-third" class="px-3 py-1.5 rounded-xl bg-amber-500 text-stone-950 font-bold border border-amber-200 cursor-pointer">
+                    👤 Yelka ortidan (3-shaxs)
+                </button>
+                <button onclick="setInitialCamera('first')" id="init-cam-first" class="px-3 py-1.5 rounded-xl bg-stone-800 text-amber-200 font-bold border border-amber-500/40 cursor-pointer">
+                    👁️ Ko'zdan ko'rish (1-shaxs)
+                </button>
+            </div>
+
+            <button onclick="startBattle()" class="epic-btn w-full sm:w-auto px-10 py-4 rounded-2xl font-epic font-black text-lg sm:text-xl tracking-wider cursor-pointer shadow-2xl">
+                🔥 JANGNI BOSHLASH 🔥
+            </button>
+        </div>
+    </div>
+
+    <!-- END GAME SCREEN -->
+    <div id="end-screen" class="hidden fixed inset-0 z-40 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+        <div class="epic-panel rounded-3xl max-w-lg w-full p-8 text-center">
+            <div id="end-badge" class="text-5xl mb-3">🏆</div>
+            <h2 id="end-title" class="font-epic text-3xl sm:text-5xl font-black text-amber-400 mb-2">G'ALABA!</h2>
+            <p id="end-subtitle" class="text-amber-100/85 text-sm sm:text-base mb-6">
+                Saroy qamali muvaffaqiyatli himoya qilindi!
+            </p>
+            <div class="bg-black/50 rounded-2xl p-4 border border-amber-500/30 mb-6 grid grid-cols-2 gap-4">
+                <div>
+                    <div class="text-xs text-amber-300/70">Siz o'ldirgan dushmanlar</div>
+                    <div id="end-kills" class="text-2xl font-black text-amber-400">0</div>
+                </div>
+                <div>
+                    <div class="text-xs text-amber-300/70">Omon qolgan lashkar</div>
+                    <div id="end-survivors" class="text-2xl font-black text-sky-400">0</div>
+                </div>
+            </div>
+            <button onclick="restartBattle()" class="epic-btn w-full py-3.5 rounded-2xl font-epic font-bold text-lg cursor-pointer">
+                🔄 QAYTA JANG QILISH
+            </button>
+        </div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="toast-msg" class="fixed top-36 left-1/2 -translate-x-1/2 z-30 pointer-events-none opacity-0 transition-opacity duration-300 bg-amber-950/95 border border-amber-400 px-4 py-1.5 rounded-full text-amber-200 font-bold text-xs sm:text-sm shadow-xl">
+        Xabar
+    </div>
+
+    <script>
+        /**
+         * ASKARLAR - Realistic 3D Human & Cavalry Desert Warfare & Palace Siege Simulator
+         */
+
+        class SoundEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+            }
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') this.ctx.resume();
+            }
+            playHorn() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(98, now);
+                osc.frequency.linearRampToValueAtTime(146.83, now + 0.45);
+                osc.frequency.linearRampToValueAtTime(130.81, now + 1.7);
+                gain.gain.setValueAtTime(0.01, now);
+                gain.gain.linearRampToValueAtTime(0.18, now + 0.35);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 1.9);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 1.9);
+            }
+            playSwordClash() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(780 + Math.random() * 200, now);
+                osc.frequency.exponentialRampToValueAtTime(160, now + 0.16);
+                gain.gain.setValueAtTime(0.16, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.18);
+            }
+            playBowTwang() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(620, now);
+                osc.frequency.exponentialRampToValueAtTime(140, now + 0.18);
+                gain.gain.setValueAtTime(0.15, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.19);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.19);
+            }
+            playHitImpact() {
+                if (this.muted || !this.ctx) return;
+                const now = this.ctx.currentTime;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(150, now);
+                osc.frequency.exponentialRampToValueAtTime(45, now + 0.12);
+                gain.gain.setValueAtTime(0.14, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+                osc.connect(gain);
+                gain.connect(this.ctx.destination);
+                osc.start(now);
+                osc.stop(now + 0.12);
+            }
+        }
+        const sfx = new SoundEngine();
+
+        function toggleMute() {
+            sfx.muted = !sfx.muted;
+            document.getElementById('btn-mute').textContent = sfx.muted ? '🔇 Jim' : '🔊 Ovoz';
+        }
+
+        let selectedHeroClass = 'swordsman';
+        let cameraMode = 'third';
+        let gameActive = false;
+        let gamePhase = 1; // Phase 1: Desert Field Battle, Phase 2: Palace Siege
+
+        let scene, camera, renderer;
+        let clock = new THREE.Clock();
+
+        const CLOSE_HUMANS_PER_SIDE = 130;
+        const DISTANT_TROOPS_PER_SIDE = 350;
+        const CAVALRY_PER_SIDE = 50;
+
+        let units = [];
+        let arrows = [];
+        let particles = [];
+        let slashEffects = [];
+        let palaceGroup = null;
+
+        let distantBlueBody, distantRedBody, distantBlueHead, distantRedHead;
+        let fpViewGroup, fpRightArm, fpLeftArm, fpSword, fpShield, fpBow;
+
+        let player = {
+            rig: null,
+            role: 'swordsman',
+            x: -55,
+            z: 0,
+            yaw: Math.PI / 2,
+            pitch: 0.08,
+            hp: 1200,
+            maxHp: 1200,
+            speed: 16,
+            attackCooldown: 0,
+            specialCooldown: 0,
+            kills: 0,
+            swingAnim: 0,
+            walkCycle: 0
+        };
+
+        const keys = {};
+        let isMouseDown = false;
+        let isRightDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        let joystickVector = { x: 0, z: 0 };
+        const dummy = new THREE.Object3D();
+
+        function selectStartClass(role) {
+            selectedHeroClass = role;
+            document.querySelectorAll('.class-card').forEach(el => el.classList.remove('selected'));
+            document.getElementById('card-' + role).classList.add('selected');
+        }
+
+        function setInitialCamera(mode) {
+            cameraMode = mode;
+            const thirdBtn = document.getElementById('init-cam-third');
+            const firstBtn = document.getElementById('init-cam-first');
+            if (mode === 'third') {
+                thirdBtn.className = 'px-3 py-1.5 rounded-xl bg-amber-500 text-stone-950 font-bold border border-amber-200 cursor-pointer';
+                firstBtn.className = 'px-3 py-1.5 rounded-xl bg-stone-800 text-amber-200 font-bold border border-amber-500/40 cursor-pointer';
+            } else {
+                firstBtn.className = 'px-3 py-1.5 rounded-xl bg-amber-500 text-stone-950 font-bold border border-amber-200 cursor-pointer';
+                thirdBtn.className = 'px-3 py-1.5 rounded-xl bg-stone-800 text-amber-200 font-bold border border-amber-500/40 cursor-pointer';
+            }
+        }
+
+        function showToast(text) {
+            const toast = document.getElementById('toast-msg');
+            toast.textContent = text;
+            toast.style.opacity = '1';
+            clearTimeout(toast._timer);
+            toast._timer = setTimeout(() => { toast.style.opacity = '0'; }, 2400);
+        }
+
+        function cycleCameraMode() {
+            if (cameraMode === 'third') cameraMode = 'first';
+            else if (cameraMode === 'first') cameraMode = 'tactical';
+            else cameraMode = 'third';
+            updateCameraUI();
+        }
+
+        function updateCameraUI() {
+            const btn = document.getElementById('btn-camera-mode');
+            const crosshair = document.getElementById('crosshair');
+            if (cameraMode === 'first') {
+                btn.textContent = "👁️ Kamera: Ko'zdan ko'rish (1-shaxs) [V]";
+                if (fpViewGroup) fpViewGroup.visible = true;
+                if (player.rig) player.rig.root.visible = false;
+                crosshair.classList.remove('hidden');
+                showToast("👁️ 1-shaxs rejimi: Jangchining ko'zidan ko'ryapsiz!");
+            } else if (cameraMode === 'third') {
+                btn.textContent = "👤 Kamera: Yelka ortidan (3-shaxs) [V]";
+                if (fpViewGroup) fpViewGroup.visible = false;
+                if (player.rig) player.rig.root.visible = true;
+                if (player.role === 'archer') crosshair.classList.remove('hidden');
+                else crosshair.classList.add('hidden');
+                showToast("👤 3-shaxs rejimi: Jangchini yaqindan ko'ryapsiz!");
+            } else {
+                btn.textContent = "🦅 Kamera: Sarkarda ko'rinishi [V]";
+                if (fpViewGroup) fpViewGroup.visible = false;
+                if (player.rig) player.rig.root.visible = true;
+                crosshair.classList.add('hidden');
+                showToast("🦅 Sarkarda ko'rinishi: Butun jang maydoni!");
+            }
+        }
+
+        // --- REALISTIC 3D HUMAN & HORSE BUILDERS ---
+        function createRealisticHumanRig(team, role, isHero = false) {
+            const root = new THREE.Group();
+            const skinTones = [0xe0ac69, 0xd19a58, 0xc68642, 0xf1c27d];
+            const skinColor = isHero ? 0xe5b173 : skinTones[Math.floor(Math.random() * skinTones.length)];
+            const skinMat = new THREE.MeshStandardMaterial({ color: skinColor, roughness: 0.65 });
+
+            const primaryColor = isHero ? 0x0284c7 : (team === 'blue' ? 0x1d4ed8 : 0xb91c1c);
+            const secondaryColor = isHero ? 0xfbbf24 : (team === 'blue' ? 0x93c5fd : 0xfca5a5);
+            const armorMat = new THREE.MeshStandardMaterial({ color: primaryColor, roughness: 0.45, metalness: 0.35 });
+            const chainmailMat = new THREE.MeshStandardMaterial({ color: 0x64748b, roughness: 0.35, metalness: 0.75 });
+            const leatherMat = new THREE.MeshStandardMaterial({ color: 0x452714, roughness: 0.85 });
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0xf1f5f9, metalness: 0.9, roughness: 0.18 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: secondaryColor, metalness: 0.8, roughness: 0.25 });
+
+            const hips = new THREE.Mesh(new THREE.CylinderGeometry(0.24, 0.25, 0.22, 10), leatherMat);
+            hips.position.y = 0.92;
+            root.add(hips);
+
+            const torso = new THREE.Mesh(new THREE.CylinderGeometry(0.30, 0.24, 0.62, 10), armorMat);
+            torso.position.y = 1.32;
+            torso.castShadow = true;
+            root.add(torso);
+
+            const chestPlate = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.42, 0.32), chainmailMat);
+            chestPlate.position.set(0, 1.38, 0.03);
+            root.add(chestPlate);
+
+            const pauldronGeo = new THREE.SphereGeometry(0.15, 8, 8);
+            const leftPauldron = new THREE.Mesh(pauldronGeo, goldMat);
+            leftPauldron.position.set(-0.34, 1.56, 0);
+            const rightPauldron = new THREE.Mesh(pauldronGeo, goldMat);
+            rightPauldron.position.set(0.34, 1.56, 0);
+            root.add(leftPauldron, rightPauldron);
+
+            if (isHero || Math.random() < 0.25) {
+                const cape = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.95, 0.04), armorMat);
+                cape.position.set(0, 1.15, -0.22);
+                cape.rotation.x = 0.14;
+                root.add(cape);
+            }
+
+            const headGroup = new THREE.Group();
+            headGroup.position.set(0, 1.78, 0);
+
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.11, 0.14, 8), skinMat);
+            neck.position.y = -0.09;
+            headGroup.add(neck);
+
+            const headMesh = new THREE.Mesh(new THREE.SphereGeometry(0.17, 12, 12), skinMat);
+            headMesh.scale.set(0.92, 1.08, 0.98);
+            headMesh.castShadow = true;
+            headGroup.add(headMesh);
+
+            const nose = new THREE.Mesh(new THREE.ConeGeometry(0.03, 0.08, 5), skinMat);
+            nose.rotation.x = Math.PI / 2;
+            nose.position.set(0, -0.01, 0.17);
+            headGroup.add(nose);
+
+            const eyeWhiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const pupilMat = new THREE.MeshBasicMaterial({ color: 0x1e1b18 });
+            [-0.055, 0.055].forEach(ex => {
+                const eye = new THREE.Mesh(new THREE.SphereGeometry(0.024, 6, 6), eyeWhiteMat);
+                eye.position.set(ex, 0.03, 0.145);
+                const pupil = new THREE.Mesh(new THREE.SphereGeometry(0.013, 6, 6), pupilMat);
+                pupil.position.set(ex, 0.03, 0.163);
+                headGroup.add(eye, pupil);
+            });
+
+            const hairMat = new THREE.MeshStandardMaterial({ color: 0x24170e, roughness: 0.9 });
+            const beard = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.14, 0.16), hairMat);
+            beard.position.set(0, -0.10, 0.07);
+            headGroup.add(beard);
+
+            const helmet = new THREE.Mesh(
+                new THREE.SphereGeometry(0.185, 12, 10, 0, Math.PI * 2, 0, Math.PI * 0.58),
+                isHero ? goldMat : chainmailMat
+            );
+            helmet.position.y = 0.02;
+            headGroup.add(helmet);
+
+            const helmSpike = new THREE.Mesh(new THREE.ConeGeometry(0.035, 0.14, 6), goldMat);
+            helmSpike.position.y = 0.24;
+            headGroup.add(helmSpike);
+
+            root.add(headGroup);
+
+            function createLeg(xOffset) {
+                const legPivot = new THREE.Group();
+                legPivot.position.set(xOffset, 0.88, 0);
+                const thigh = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.085, 0.44, 8), leatherMat);
+                thigh.position.y = -0.22;
+                legPivot.add(thigh);
+                const boot = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.08, 0.44, 8), leatherMat);
+                boot.position.y = -0.64;
+                legPivot.add(boot);
+                const foot = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.09, 0.24), leatherMat);
+                foot.position.set(0, -0.84, 0.05);
+                legPivot.add(foot);
+                root.add(legPivot);
+                return legPivot;
+            }
+            const leftLeg = createLeg(-0.13);
+            const rightLeg = createLeg(0.13);
+
+            function createArm(xOffset) {
+                const armPivot = new THREE.Group();
+                armPivot.position.set(xOffset, 1.54, 0);
+                const upperArm = new THREE.Mesh(new THREE.CylinderGeometry(0.085, 0.075, 0.34, 8), armorMat);
+                upperArm.position.y = -0.17;
+                armPivot.add(upperArm);
+                const forearm = new THREE.Mesh(new THREE.CylinderGeometry(0.072, 0.062, 0.32, 8), skinMat);
+                forearm.position.y = -0.46;
+                armPivot.add(forearm);
+                const hand = new THREE.Mesh(new THREE.SphereGeometry(0.068, 8, 8), skinMat);
+                hand.position.y = -0.63;
+                armPivot.add(hand);
+                root.add(armPivot);
+                return armPivot;
+            }
+            const leftArm = createArm(-0.36);
+            const rightArm = createArm(0.36);
+
+            const swordGroup = new THREE.Group();
+            swordGroup.position.set(0, -0.62, 0.08);
+            swordGroup.rotation.x = Math.PI / 2.2;
+            const hilt = new THREE.Mesh(new THREE.CylinderGeometry(0.025, 0.025, 0.22, 6), leatherMat);
+            const crossguard = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.04, 0.05), goldMat);
+            crossguard.position.y = 0.11;
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.065, 0.95, 0.02), steelMat);
+            blade.position.y = 0.60;
+            swordGroup.add(hilt, crossguard, blade);
+            rightArm.add(swordGroup);
+
+            const shieldGroup = new THREE.Group();
+            shieldGroup.position.set(-0.08, -0.52, 0.16);
+            shieldGroup.rotation.y = -Math.PI / 2.4;
+            const shieldDisc = new THREE.Mesh(new THREE.CylinderGeometry(0.36, 0.36, 0.05, 14), armorMat);
+            shieldDisc.rotation.x = Math.PI / 2;
+            const shieldRim = new THREE.Mesh(new THREE.TorusGeometry(0.36, 0.03, 6, 14), goldMat);
+            const shieldBoss = new THREE.Mesh(new THREE.SphereGeometry(0.08, 8, 8), goldMat);
+            shieldGroup.add(shieldDisc, shieldRim, shieldBoss);
+            leftArm.add(shieldGroup);
+
+            const bowGroup = new THREE.Group();
+            bowGroup.position.set(0, -0.60, 0.22);
+            const bowWood = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.028, 6, 16, Math.PI), leatherMat);
+            bowWood.rotation.y = Math.PI / 2;
+            bowGroup.add(bowWood);
+            bowGroup.visible = false;
+            leftArm.add(bowGroup);
+
+            if (role === 'archer') {
+                swordGroup.visible = false;
+                shieldGroup.visible = false;
+                bowGroup.visible = true;
+                leftArm.rotation.x = -Math.PI / 2.3;
+                rightArm.rotation.x = -Math.PI / 2.6;
+            }
+
+            const horseGroup = createRealisticHorseMesh(team === 'blue' ? 0xf5f5f4 : 0x3b2314, goldMat, leatherMat);
+            horseGroup.visible = (role === 'cavalry');
+            root.add(horseGroup);
+
+            const riderParts = [hips, torso, chestPlate, leftPauldron, rightPauldron, headGroup, leftLeg, rightLeg, leftArm, rightArm];
+            if (role === 'cavalry') {
+                riderParts.forEach(p => { p.position.y += 1.15; });
+                leftLeg.rotation.z = 0.35;
+                rightLeg.rotation.z = -0.35;
+            }
+
+            return { root, headGroup, leftLeg, rightLeg, leftArm, rightArm, swordGroup, shieldGroup, bowGroup, horseGroup, riderParts };
+        }
+
+        function createRealisticHorseMesh(coatColor, goldMat, leatherMat) {
+            const horse = new THREE.Group();
+            const coatMat = new THREE.MeshStandardMaterial({ color: coatColor, roughness: 0.72 });
+            const maneMat = new THREE.MeshStandardMaterial({ color: 0x1c1917, roughness: 0.9 });
+
+            const body = new THREE.Mesh(new THREE.CylinderGeometry(0.42, 0.44, 1.55, 10), coatMat);
+            body.rotation.x = Math.PI / 2;
+            body.position.set(0, 1.25, 0);
+            body.castShadow = true;
+            horse.add(body);
+
+            const neck = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.32, 0.85, 8), coatMat);
+            neck.position.set(0, 1.72, 0.72);
+            neck.rotation.x = 0.55;
+            horse.add(neck);
+
+            const head = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.28, 0.58), coatMat);
+            head.position.set(0, 2.02, 1.05);
+            head.rotation.x = 0.35;
+            horse.add(head);
+
+            const mane = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.75, 0.16), maneMat);
+            mane.position.set(0, 1.80, 0.58);
+            mane.rotation.x = 0.55;
+            horse.add(mane);
+
+            const tail = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.12, 0.85, 6), maneMat);
+            tail.position.set(0, 1.15, -0.88);
+            tail.rotation.x = 0.35;
+            horse.add(tail);
+
+            const saddle = new THREE.Mesh(new THREE.BoxGeometry(0.65, 0.18, 0.65), leatherMat);
+            saddle.position.set(0, 1.66, -0.05);
+            horse.add(saddle);
+
+            const legPositions = [
+                [-0.22, 0.95, 0.55],
+                [0.22, 0.95, 0.55],
+                [-0.22, 0.95, -0.55],
+                [0.22, 0.95, -0.55]
+            ];
+            horse.legs = [];
+            legPositions.forEach(([lx, ly, lz]) => {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.09, 0.065, 0.95, 7), coatMat);
+                leg.position.set(lx, ly * 0.52, lz);
+                horse.add(leg);
+                horse.legs.push(leg);
+            });
+
+            return horse;
+        }
+
+        function createFirstPersonViewModel() {
+            fpViewGroup = new THREE.Group();
+            const skinMat = new THREE.MeshStandardMaterial({ color: 0xe5b173, roughness: 0.6 });
+            const armorMat = new THREE.MeshStandardMaterial({ color: 0x0284c7, metalness: 0.4, roughness: 0.4 });
+            const steelMat = new THREE.MeshStandardMaterial({ color: 0xffffff, metalness: 0.9, roughness: 0.15 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.25 });
+            const leatherMat = new THREE.MeshStandardMaterial({ color: 0x452714, roughness: 0.85 });
+
+            fpRightArm = new THREE.Group();
+            fpRightArm.position.set(0.36, -0.34, -0.52);
+            const rForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.45, 8), armorMat);
+            rForearm.rotation.x = Math.PI / 2.4;
+            fpRightArm.add(rForearm);
+            const rHand = new THREE.Mesh(new THREE.SphereGeometry(0.065, 8, 8), skinMat);
+            rHand.position.set(0, 0.06, -0.18);
+            fpRightArm.add(rHand);
+
+            fpSword = new THREE.Group();
+            fpSword.position.set(0, 0.08, -0.22);
+            fpSword.rotation.set(-0.25, 0, 0.15);
+            const blade = new THREE.Mesh(new THREE.BoxGeometry(0.055, 0.95, 0.018), steelMat);
+            blade.position.y = 0.48;
+            const guard = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.035, 0.05), goldMat);
+            fpSword.add(blade, guard);
+            fpRightArm.add(fpSword);
+
+            fpLeftArm = new THREE.Group();
+            fpLeftArm.position.set(-0.38, -0.36, -0.48);
+            const lForearm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.075, 0.45, 8), armorMat);
+            lForearm.rotation.x = Math.PI / 2.4;
+            fpLeftArm.add(lForearm);
+
+            fpShield = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.04, 16), armorMat);
+            fpShield.rotation.set(Math.PI / 2.2, 0.3, 0);
+            fpShield.position.set(-0.04, 0.10, -0.16);
+            fpLeftArm.add(fpShield);
+
+            fpBow = new THREE.Mesh(new THREE.TorusGeometry(0.48, 0.025, 6, 16, Math.PI), leatherMat);
+            fpBow.position.set(0.12, 0.18, -0.22);
+            fpBow.rotation.set(0, Math.PI / 2, 0);
+            fpBow.visible = false;
+            fpLeftArm.add(fpBow);
+
+            fpViewGroup.add(fpRightArm, fpLeftArm);
+            fpViewGroup.visible = false;
+            camera.add(fpViewGroup);
+        }
+
+        // --- WORLD & PALACE SIEGE STRUCTURES ---
+        function initThree() {
+            const canvas = document.getElementById('game-canvas');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xdba565);
+            scene.fog = new THREE.FogExp2(0xdba565, 0.0028);
+
+            camera = new THREE.PerspectiveCamera(62, window.innerWidth / window.innerHeight, 0.2, 850);
+            scene.add(camera);
+
+            renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+            const hemiLight = new THREE.HemisphereLight(0xfff5db, 0x8f5b28, 0.9);
+            scene.add(hemiLight);
+
+            const sunLight = new THREE.DirectionalLight(0xfff1cf, 1.35);
+            sunLight.position.set(110, 160, 85);
+            sunLight.castShadow = true;
+            sunLight.shadow.mapSize.width = 2048;
+            sunLight.shadow.mapSize.height = 2048;
+            const d = 160;
+            sunLight.shadow.camera.left = -d;
+            sunLight.shadow.camera.right = d;
+            sunLight.shadow.camera.top = d;
+            sunLight.shadow.camera.bottom = -d;
+            scene.add(sunLight);
+
+            createDesertTerrain();
+            createPalaceStructure();
+            createDistantInstancedArmies();
+            createFirstPersonViewModel();
+
+            player.rig = createRealisticHumanRig('blue', 'swordsman', true);
+            const ring = new THREE.Mesh(
+                new THREE.RingGeometry(0.65, 0.85, 24).rotateX(-Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: 0x38bdf8, side: THREE.DoubleSide })
+            );
+            ring.position.y = 0.04;
+            player.rig.root.add(ring);
+            scene.add(player.rig.root);
+
+            setupControls();
+            window.addEventListener('resize', onWindowResize);
+            animate();
+        }
+
+        function createDesertTerrain() {
+            const geo = new THREE.PlaneGeometry(850, 850, 90, 90);
+            geo.rotateX(-Math.PI / 2);
+            const pos = geo.attributes.position;
+            for (let i = 0; i < pos.count; i++) {
+                const x = pos.getX(i);
+                const z = pos.getZ(i);
+                const dist = Math.hypot(x, z);
+                const duneScale = Math.max(0, (dist - 120) / 160);
+                const y = Math.sin(x * 0.04) * Math.cos(z * 0.04) * 1.1 + Math.sin(x * 0.015 + z * 0.015) * 9 * duneScale;
+                pos.setY(i, y);
+            }
+            geo.computeVertexNormals();
+
+            const mat = new THREE.MeshStandardMaterial({ color: 0xd89e58, roughness: 0.92 });
+            const sand = new THREE.Mesh(geo, mat);
+            sand.receiveShadow = true;
+            scene.add(sand);
+        }
+
+        // Majestic Ancient Palace Structure (Saroy) at East side
+        function createPalaceStructure() {
+            palaceGroup = new THREE.Group();
+            const stoneMat = new THREE.MeshStandardMaterial({ color: 0xa8794c, roughness: 0.85 });
+            const darkStoneMat = new THREE.MeshStandardMaterial({ color: 0x7c5836, roughness: 0.9 });
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, metalness: 0.8, roughness: 0.2 });
+
+            const wallZ = 120;
+            // Left Wall
+            const leftWall = new THREE.Mesh(new THREE.BoxGeometry(110, 16, 8), stoneMat);
+            leftWall.position.set(-65, 8, wallZ);
+            leftWall.castShadow = true;
+            leftWall.receiveShadow = true;
+            palaceGroup.add(leftWall);
+
+            // Right Wall
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(110, 16, 8), stoneMat);
+            rightWall.position.set(65, 8, wallZ);
+            rightWall.castShadow = true;
+            rightWall.receiveShadow = true;
+            palaceGroup.add(rightWall);
+
+            // Wall Walkway Platform (for defenders to stand on top!)
+            const walkway = new THREE.Mesh(new THREE.BoxGeometry(240, 1.5, 7), darkStoneMat);
+            walkway.position.set(0, 10.5, wallZ);
+            palaceGroup.add(walkway);
+
+            // 4 Majestic Palace Towers
+            const towerGeo = new THREE.CylinderGeometry(4.5, 5.2, 24, 10);
+            const roofGeo = new THREE.ConeGeometry(5.8, 8, 10);
+            [-120, -20, 20, 120].forEach(tx => {
+                const tower = new THREE.Mesh(towerGeo, stoneMat);
+                tower.position.set(tx, 12, wallZ);
+                tower.castShadow = true;
+                const roof = new THREE.Mesh(roofGeo, goldMat);
+                roof.position.set(tx, 26, wallZ);
+                palaceGroup.add(tower, roof);
+            });
+
+            // Grand Palace Throne Hall behind walls
+            const palaceHall = new THREE.Mesh(new THREE.BoxGeometry(70, 22, 50), stoneMat);
+            palaceHall.position.set(0, 11, wallZ + 45);
+            palaceGroup.add(palaceHall);
+
+            palaceGroup.visible = false; // Hidden during Phase 1, revealed during Phase 2!
+            scene.add(palaceGroup);
+        }
+
+        function createDistantInstancedArmies() {
+            const bodyGeo = new THREE.CylinderGeometry(0.28, 0.32, 1.35, 6);
+            const headGeo = new THREE.SphereGeometry(0.20, 6, 6);
+
+            distantBlueBody = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ color: 0x1d4ed8 }), DISTANT_TROOPS_PER_SIDE);
+            distantRedBody = new THREE.InstancedMesh(bodyGeo, new THREE.MeshStandardMaterial({ color: 0xb91c1c }), DISTANT_TROOPS_PER_SIDE);
+            distantBlueHead = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ color: 0xe2e8f0 }), DISTANT_TROOPS_PER_SIDE);
+            distantRedHead = new THREE.InstancedMesh(headGeo, new THREE.MeshStandardMaterial({ color: 0xfcd34d }), DISTANT_TROOPS_PER_SIDE);
+
+            scene.add(distantBlueBody, distantRedBody, distantBlueHead, distantRedHead);
+        }
+
+        function spawnArmies() {
+            for (let u of units) {
+                if (u.rig && u.rig.root) scene.remove(u.rig.root);
+            }
+            units = [];
+            arrows = [];
+            particles = [];
+
+            ['blue', 'red'].forEach(team => {
+                const dir = team === 'blue' ? 1 : -1;
+
+                for (let i = 0; i < CLOSE_HUMANS_PER_SIDE; i++) {
+                    const isArcher = i >= 90;
+                    const role = isArcher ? 'archer' : 'swordsman';
+                    const row = i % 10;
+                    const col = Math.floor(i / 10);
+                    const x = -dir * ((isArcher ? 56 : 22) + row * 3.2) + (Math.random() - 0.5) * 2;
+                    const z = (col - 6) * 4.5 + (Math.random() - 0.5) * 2;
+
+                    const rig = createRealisticHumanRig(team, role, false);
+                    rig.root.position.set(x, 0, z);
+                    rig.root.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+                    scene.add(rig.root);
+
+                    units.push({
+                        team, role, isArticulated: true, rig, x, z,
+                        rotY: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
+                        hp: isArcher ? 85 : 130, maxHp: isArcher ? 85 : 130,
+                        speed: isArcher ? 6.5 : 8.2 + Math.random() * 1.8,
+                        damage: isArcher ? 22 : 26, range: isArcher ? 55 : 2.5,
+                        cooldown: Math.random() * 1.2, alive: true, animPhase: Math.random() * 10, swingTimer: 0
+                    });
+                }
+
+                for (let i = 0; i < CAVALRY_PER_SIDE; i++) {
+                    const flank = i < 25 ? -1 : 1;
+                    const idx = i % 25;
+                    const row = idx % 5;
+                    const col = Math.floor(idx / 5);
+                    const x = -dir * (38 + row * 4.8);
+                    const z = flank * (42 + col * 4.5);
+
+                    const rig = createRealisticHumanRig(team, 'cavalry', false);
+                    rig.root.position.set(x, 0, z);
+                    rig.root.rotation.y = dir > 0 ? Math.PI / 2 : -Math.PI / 2;
+                    scene.add(rig.root);
+
+                    units.push({
+                        team, role: 'cavalry', isArticulated: true, rig, x, z,
+                        rotY: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
+                        hp: 240, maxHp: 240, speed: 16.5 + Math.random() * 2.5,
+                        damage: 38, range: 3.4, cooldown: Math.random() * 0.9,
+                        alive: true, animPhase: Math.random() * 10, swingTimer: 0
+                    });
+                }
+
+                for (let i = 0; i < DISTANT_TROOPS_PER_SIDE; i++) {
+                    const row = i % 10;
+                    const col = Math.floor(i / 10);
+                    const x = -dir * (78 + row * 4.5) + (Math.random() - 0.5) * 3;
+                    const z = (col - 17) * 5.2 + (Math.random() - 0.5) * 3;
+                    units.push({
+                        team, role: 'swordsman', isArticulated: false, instIndex: i, x, z,
+                        rotY: dir > 0 ? Math.PI / 2 : -Math.PI / 2,
+                        hp: 95, maxHp: 95, speed: 7.5, damage: 20, range: 2.6,
+                        cooldown: Math.random() * 1.2, alive: true, animPhase: Math.random() * 10
+                    });
+                }
+            });
+        }
+
+        // --- TRANSITION TO PHASE 2 (PALACE SIEGE) ---
+        function transitionToPhase2() {
+            gamePhase = 2;
+            sfx.playHorn();
+            showToast("🏰 2-BOSQICH: SAROY QAMALI BOSHLANDI! Dushmanlar saroyga hujum qilmoqda!");
+
+            document.getElementById('phase-title-badge').textContent = "🏰 2-BOSQICH: SAROY QAMALI 🏰";
+            document.getElementById('minimap-label').textContent = "SAROY QAMALI";
+            if (palaceGroup) palaceGroup.visible = true;
+
+            // Teleport surviving Blue (player) soldiers onto the Palace Walls & Courtyard
+            let blueIdx = 0;
+            for (let u of units) {
+                if (!u.alive) continue;
+                if (u.team === 'blue') {
+                    if (blueIdx % 3 === 0) {
+                        // Defenders on top of the palace wall
+                        u.x = (Math.random() - 0.5) * 160;
+                        u.z = 120;
+                        if (u.isArticulated && u.rig) u.rig.root.position.set(u.x, 10.5, u.z);
+                    } else {
+                        // Defenders in courtyard
+                        u.x = (Math.random() - 0.5) * 120;
+                        u.z = 95 + Math.random() * 20;
+                        if (u.isArticulated && u.rig) u.rig.root.position.set(u.x, 0, u.z);
+                    }
+                    blueIdx++;
+                } else {
+                    // Remaining Red enemies massing in front of the palace gates
+                    u.x = (Math.random() - 0.5) * 140;
+                    u.z = 145 + Math.random() * 25;
+                    u.rotY = -Math.PI / 2;
+                    if (u.isArticulated && u.rig) u.rig.root.position.set(u.x, 0, u.z);
+                }
+            }
+
+            // Reposition player near the palace center
+            player.x = 0;
+            player.z = 105;
+            player.yaw = Math.PI;
+        }
+
+        function switchHeroClass(role) {
+            player.role = role;
+            const hpPct = Math.max(0.4, player.hp / player.maxHp);
+
+            ['swordsman', 'cavalry', 'archer'].forEach(r => {
+                const btn = document.getElementById('btn-role-' + r);
+                if (btn) btn.classList.remove('ring-2', 'ring-amber-300', 'bg-amber-500/80');
+            });
+            const activeBtn = document.getElementById('btn-role-' + role);
+            if (activeBtn) activeBtn.classList.add('ring-2', 'ring-amber-300', 'bg-amber-500/80');
+
+            const rig = player.rig;
+            const baseHeightOffset = role === 'cavalry' ? 1.15 : 0;
+            rig.riderParts.forEach((part, idx) => {
+                const origYs = [0.92, 1.32, 1.38, 1.56, 1.56, 1.78, 0.88, 0.88, 1.54, 1.54];
+                part.position.y = origYs[idx] + baseHeightOffset;
+            });
+
+            rig.horseGroup.visible = (role === 'cavalry');
+            rig.leftLeg.rotation.z = role === 'cavalry' ? 0.35 : 0;
+            rig.rightLeg.rotation.z = role === 'cavalry' ? -0.35 : 0;
+
+            if (role === 'swordsman') {
+                player.maxHp = 1200; player.speed = 16;
+                rig.swordGroup.visible = true; rig.shieldGroup.visible = true; rig.bowGroup.visible = false;
+                fpSword.visible = true; fpShield.visible = true; fpBow.visible = false;
+                document.getElementById('hero-icon').textContent = '⚔️';
+                document.getElementById('hero-title').textContent = 'SARKARDA (QILICHBOZ)';
+                showToast('⚔️ Sarkarda (Qilichboz) tanlandi!');
+            } else if (role === 'cavalry') {
+                player.maxHp = 1500; player.speed = 27;
+                rig.swordGroup.visible = true; rig.shieldGroup.visible = true; rig.bowGroup.visible = false;
+                fpSword.visible = true; fpShield.visible = true; fpBow.visible = false;
+                document.getElementById('hero-icon').textContent = '🐎';
+                document.getElementById('hero-title').textContent = 'OTLIQ JANGCHI';
+                showToast('🐎 Otliq Jangchi tanlandi!');
+            } else if (role === 'archer') {
+                player.maxHp = 950; player.speed = 18;
+                rig.swordGroup.visible = false; rig.shieldGroup.visible = false; rig.bowGroup.visible = true;
+                fpSword.visible = false; fpShield.visible = false; fpBow.visible = true;
+                document.getElementById('hero-icon').textContent = '🏹';
+                document.getElementById('hero-title').textContent = 'MOHIR KAMONCHI';
+                showToast('🏹 Mohir Kamonchi tanlandi!');
+            }
+
+            player.hp = Math.round(player.maxHp * hpPct);
+            updateCameraUI();
+        }
+
+        function possessNearestAlly() {
+            if (!gameActive) return;
+            let bestAlly = null;
+            let bestDist = 45;
+            for (let u of units) {
+                if (u.alive && u.team === 'blue' && u.isArticulated) {
+                    const d = Math.hypot(u.x - player.x, u.z - player.z);
+                    if (d > 2 && d < bestDist) {
+                        bestDist = d;
+                        bestAlly = u;
+                    }
+                }
+            }
+            if (bestAlly) {
+                player.x = bestAlly.x;
+                player.z = bestAlly.z;
+                player.yaw = bestAlly.rotY;
+                switchHeroClass(bestAlly.role);
+                spawnDustCloud(player.x, player.z, 5);
+                showToast(`👤 Yangi jangchiga o'tdingiz (${bestAlly.role.toUpperCase()})!`);
+            } else {
+                showToast('⚠️ Yaqin atrofda boshqa askar topilmadi');
+            }
+        }
+
+        function startBattle() {
+            sfx.init();
+            sfx.playHorn();
+            document.getElementById('start-screen').classList.add('hidden');
+            document.getElementById('end-screen').classList.add('hidden');
+            document.getElementById('hud-top').classList.remove('hidden');
+            document.getElementById('hud-right').classList.remove('hidden');
+            document.getElementById('hud-bottom').classList.remove('hidden');
+
+            gamePhase = 1;
+            if (palaceGroup) palaceGroup.visible = false;
+            document.getElementById('phase-title-badge').textContent = "⚔️ 1-BOSQICH: CHO'L JANGI ⚔️";
+            document.getElementById('minimap-label').textContent = "CHO'L JANGI";
+
+            player.x = -34; player.z = 0; player.yaw = Math.PI / 2; player.pitch = 0.05;
+            player.kills = 0; player.hp = 1200;
+
+            spawnArmies();
+            switchHeroClass(selectedHeroClass);
+            gameActive = true;
+        }
+
+        function restartBattle() {
+            startBattle();
+        }
+
+        function playerPrimaryAttack() {
+            if (!gameActive || player.attackCooldown > 0) return;
+
+            if (player.role === 'swordsman' || player.role === 'cavalry') {
+                player.attackCooldown = player.role === 'cavalry' ? 0.34 : 0.40;
+                player.swingAnim = 1.0;
+                sfx.playSwordClash();
+
+                const reach = player.role === 'cavalry' ? 6.2 : 4.8;
+                const dmg = player.role === 'cavalry' ? 175 : 155;
+                const fwdX = Math.sin(player.yaw);
+                const fwdZ = Math.cos(player.yaw);
+
+                spawnSlashArc(player.x + fwdX * 1.4, player.z + fwdZ * 1.4, player.yaw, reach * 0.85);
+
+                for (let u of units) {
+                    if (!u.alive || u.team === 'blue') continue;
+                    const dx = u.x - player.x;
+                    const dz = u.z - player.z;
+                    const dist = Math.hypot(dx, dz);
+                    if (dist < reach) {
+                        const dot = (dx * fwdX + dz * fwdZ) / (dist || 1);
+                        if (dot > 0.1 || dist < 2.2) {
+                            damageUnit(u, dmg, true, fwdX * 10, fwdZ * 10);
+                        }
+                    }
+                }
+            } else if (player.role === 'archer') {
+                player.attackCooldown = 0.32;
+                player.swingAnim = 0.7;
+                sfx.playBowTwang();
+
+                const fwdX = Math.sin(player.yaw);
+                const fwdZ = Math.cos(player.yaw);
+                const eyeY = (gamePhase === 2 && player.z < 122 && player.z > 115) ? 12.5 : (player.role === 'cavalry' ? 2.7 : 1.65);
+                const speed = 78;
+                const vy = Math.max(2, -Math.sin(player.pitch) * speed + 7);
+
+                spawnArrow(
+                    player.x + fwdX * 1.1, eyeY, player.z + fwdZ * 1.1,
+                    fwdX * speed, vy, fwdZ * speed, 'blue', 160, true
+                );
+            }
+        }
+
+        function triggerSpecialAbility() {
+            if (!gameActive || player.specialCooldown > 0) return;
+            player.specialCooldown = 5.0;
+            sfx.playHorn();
+
+            if (player.role === 'swordsman') {
+                showToast("🌪️ QILICH BO'RONI!");
+                spawnSlashArc(player.x, player.z, 0, 8.5, true);
+                for (let u of units) {
+                    if (u.alive && u.team === 'red' && Math.hypot(u.x - player.x, u.z - player.z) < 9.5) {
+                        const ang = Math.atan2(u.x - player.x, u.z - player.z);
+                        damageUnit(u, 260, true, Math.sin(ang) * 16, Math.cos(ang) * 16);
+                    }
+                }
+            } else if (player.role === 'cavalry') {
+                showToast('🐎 OTLIQ SHIDDATLI HAMLA!');
+                const fwdX = Math.sin(player.yaw);
+                const fwdZ = Math.cos(player.yaw);
+                player.x += fwdX * 18; player.z += fwdZ * 18;
+                spawnDustCloud(player.x, player.z, 10);
+                for (let u of units) {
+                    if (u.alive && u.team === 'red' && Math.hypot(u.x - player.x, u.z - player.z) < 11) {
+                        damageUnit(u, 280, true, fwdX * 18, fwdZ * 18);
+                    }
+                }
+            } else if (player.role === 'archer') {
+                showToast("🏹 OSMONDAN O'Q YOMG'IRI!");
+                const targetX = player.x + Math.sin(player.yaw) * 32;
+                const targetZ = player.z + Math.cos(player.yaw) * 32;
+                for (let i = 0; i < 32; i++) {
+                    const rx = targetX + (Math.random() - 0.5) * 20;
+                    const rz = targetZ + (Math.random() - 0.5) * 20;
+                    spawnArrow(rx - 6, 36 + Math.random() * 14, rz, 5, -45, 0, 'blue', 190, true);
+                }
+            }
+        }
+
+        function damageUnit(unit, amount, byPlayer = false, knockX = 0, knockZ = 0) {
+            if (!unit.alive) return;
+            unit.hp -= amount;
+            unit.x += knockX * 0.18;
+            unit.z += knockZ * 0.18;
+
+            if (unit.hp <= 0) {
+                unit.alive = false;
+                if (unit.rig && unit.rig.root) {
+                    unit.rig.root.rotation.x = Math.PI / 2;
+                    unit.rig.root.position.y = 0.2;
+                    setTimeout(() => {
+                        if (unit.rig && unit.rig.root) unit.rig.root.visible = false;
+                    }, 1200);
+                }
+                if (byPlayer) {
+                    player.kills++;
+                    sfx.playHitImpact();
+                    player.hp = Math.min(player.maxHp, player.hp + 15);
+                }
+                spawnDustCloud(unit.x, unit.z, 2);
+            }
+        }
+
+        function spawnArrow(x, y, z, vx, vy, vz, team, damage, byPlayer = false) {
+            if (arrows.length > 260) return;
+            const mesh = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.025, 0.025, 1.35, 5).rotateX(Math.PI / 2),
+                new THREE.MeshBasicMaterial({ color: team === 'blue' ? 0xfef08a : 0xfda4af })
+            );
+            mesh.position.set(x, y, z);
+            scene.add(mesh);
+            arrows.push({ mesh, x, y, z, vx, vy, vz, team, damage, byPlayer, life: 3.0 });
+        }
+
+        function spawnSlashArc(x, z, rotY, radius, fullCircle = false) {
+            const geo = new THREE.RingGeometry(radius * 0.55, radius, 20, 1, 0, fullCircle ? Math.PI * 2 : Math.PI * 0.8);
+            geo.rotateX(-Math.PI / 2);
+            const mat = new THREE.MeshBasicMaterial({ color: 0xfef08a, transparent: true, opacity: 0.85, side: THREE.DoubleSide });
+            const mesh = new THREE.Mesh(geo, mat);
+            mesh.position.set(x, 1.3, z);
+            mesh.rotation.y = rotY - Math.PI * 0.4;
+            scene.add(mesh);
+            slashEffects.push({ mesh, life: 0.22 });
+        }
+
+        function spawnDustCloud(x, z, count = 2) {
+            if (particles.length > 120) return;
+            for (let i = 0; i < count; i++) {
+                const mesh = new THREE.Mesh(
+                    new THREE.DodecahedronGeometry(0.45 + Math.random() * 0.5, 0),
+                    new THREE.MeshBasicMaterial({ color: 0xe6b87d, transparent: true, opacity: 0.6 })
+                );
+                mesh.position.set(x + (Math.random() - 0.5) * 1.5, 0.6, z + (Math.random() - 0.5) * 1.5);
+                scene.add(mesh);
+                particles.push({
+                    mesh,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: 1.5 + Math.random() * 3,
+                    vz: (Math.random() - 0.5) * 4,
+                    life: 0.5
+                });
+            }
+        }
+
+        // --- MAIN SIMULATION & ANIMATION LOOP ---
+        function updateSimulation(dt) {
+            if (!gameActive) return;
+
+            player.attackCooldown = Math.max(0, player.attackCooldown - dt);
+            player.specialCooldown = Math.max(0, player.specialCooldown - dt);
+
+            let forwardInput = -joystickVector.z;
+            let strafeInput = joystickVector.x;
+            if (keys['KeyW'] || keys['ArrowUp']) forwardInput += 1;
+            if (keys['KeyS'] || keys['ArrowDown']) forwardInput -= 1;
+            if (keys['KeyA'] || keys['ArrowLeft']) strafeInput -= 1;
+            if (keys['KeyD'] || keys['ArrowRight']) strafeInput += 1;
+
+            const sprintMult = (keys['ShiftLeft'] || keys['ShiftRight']) ? 1.35 : 1.0;
+            const fwdX = Math.sin(player.yaw);
+            const fwdZ = Math.cos(player.yaw);
+            const rightX = -Math.cos(player.yaw);
+            const rightZ = Math.sin(player.yaw);
+
+            let moveX = fwdX * forwardInput + rightX * strafeInput;
+            let moveZ = fwdZ * forwardInput + rightZ * strafeInput;
+            const moveLen = Math.hypot(moveX, moveZ);
+
+            if (moveLen > 0.01) {
+                moveX /= moveLen;
+                moveZ /= moveLen;
+                player.x += moveX * player.speed * sprintMult * dt;
+                player.z += moveZ * player.speed * sprintMult * dt;
+
+                // Palace Wall Collisions in Phase 2
+                if (gamePhase === 2 && Math.abs(player.z - 120) < 4.2 && Math.abs(player.x) > 18) {
+                    player.z -= moveZ * player.speed * sprintMult * dt; // Blocked by wall unless at gate (-18 to 18)
+                }
+
+                player.x = Math.max(-165, Math.min(165, player.x));
+                player.z = Math.max(-145, Math.min(165, player.z));
+                player.walkCycle += dt * 11 * sprintMult;
+
+                if (player.role === 'cavalry') {
+                    if (Math.random() < 0.25) spawnDustCloud(player.x, player.z, 1);
+                    for (let u of units) {
+                        if (u.alive && u.team === 'red' && Math.hypot(u.x - player.x, u.z - player.z) < 2.8) {
+                            damageUnit(u, 120 * dt * 6, true, moveX * 10, moveZ * 10);
+                        }
+                    }
+                }
+            } else {
+                player.walkCycle = 0;
+            }
+
+            if (isMouseDown || keys['Space']) {
+                playerPrimaryAttack();
+            }
+
+            const rig = player.rig;
+            const isOnWall = (gamePhase === 2 && Math.abs(player.z - 120) < 5 && Math.abs(player.x) < 55);
+            const currentFloorY = isOnWall ? 10.5 : 0;
+
+            rig.root.position.set(player.x, currentFloorY, player.z);
+            rig.root.rotation.y = player.yaw;
+
+            const legSwing = Math.sin(player.walkCycle) * 0.65;
+            if (player.role !== 'cavalry') {
+                rig.leftLeg.rotation.x = legSwing;
+                rig.rightLeg.rotation.x = -legSwing;
+            } else if (rig.horseGroup.legs) {
+                rig.horseGroup.legs[0].rotation.x = legSwing;
+                rig.horseGroup.legs[1].rotation.x = -legSwing;
+                rig.horseGroup.legs[2].rotation.x = -legSwing;
+                rig.horseGroup.legs[3].rotation.x = legSwing;
+            }
+
+            if (player.swingAnim > 0) {
+                player.swingAnim = Math.max(0, player.swingAnim - dt * 4.5);
+                const slashAngle = Math.sin(player.swingAnim * Math.PI) * 1.9;
+                rig.rightArm.rotation.x = -0.4 - slashAngle;
+                fpRightArm.rotation.x = -slashAngle * 0.85;
+                fpRightArm.position.z = -0.52 - Math.sin(player.swingAnim * Math.PI) * 0.25;
+            } else {
+                rig.rightArm.rotation.x = player.role === 'archer' ? -1.3 : -0.3 + Math.sin(player.walkCycle) * 0.2;
+                fpRightArm.rotation.x = Math.sin(player.walkCycle) * 0.05;
+                fpRightArm.position.z = -0.52;
+            }
+
+            const eyeHeight = isOnWall ? 12.5 : (player.role === 'cavalry' ? 2.85 : 1.78);
+            if (cameraMode === 'first') {
+                const bobY = Math.abs(Math.sin(player.walkCycle)) * 0.07;
+                camera.position.set(player.x + fwdX * 0.22, eyeHeight + bobY, player.z + fwdZ * 0.22);
+                camera.lookAt(player.x + fwdX * 20, eyeHeight + bobY - Math.sin(player.pitch) * 20, player.z + fwdZ * 20);
+            } else if (cameraMode === 'third') {
+                const camDist = player.role === 'cavalry' ? 6.2 : 4.6;
+                const shoulderOffset = 0.75;
+                const camX = player.x - fwdX * camDist + rightX * shoulderOffset;
+                const camZ = player.z - fwdZ * camDist + rightZ * shoulderOffset;
+                const camY = eyeHeight + 1.25 + Math.sin(player.pitch) * 3.0;
+
+                camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 14 * dt);
+                camera.lookAt(player.x + fwdX * 12, eyeHeight - Math.sin(player.pitch) * 6, player.z + fwdZ * 12);
+            } else {
+                camera.position.lerp(new THREE.Vector3(player.x - fwdX * 24, currentFloorY + 24, player.z - fwdZ * 24), 8 * dt);
+                camera.lookAt(player.x + fwdX * 8, currentFloorY + 1.5, player.z + fwdZ * 8);
+            }
+
+            // AI & Combat Loop
+            const CELL_SIZE = 12;
+            const grid = new Map();
+            const blueUnits = [];
+            const redUnits = [];
+
+            for (let u of units) {
+                if (!u.alive) continue;
+                if (u.team === 'blue') blueUnits.push(u);
+                else redUnits.push(u);
+
+                const key = `${Math.floor(u.x / CELL_SIZE)},${Math.floor(u.z / CELL_SIZE)}`;
+                if (!grid.has(key)) grid.set(key, []);
+                grid.get(key).push(u);
+            }
+
+            const time = clock.getElapsedTime();
+            for (let u of units) {
+                if (!u.alive) continue;
+                u.cooldown = Math.max(0, u.cooldown - dt);
+                u.swingTimer = Math.max(0, u.swingTimer - dt);
+
+                let nearest = null;
+                let minDist = 9999;
+
+                if (u.team === 'red' && player.hp > 0) {
+                    const dp = Math.hypot(player.x - u.x, player.z - u.z);
+                    if (dp < 35) {
+                        minDist = dp;
+                        nearest = { x: player.x, z: player.z, isPlayer: true };
+                    }
+                }
+
+                const gx = Math.floor(u.x / CELL_SIZE);
+                const gz = Math.floor(u.z / CELL_SIZE);
+                const rad = u.role === 'archer' ? 4 : 2;
+
+                for (let ox = -rad; ox <= rad; ox++) {
+                    for (let oz = -rad; oz <= rad; oz++) {
+                        const bucket = grid.get(`${gx + ox},${gz + oz}`);
+                        if (!bucket) continue;
+                        for (let other of bucket) {
+                            if (other.team === u.team || !other.alive) continue;
+                            const d = Math.hypot(other.x - u.x, other.z - u.z);
+                            if (d < minDist) {
+                                minDist = d;
+                                nearest = other;
+                            }
+                        }
+                    }
+                }
+
+                let targetX, targetZ;
+                if (gamePhase === 1) {
+                    const marchDir = u.team === 'blue' ? 1 : -1;
+                    targetX = nearest ? nearest.x : u.x + marchDir * 15;
+                    targetZ = nearest ? nearest.z : u.z * 0.98;
+                } else {
+                    // Phase 2: Palace Siege AI
+                    if (u.team === 'red') {
+                        // Red attacks towards the palace gate (x: 0, z: 120)
+                        targetX = nearest ? nearest.x : 0;
+                        targetZ = nearest ? nearest.z : 120;
+                    } else {
+                        // Blue defends palace walls and courtyard
+                        targetX = nearest ? nearest.x : u.x;
+                        targetZ = nearest ? nearest.z : 135;
+                    }
+                }
+
+                const dx = targetX - u.x;
+                const dz = targetZ - u.z;
+                const dist = Math.hypot(dx, dz) || 1;
+                u.rotY = Math.atan2(dx, dz);
+
+                let isMoving = false;
+                if (nearest && minDist <= u.range) {
+                    if (u.cooldown <= 0) {
+                        u.swingTimer = 0.35;
+                        if (u.role === 'archer') {
+                            u.cooldown = 2.2 + Math.random() * 0.8;
+                            const tFlight = Math.max(0.45, minDist / 45);
+                            spawnArrow(u.x, u.team === 'blue' ? 11.5 : 1.6, u.z, dx / tFlight, 0.5 * 24 * tFlight, dz / tFlight, u.team, u.damage, false);
+                        } else {
+                            u.cooldown = 0.95 + Math.random() * 0.4;
+                            if (nearest.isPlayer) {
+                                player.hp = Math.max(0, player.hp - u.damage * 0.45);
+                                const vig = document.getElementById('damage-vignette');
+                                vig.style.opacity = '1';
+                                setTimeout(() => { vig.style.opacity = '0'; }, 180);
+                            } else {
+                                damageUnit(nearest, u.damage, false);
+                            }
+                        }
+                    }
+                } else {
+                    isMoving = true;
+                    u.x += (dx / dist) * u.speed * dt;
+                    u.z += (dz / dist) * u.speed * dt;
+                }
+
+                if (u.isArticulated && u.rig) {
+                    const unitFloorY = (gamePhase === 2 && u.team === 'blue' && Math.abs(u.z - 120) < 5 && Math.abs(u.x) < 55) ? 10.5 : 0;
+                    u.rig.root.position.set(u.x, unitFloorY, u.z);
+                    u.rig.root.rotation.y = u.rotY;
+
+                    const stride = isMoving ? Math.sin(time * 10 + u.animPhase) * 0.65 : 0;
+                    if (u.role !== 'cavalry') {
+                        u.rig.leftLeg.rotation.x = stride;
+                        u.rig.rightLeg.rotation.x = -stride;
+                    } else if (u.rig.horseGroup.legs) {
+                        u.rig.horseGroup.legs[0].rotation.x = stride;
+                        u.rig.horseGroup.legs[1].rotation.x = -stride;
+                        u.rig.horseGroup.legs[2].rotation.x = -stride;
+                        u.rig.horseGroup.legs[3].rotation.x = stride;
+                    }
+
+                    if (u.swingTimer > 0) {
+                        u.rig.rightArm.rotation.x = -0.3 - Math.sin((u.swingTimer / 0.35) * Math.PI) * 1.8;
+                    } else {
+                        u.rig.rightArm.rotation.x = u.role === 'archer' ? -1.3 : -0.3 - stride * 0.3;
+                    }
+                }
+            }
+
+            // Flying Arrows
+            for (let i = arrows.length - 1; i >= 0; i--) {
+                const a = arrows[i];
+                a.life -= dt;
+                a.vy -= 24 * dt;
+                a.x += a.vx * dt;
+                a.y += a.vy * dt;
+                a.z += a.vz * dt;
+                a.mesh.position.set(a.x, a.y, a.z);
+                a.mesh.lookAt(a.x + a.vx, a.y + a.vy, a.z + a.vz);
+
+                if (a.y <= 0.2 || a.life <= 0) {
+                    scene.remove(a.mesh);
+                    arrows.splice(i, 1);
+                    continue;
+                }
+
+                const targets = a.team === 'blue' ? redUnits : blueUnits;
+                let hit = false;
+                for (let t of targets) {
+                    if (t.alive && Math.abs(t.x - a.x) < 1.3 && Math.abs(t.z - a.z) < 1.3 && Math.abs(a.y - (gamePhase === 2 && t.team === 'blue' && Math.abs(t.z - 120) < 5 ? 10.5 : 0)) < 2.5) {
+                        damageUnit(t, a.damage, a.byPlayer);
+                        hit = true;
+                        break;
+                    }
+                }
+                if (hit) {
+                    scene.remove(a.mesh);
+                    arrows.splice(i, 1);
+                }
+            }
+
+            for (let i = slashEffects.length - 1; i >= 0; i--) {
+                const s = slashEffects[i];
+                s.life -= dt;
+                s.mesh.material.opacity = Math.max(0, s.life * 4);
+                if (s.life <= 0) {
+                    scene.remove(s.mesh);
+                    slashEffects.splice(i, 1);
+                }
+            }
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.life -= dt;
+                p.mesh.position.x += p.vx * dt;
+                p.mesh.position.y += p.vy * dt;
+                p.mesh.position.z += p.vz * dt;
+                p.mesh.material.opacity = Math.max(0, p.life * 1.2);
+                if (p.life <= 0) {
+                    scene.remove(p.mesh);
+                    particles.splice(i, 1);
+                }
+            }
+
+            updateDistantInstancedMeshes(blueUnits, redUnits, time);
+            updateHUD(blueUnits, redUnits);
+        }
+
+        function updateDistantInstancedMeshes(blueUnits, redUnits, time) {
+            const bDist = blueUnits.filter(u => !u.isArticulated);
+            const rDist = redUnits.filter(u => !u.isArticulated);
+
+            for (let i = 0; i < DISTANT_TROOPS_PER_SIDE; i++) {
+                if (i < bDist.length) {
+                    const u = bDist[i];
+                    const bob = Math.abs(Math.sin(time * 9 + u.animPhase)) * 0.15;
+                    const floorY = (gamePhase === 2 && Math.abs(u.z - 120) < 5) ? 10.5 : 0.7;
+                    dummy.position.set(u.x, floorY + bob, u.z);
+                    dummy.rotation.set(0, u.rotY, 0);
+                    dummy.scale.set(1, 1, 1);
+                    dummy.updateMatrix();
+                    distantBlueBody.setMatrixAt(i, dummy.matrix);
+
+                    dummy.position.set(u.x, floorY + 0.85 + bob, u.z);
+                    dummy.updateMatrix();
+                    distantBlueHead.setMatrixAt(i, dummy.matrix);
+                } else {
+                    dummy.scale.set(0, 0, 0);
+                    dummy.updateMatrix();
+                    distantBlueBody.setMatrixAt(i, dummy.matrix);
+                    distantBlueHead.setMatrixAt(i, dummy.matrix);
+                }
+
+                if (i < rDist.length) {
+                    const u = rDist[i];
+                    const bob = Math.abs(Math.sin(time * 9 + u.animPhase)) * 0.15;
+                    dummy.position.set(u.x, 0.7 + bob, u.z);
+                    dummy.rotation.set(0, u.rotY, 0);
+                    dummy.scale.set(1, 1, 1);
+                    dummy.updateMatrix();
+                    distantRedBody.setMatrixAt(i, dummy.matrix);
+
+                    dummy.position.set(u.x, 1.55 + bob, u.z);
+                    dummy.updateMatrix();
+                    distantRedHead.setMatrixAt(i, dummy.matrix);
+                } else {
+                    dummy.scale.set(0, 0, 0);
+                    dummy.updateMatrix();
+                    distantRedBody.setMatrixAt(i, dummy.matrix);
+                    distantRedHead.setMatrixAt(i, dummy.matrix);
+                }
+            }
+            distantBlueBody.instanceMatrix.needsUpdate = true;
+            distantBlueHead.instanceMatrix.needsUpdate = true;
+            distantRedBody.instanceMatrix.needsUpdate = true;
+            distantRedHead.instanceMatrix.needsUpdate = true;
+        }
+
+        function updateHUD(blueUnits, redUnits) {
+            const maxPerSide = CLOSE_HUMANS_PER_SIDE + CAVALRY_PER_SIDE + DISTANT_TROOPS_PER_SIDE;
+            const blueScale = Math.round((blueUnits.length / maxPerSide) * 5000);
+            const redScale = Math.round((redUnits.length / maxPerSide) * 5000);
+            const total = Math.max(1, blueScale + redScale);
+
+            document.getElementById('blue-total-text').textContent = blueScale.toLocaleString();
+            document.getElementById('red-total-text').textContent = redScale.toLocaleString();
+            document.getElementById('army-bar-blue').style.width = `${(blueScale / total) * 100}%`;
+            document.getElementById('army-bar-red').style.width = `${(redScale / total) * 100}%`;
+
+            let horses = 0;
+            for (let u of blueUnits) if (u.role === 'cavalry') horses++;
+            for (let u of redUnits) if (u.role === 'cavalry') horses++;
+            document.getElementById('stat-horses').textContent = horses;
+            document.getElementById('player-kills').textContent = player.kills;
+
+            const hpPct = Math.max(0, (player.hp / player.maxHp) * 100);
+            document.getElementById('hero-hp-bar').style.width = `${hpPct}%`;
+            document.getElementById('hero-hp-text').textContent = `${Math.ceil(player.hp)} / ${player.maxHp} JON`;
+
+            const specBtn = document.getElementById('special-btn');
+            if (player.specialCooldown > 0) {
+                specBtn.textContent = `⏳ ${player.specialCooldown.toFixed(1)}s`;
+                specBtn.classList.add('opacity-60');
+            } else {
+                specBtn.textContent = `⚡ MAXSUS ZARBA [E]`;
+                specBtn.classList.remove('opacity-60');
+            }
+
+            const mCanvas = document.getElementById('minimap-canvas');
+            const mCtx = mCanvas.getContext('2d');
+            mCtx.fillStyle = '#362312';
+            mCtx.fillRect(0, 0, 124, 124);
+
+            mCtx.fillStyle = '#38bdf8';
+            for (let i = 0; i < blueUnits.length; i += 2) {
+                const u = blueUnits[i];
+                mCtx.fillRect(62 + (u.x / 170) * 56, 62 + (u.z / 170) * 56, 2, 2);
+            }
+            mCtx.fillStyle = '#f43f5e';
+            for (let i = 0; i < redUnits.length; i += 2) {
+                const u = redUnits[i];
+                mCtx.fillRect(62 + (u.x / 170) * 56, 62 + (u.z / 170) * 56, 2, 2);
+            }
+            mCtx.fillStyle = '#fde047';
+            mCtx.beginPath();
+            mCtx.arc(62 + (player.x / 170) * 56, 62 + (player.z / 170) * 56, 4, 0, Math.PI * 2);
+            mCtx.fill();
+
+            if (redUnits.length === 0) {
+                if (gamePhase === 1) {
+                    transitionToPhase2();
+                } else {
+                    endBattle(true, blueScale);
+                }
+            } else if (blueUnits.length === 0 || player.hp <= 0) {
+                endBattle(false, blueScale);
+            }
+        }
+
+        function endBattle(victory, survivors) {
+            gameActive = false;
+            document.getElementById('end-screen').classList.remove('hidden');
+            document.getElementById('end-kills').textContent = player.kills;
+            document.getElementById('end-survivors').textContent = survivors.toLocaleString();
+
+            if (victory) {
+                document.getElementById('end-badge').textContent = '🏆👑';
+                document.getElementById('end-title').textContent = "BUYUK G'ALABA!";
+                document.getElementById('end-title').className = 'font-epic text-3xl sm:text-5xl font-black text-amber-400 mb-2';
+                document.getElementById('end-subtitle').textContent = "Saroy muvaffaqiyatli himoya qilindi va dushmanlar tormor etildi!";
+            } else {
+                document.getElementById('end-badge').textContent = '⚔️💔';
+                document.getElementById('end-title').textContent = "MAG'LUBIYAT";
+                document.getElementById('end-title').className = 'font-epic text-3xl sm:text-5xl font-black text-rose-500 mb-2';
+                document.getElementById('end-subtitle').textContent = "Saroy quladi va qahramon halok bo'ldi.";
+            }
+        }
+
+        function setupControls() {
+            const canvas = document.getElementById('game-canvas');
+
+            window.addEventListener('keydown', e => {
+                keys[e.code] = true;
+                if (e.code === 'KeyV') cycleCameraMode();
+                if (e.code === 'KeyF') possessNearestAlly();
+                if (e.code === 'KeyE') triggerSpecialAbility();
+                if (e.code === 'Digit1') switchHeroClass('swordsman');
+                if (e.code === 'Digit2') switchHeroClass('cavalry');
+                if (e.code === 'Digit3') switchHeroClass('archer');
+            });
+            window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+            canvas.addEventListener('mousedown', e => {
+                if (!gameActive) return;
+                if (e.button === 0) {
+                    isMouseDown = true;
+                    playerPrimaryAttack();
+                    if (document.pointerLockElement !== canvas && canvas.requestPointerLock) {
+                        try { canvas.requestPointerLock(); } catch (err) {}
+                    }
+                } else if (e.button === 2) {
+                    isRightDragging = true;
+                    triggerSpecialAbility();
+                }
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+            });
+
+            window.addEventListener('mouseup', () => { isMouseDown = false; isRightDragging = false; });
+            window.addEventListener('contextmenu', e => e.preventDefault());
+
+            window.addEventListener('mousemove', e => {
+                if (!gameActive) return;
+                if (document.pointerLockElement === canvas) {
+                    player.yaw -= e.movementX * 0.0032;
+                    player.pitch = Math.max(-0.45, Math.min(0.55, player.pitch + e.movementY * 0.0025));
+                } else {
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    player.yaw -= dx * 0.0045;
+                    player.pitch = Math.max(-0.45, Math.min(0.55, player.pitch + dy * 0.0035));
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                }
+            });
+
+            const joyZone = document.getElementById('joystick-zone');
+            const joyKnob = document.getElementById('joystick-knob');
+            let joyActive = false;
+
+            joyZone.addEventListener('touchstart', e => { e.preventDefault(); joyActive = true; }, { passive: false });
+            joyZone.addEventListener('touchmove', e => {
+                if (!joyActive) return;
+                e.preventDefault();
+                const rect = joyZone.getBoundingClientRect();
+                const t = e.touches[0];
+                const dx = t.clientX - (rect.left + rect.width / 2);
+                const dy = t.clientY - (rect.top + rect.height / 2);
+                const maxR = 36;
+                const dist = Math.min(maxR, Math.hypot(dx, dy));
+                const ang = Math.atan2(dy, dx);
+                joyKnob.style.transform = `translate(${Math.cos(ang) * dist}px, ${Math.sin(ang) * dist}px)`;
+                joystickVector.x = (Math.cos(ang) * dist) / maxR;
+                joystickVector.z = (Math.sin(ang) * dist) / maxR;
+            }, { passive: false });
+
+            const resetJoy = () => {
+                joyActive = false;
+                joyKnob.style.transform = 'translate(0px, 0px)';
+                joystickVector.x = 0; joystickVector.z = 0;
+            };
+            joyZone.addEventListener('touchend', resetJoy);
+            joyZone.addEventListener('touchcancel', resetJoy);
+
+            let lastTouchX = 0;
+            canvas.addEventListener('touchstart', e => { if (e.touches.length === 1) lastTouchX = e.touches[0].clientX; });
+            canvas.addEventListener('touchmove', e => {
+                if (e.touches.length === 1 && gameActive) {
+                    const dx = e.touches[0].clientX - lastTouchX;
+                    player.yaw -= dx * 0.007;
+                    lastTouchX = e.touches[0].clientX;
+                }
+            });
+
+            const mAttack = document.getElementById('mobile-attack-btn');
+            mAttack.addEventListener('touchstart', e => { e.preventDefault(); isMouseDown = true; playerPrimaryAttack(); });
+            mAttack.addEventListener('touchend', () => isMouseDown = false);
+
+            const mSpec = document.getElementById('mobile-special-btn');
+            mSpec.addEventListener('touchstart', e => { e.preventDefault(); triggerSpecialAbility(); });
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+            const dt = Math.min(clock.getDelta(), 0.05);
+            if (!gameActive && scene) {
+                const t = clock.getElapsedTime() * 0.4;
+                camera.position.set(player.x + Math.cos(t) * 6, 3.2, player.z + Math.sin(t) * 6);
+                camera.lookAt(player.x, 1.5, player.z);
+            } else {
+                updateSimulation(dt);
+            }
+            renderer.render(scene, camera);
+        }
+
+        window.onload = initThree;
+    </script>
+</body>
+</html>

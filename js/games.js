@@ -147,6 +147,39 @@ window.GAMES = [
     controls: "Sichqoncha yoki strelkalar",
     orientation: "portrait"
   },
+  {
+    id: "dinislom-dream-weaver",
+    title: "Dream Weaver",
+    author: "Dinislom",
+    category: "Puzzle",
+    description: "400 ta bemorni tushidan uyg‘oting! Har bir tush 7 bosqichdan iborat: gravitatsiyani aylantirib, yo‘qolgan xotiralarni yig‘ing.",
+    path: "games/dinislom-dream-weaver/index.html",
+    thumb: "games/dinislom-dream-weaver/thumb.png",
+    controls: "A D / ← → — yurish, W / ↑ — sakrash, Probel — gravitatsiyani aylantirish",
+    orientation: "landscape"
+  },
+  {
+    id: "dinislom-dengiz-jangi",
+    title: "Dengiz jangi (1 vs 1)",
+    author: "Dinislom",
+    category: "Puzzle",
+    description: "Klassik “Morskoy boy”: ikki o‘yinchi kemalarini joylashtiradi va navbat bilan bir-birining flotiga o‘q uzadi.",
+    path: "games/dinislom-dengiz-jangi/index.html",
+    thumb: "games/dinislom-dengiz-jangi/thumb.png",
+    controls: "Sichqoncha: kemalarni joylash, aylantirish va nishonga olish",
+    orientation: "landscape"
+  },
+  {
+    id: "dinislom-detektiv",
+    title: "Chrono-Detective: 1888",
+    author: "Dinislom",
+    category: "Puzzle",
+    description: "1888-yil, London. Qirollik olmosi o‘g‘irlandi! Manzillarni tekshiring, guvohlar bilan suhbatlashing, dalil yig‘ing va tong otguncha o‘g‘rini toping.",
+    path: "games/dinislom-detektiv/index.html",
+    thumb: "games/dinislom-detektiv/thumb.png",
+    controls: "Sichqoncha bilan bosish",
+    orientation: "landscape"
+  },
 
   /* ---------- Dovudxon ---------- */
   {
@@ -272,6 +305,17 @@ window.GAMES = [
     controls: "W A S D / strelkalar — haydash, Probel — otish, F — tushish/minish, C — salon ko'rinishi, H — sirena",
     orientation: "landscape"
   },
+  {
+    id: "ibrohim-askarlar",
+    title: "Askarlar: Saroy qamali",
+    author: "Ibrohim",
+    category: "Action",
+    description: "3D o‘rta asr jangi: 5 000 kishilik lashkar, qilichbozlar, otliqlar va kamonchilar. Cho‘l jangidan so‘ng qadimgi saroyni qamal qiling!",
+    path: "games/ibrohim-askarlar/index.html",
+    thumb: "games/ibrohim-askarlar/thumb.png",
+    controls: "W A S D — harakat, Shift — yugurish, Probel — hujum, 1–3 — jangchi tanlash, E / F — maxsus zarba, V — kamera",
+    orientation: "landscape"
+  },
 
   /* ---------- Tohirjon ---------- */
   {
@@ -340,6 +384,63 @@ window.GAMES = [
     path: "games/temur-minecraft/index.html",
     thumb: "games/temur-minecraft/thumb.png",
     controls: "A D / ← → — yurish, W / Probel — sakrash, chap tugma — qazish, o'ng tugma — qo'yish / verstak, 1–8 — tanlash, C — verstakni yopish",
+    orientation: "landscape"
+  },
+  {
+    id: "temur-mini-minecraft",
+    title: "Mini Minecraft",
+    author: "Temur",
+    category: "Action",
+    description: "3D cheksiz bloklar olami: qazing, quring, sandiqlar va asboblar yasang, ochlik va jonlarni kuzating. Dunyolar saqlanadi. (O‘yin ichidagi yozuvlar rus tilida.)",
+    path: "games/temur-mini-minecraft/index.html",
+    thumb: "games/temur-mini-minecraft/thumb.png",
+    controls: "W A S D — yurish, Probel — sakrash, sichqoncha — qarash, chap/o‘ng tugma — qazish/qo‘yish, 1–9 — tanlash, T — inventar, Esc — menyu",
+    orientation: "landscape"
+  },
+
+  /* ---------- Kamron ---------- */
+  {
+    id: "kamron-3d-poyga",
+    title: "Toshkent 3D Poyga",
+    author: "Kamron",
+    category: "Poyga",
+    description: "Toshkent ko‘chalarida 3D poyga: chorrahalarda 90° buriling, tanga yig‘ing va mashinani asrang. Nitro va drift bor!",
+    path: "games/kamron-3d-poyga/index.html",
+    thumb: "games/kamron-3d-poyga/thumb.png",
+    controls: "W / ↑ — gaz, S / ↓ — tormoz, A D / ← → — burilish, Probel — nitro",
+    orientation: "landscape"
+  },
+  {
+    id: "kamron-dr-driving",
+    title: "Toshkent haydovchisi",
+    author: "Kamron",
+    category: "Poyga",
+    description: "Haqiqiy fizika, rul, D/R uzatmalar va parkovka sinovlari bilan 100 ta level. Toshkent ko‘chalarida ehtiyotkor haydang!",
+    path: "games/kamron-dr-driving/index.html",
+    thumb: "games/kamron-dr-driving/thumb.png",
+    controls: "Strelkalar — gaz, tormoz va rul",
+    orientation: "landscape"
+  },
+  {
+    id: "kamron-kosmik-urush",
+    title: "Kosmik urush",
+    author: "Kamron",
+    category: "Action",
+    description: "Kosmik kemangiz bilan dushmanlarga qarshi kurashing!",
+    path: "games/kamron-kosmik-urush/index.html",
+    thumb: "games/kamron-kosmik-urush/thumb.png",
+    controls: "← → yoki A D — harakat, Probel — uzluksiz o‘q otish",
+    orientation: "landscape"
+  },
+  {
+    id: "kamron-sakrash",
+    title: "3D Sakrash",
+    author: "Kamron",
+    category: "Arcade",
+    description: "To‘siqlardan sakrab o‘ting va eng ko‘p ochko to‘plang.",
+    path: "games/kamron-sakrash/index.html",
+    thumb: "games/kamron-sakrash/thumb.png",
+    controls: "Probel, ↑ yoki ekrandagi tugma — sakrash",
     orientation: "landscape"
   }
 ];

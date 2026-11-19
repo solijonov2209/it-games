@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Dr. Driving: Toshkent Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #030712;
+            color: #f8fafc;
+            overflow: hidden;
+            touch-action: none;
+            user-select: none;
+        }
+        .orbitron {
+            font-family: 'Orbitron', sans-serif;
+        }
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        .glass-panel {
+            background: rgba(11, 18, 33, 0.9);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+        }
+        .pedal-btn {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            border: 2px solid rgba(56, 189, 248, 0.4);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.7);
+            transition: all 0.05s ease;
+        }
+        .pedal-btn:active, .pedal-btn.active {
+            transform: scale(0.92);
+            background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+            border-color: #38bdf8;
+            box-shadow: 0 0 20px rgba(56, 189, 248, 0.7);
+        }
+    </style>
+</head>
+<body class="w-screen h-screen flex flex-col items-center justify-between p-2 sm:p-4 select-none">
+
+    <!-- Top Dashboard Header -->
+    <header class="w-full max-w-4xl flex items-center justify-between glass-panel px-4 py-2.5 rounded-2xl shadow-2xl z-20">
+        <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center shadow-lg shadow-amber-500/30">
+                <i class="fa-solid fa-car text-white text-base"></i>
+            </div>
+            <div>
+                <h1 class="orbitron font-black text-xs sm:text-base tracking-wider text-amber-400">DR. DRIVING</h1>
+                <p class="text-[10px] text-slate-400">Toshkent Pro Edition</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2 sm:space-x-5">
+            <div class="text-center bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800">
+                <span class="text-[9px] text-slate-400 block">GEAR</span>
+                <span id="gearDisplay" class="orbitron font-black text-sm sm:text-base text-cyan-400">D</span>
+            </div>
+            <div class="text-center bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800">
+                <span class="text-[9px] text-slate-400 block">TEZLIK</span>
+                <span id="speedDisplay" class="orbitron font-bold text-sm sm:text-base text-emerald-400">0 km/h</span>
+            </div>
+            <div class="text-center bg-slate-900/90 px-2.5 py-1 rounded-xl border border-slate-800">
+                <span class="text-[9px] text-slate-400 block">VAQT</span>
+                <span id="timeDisplay" class="orbitron font-bold text-sm sm:text-base text-rose-400">45s</span>
+            </div>
+            <div class="text-right">
+                <span class="text-[9px] text-slate-400 block">NAQD</span>
+                <span id="coinDisplay" class="orbitron font-bold text-sm sm:text-base text-amber-400">🪙 200</span>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Game Canvas Container -->
+    <main class="relative w-full max-w-4xl flex-1 flex flex-col items-center justify-center my-1.5">
+        <div class="relative w-full aspect-[4/3] max-h-[56vh] sm:max-h-[62vh] rounded-2xl overflow-hidden glass-panel shadow-2xl border border-cyan-500/30 flex items-center justify-center">
+            
+            <canvas id="gameCanvas" class="w-full h-full cursor-crosshair"></canvas>
+
+            <!-- Start Menu Screen -->
+            <div id="startScreen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30">
+                <div class="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/40 flex items-center justify-center mb-4 shadow-xl shadow-amber-500/20 animate-pulse">
+                    <i class="fa-solid fa-steering-wheel text-amber-400 text-3xl"></i>
+                </div>
+                <h2 class="orbitron font-black text-xl sm:text-3xl text-white mb-2 tracking-wide">DR. DRIVING: TOSHKENT</h2>
+                <p class="text-xs sm:text-sm text-slate-300 max-w-md mb-6 leading-relaxed">
+                    Haqiqiy fizika, rul boshqaruvi, D/R uzatmalar va aniq parkovka sinovlari!
+                </p>
+                <div class="flex flex-wrap justify-center gap-3 mb-6">
+                    <button onclick="openGarage()" class="orbitron px-5 py-3 bg-slate-800 hover:bg-slate-700 text-cyan-400 font-bold rounded-xl border border-cyan-500/30 text-xs flex items-center space-x-2">
+                        <i class="fa-solid fa-car-side"></i>
+                        <span>GARAJ & TAYYORGARLIK</span>
+                    </button>
+                    <button onclick="startMissionSelect()" class="orbitron px-7 py-3 bg-gradient-to-r from-amber-500 to-rose-600 hover:from-amber-400 hover:to-rose-500 text-white font-bold rounded-xl shadow-lg shadow-amber-500/30 text-xs sm:text-sm flex items-center space-x-2">
+                        <i class="fa-solid fa-play"></i>
+                        <span>O'YINNI BOSHLASH</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Mission Selection Screen -->
+            <div id="missionScreen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <h2 class="orbitron font-black text-xl sm:text-2xl text-cyan-400 mb-4 tracking-wide">MISSIYANI TANLANG</h2>
+                <div id="missionList" class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl mb-6">
+                    <!-- Populated dynamically -->
+                </div>
+                <button onclick="backToStart()" class="text-xs text-slate-400 hover:text-white underline">Orqaga qaytish</button>
+            </div>
+
+            <!-- Garage & Upgrades Screen -->
+            <div id="garageScreen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <h2 class="orbitron font-black text-xl sm:text-2xl text-amber-400 mb-4 tracking-wide">GARAJ & MASHINALAR</h2>
+                <div id="carList" class="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-2xl mb-6">
+                    <!-- Populated dynamically -->
+                </div>
+                <button onclick="closeGarage()" class="orbitron px-6 py-2.5 bg-slate-800 hover:bg-slate-700 text-white font-bold rounded-xl text-xs">ASOSIY MENYU</button>
+            </div>
+
+            <!-- Mission Success Screen -->
+            <div id="completeScreen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <div class="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/40 flex items-center justify-center mb-4 shadow-xl shadow-emerald-500/20">
+                    <i class="fa-solid fa-trophy text-emerald-400 text-3xl"></i>
+                </div>
+                <h2 class="orbitron font-black text-xl sm:text-3xl text-emerald-400 mb-1">MISSIYA MUVAFFAQIYATLI!</h2>
+                <p class="text-xs text-slate-300 mb-6">Ajoyib haydovchilik va parkovka!</p>
+                <div class="glass-panel p-4 rounded-2xl w-full max-w-xs mb-6 text-xs border border-slate-800">
+                    <div class="flex justify-between items-center mb-2 pb-2 border-b border-slate-800">
+                        <span class="text-slate-400">Mukofot:</span>
+                        <span id="rewardCoins" class="orbitron font-bold text-amber-400">🪙 +120</span>
+                    </div>
+                </div>
+                <button onclick="nextMissionOrMenu()" class="orbitron px-8 py-3 bg-gradient-to-r from-emerald-500 to-teal-600 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/30 text-sm">KEYINGI BOSQICH</button>
+            </div>
+
+            <!-- Game Over / Crash Screen -->
+            <div id="gameOverScreen" class="absolute inset-0 bg-slate-950/95 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center z-30 hidden">
+                <div class="w-16 h-16 rounded-2xl bg-rose-500/10 border border-rose-500/40 flex items-center justify-center mb-4 shadow-xl shadow-rose-500/20">
+                    <i class="fa-solid fa-car-burst text-rose-500 text-3xl"></i>
+                </div>
+                <h2 class="orbitron font-black text-xl sm:text-3xl text-rose-500 mb-2">AVARIYA / VAQT TUGADI</h2>
+                <p id="failReason" class="text-xs sm:text-sm text-slate-300 mb-6">Mashinaga shikoyat yetdi yoki vaqt tugadi!</p>
+                <button onclick="restartCurrentMission()" class="orbitron px-8 py-3 bg-gradient-to-r from-rose-500 to-red-600 text-white font-bold rounded-xl shadow-lg shadow-rose-500/30 text-sm">QAYTADAN URINIB KO'RISH</button>
+            </div>
+
+        </div>
+
+        <!-- Dr. Driving Authentic Controls Panel (Steering Wheel, Gears, Gas, Brake) -->
+        <div class="w-full max-w-4xl flex items-center justify-between mt-2 px-2">
+            <!-- Steering Wheel -->
+            <div class="relative w-32 h-32 sm:w-36 sm:h-36 flex items-center justify-center">
+                <div id="steeringWheel" class="w-full h-full rounded-full border-4 border-slate-700 bg-slate-900/95 shadow-2xl flex items-center justify-center relative cursor-grab active:cursor-grabbing">
+                    <div class="absolute inset-2 rounded-full border border-slate-800"></div>
+                    <div id="wheelIndicator" class="absolute top-2 w-4 h-6 bg-cyan-400 rounded-full shadow-lg shadow-cyan-500/50 transition-transform duration-75"></div>
+                    <div class="w-9 h-9 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 text-xs font-bold">UZ</div>
+                </div>
+            </div>
+
+            <!-- Gear Selector (D / R) -->
+            <div class="flex flex-col space-y-2">
+                <button id="gearD" onclick="setGear('D')" class="orbitron px-4 py-3 rounded-xl bg-cyan-600 text-white font-bold text-xs shadow-lg border border-cyan-400">D (Oldinga)</button>
+                <button id="gearR" onclick="setGear('R')" class="orbitron px-4 py-3 rounded-xl bg-slate-800 text-slate-400 font-bold text-xs shadow-lg border border-slate-700">R (Orqaga)</button>
+            </div>
+
+            <!-- Pedals (Brake & Accelerator) -->
+            <div class="flex space-x-3">
+                <button id="btnBrake" class="pedal-btn w-20 sm:w-24 h-28 sm:h-32 rounded-2xl flex flex-col items-center justify-center text-rose-400 font-bold text-xs">
+                    <i class="fa-solid fa-hand text-xl mb-1"></i>
+                    <span>TORMOZ</span>
+                </button>
+                <button id="btnAccel" class="pedal-btn w-20 sm:w-24 h-28 sm:h-32 rounded-2xl flex flex-col items-center justify-center text-emerald-400 font-bold text-xs">
+                    <i class="fa-solid fa-gauge-high text-xl mb-1"></i>
+                    <span>GAZ</span>
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="w-full max-w-4xl text-center text-[10px] text-slate-500 mt-1">
+        <span>Dr. Driving Toshkent Pro v3.0 • Web Audio API & HTML5 Canvas Physics</span>
+    </footer>
+
+    <!-- Modal Alert Box -->
+    <div id="messageModal" class="fixed inset-0 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 z-50 hidden">
+        <div class="glass-panel p-6 rounded-2xl max-w-sm w-full text-center border border-cyan-500/30 shadow-2xl">
+            <h3 id="modalTitle" class="orbitron font-bold text-base text-cyan-400 mb-2">Xabar</h3>
+            <p id="modalText" class="text-slate-300 text-xs mb-5"></p>
+            <button onclick="closeModal()" class="orbitron px-6 py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-xl text-xs transition-all shadow-lg">TUSHUNARLI</button>
+        </div>
+    </div>
+
+    <script>
+        function showMessage(title, text) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalText').innerText = text;
+            document.getElementById('messageModal').classList.remove('hidden');
+        }
+        function closeModal() {
+            document.getElementById('messageModal').classList.add('hidden');
+        }
+
+        // Web Audio API Sound System
+        let audioCtx = null;
+        function initAudio() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+        }
+
+        function playSound(type) {
+            if (!audioCtx) return;
+            try {
+                if (type === 'coin') {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(850, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(1500, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.15);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.15);
+                } else if (type === 'crash') {
+                    let osc = audioCtx.createOscillator();
+                    let gain = audioCtx.createGain();
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(140, audioCtx.currentTime);
+                    osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.4, audioCtx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.connect(gain);
+                    gain.connect(audioCtx.destination);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                }
+            } catch(e) {}
+        }
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeCanvas() {
+            const container = canvas.parentElement;
+            canvas.width = container.clientWidth;
+            canvas.height = container.clientHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Game Data & Garage
+        let playerCoins = 250;
+        let currentCar = 0;
+        let cars = [
+            { name: "Matiz (Toshkent Taksi)", speed: 3.2, turn: 0.052, color: '#f8fafc', price: 0, unlocked: true },
+            { name: "Gentra / Cobalt", speed: 4.4, turn: 0.046, color: '#38bdf8', price: 200, unlocked: false },
+            { name: "Malibu Turbo", speed: 5.6, turn: 0.042, color: '#ef4444', price: 450, unlocked: false }
+        ];
+
+        // 1 dan 100 gacha bo'lgan bosqichlarni generatsiya qilish
+        let missions = [];
+        for (let i = 1; i <= 100; i++) {
+            let difficulty = Math.min(5, Math.ceil(i / 20));
+            missions.push({
+                id: i,
+                title: `${i}-Bosqich: Toshkent Yo'li #${i}`,
+                desc: `${i}-darajali yo'l va parkovka sinovi. Ehtiyotkorlik bilan harakatlaning!`,
+                reward: 50 + i * 15,
+                timeLimit: Math.max(30, 65 - Math.floor(i / 3)),
+                difficulty: difficulty
+            });
+        }
+
+        let gameState = 'START'; // START, MISSION_SELECT, GARAGE, PLAYING, COMPLETE, GAMEOVER
+        let currentMissionIdx = 0;
+        let timeLeft = 45;
+        let timerInterval = null;
+
+        // Vehicle Physics State
+        let car = {
+            x: 100, y: 250, width: 36, height: 20,
+            angle: 0, speed: 0, maxSpeed: 4, accel: 0.07, friction: 0.035,
+            gear: 'D'
+        };
+
+        let steeringAngle = 0;
+        let isAccelerating = false;
+        let isBraking = false;
+
+        let parkingZone = { x: 550, y: 150, width: 85, height: 50, angle: 0 };
+        let obstacles = [];
+        let coins = [];
+
+        // Steering Wheel Drag & Touch Mechanics
+        const wheel = document.getElementById('steeringWheel');
+        let wheelCenter = { x: 0, y: 0 };
+        let isDraggingWheel = false;
+
+        function updateWheelCenter() {
+            const rect = wheel.getBoundingClientRect();
+            wheelCenter.x = rect.left + rect.width / 2;
+            wheelCenter.y = rect.top + rect.height / 2;
+        }
+
+        window.addEventListener('resize', updateWheelCenter);
+        setTimeout(updateWheelCenter, 200);
+
+        wheel.addEventListener('touchstart', (e) => { initAudio(); isDraggingWheel = true; updateWheelCenter(); e.preventDefault(); });
+        window.addEventListener('touchend', () => { isDraggingWheel = false; steeringAngle = 0; document.getElementById('wheelIndicator').style.transform = `rotate(0deg)`; });
+        window.addEventListener('touchmove', (e) => {
+            if (!isDraggingWheel) return;
+            let touch = e.touches[0];
+            let angle = Math.atan2(touch.clientY - wheelCenter.y, touch.clientX - wheelCenter.x);
+            steeringAngle = Math.max(-1, Math.min(1, angle * 0.8));
+            document.getElementById('wheelIndicator').style.transform = `rotate(${steeringAngle * 75}deg)`;
+            e.preventDefault();
+        }, { passive: false });
+
+        wheel.addEventListener('mousedown', (e) => { initAudio(); isDraggingWheel = true; updateWheelCenter(); });
+        window.addEventListener('mouseup', () => { isDraggingWheel = false; steeringAngle = 0; document.getElementById('wheelIndicator').style.transform = `rotate(0deg)`; });
+        window.addEventListener('mousemove', (e) => {
+            if (!isDraggingWheel) return;
+            let angle = Math.atan2(e.clientY - wheelCenter.y, e.clientX - wheelCenter.x);
+            steeringAngle = Math.max(-1, Math.min(1, angle * 0.8));
+            document.getElementById('wheelIndicator').style.transform = `rotate(${steeringAngle * 75}deg)`;
+        });
+
+        // Keyboard Arrow Support for Steering and Driving
+        window.addEventListener('keydown', (e) => {
+            initAudio();
+            if (e.key === 'ArrowLeft') { steeringAngle = -0.9; document.getElementById('wheelIndicator').style.transform = `rotate(-65deg)`; }
+            if (e.key === 'ArrowRight') { steeringAngle = 0.9; document.getElementById('wheelIndicator').style.transform = `rotate(65deg)`; }
+            if (e.key === 'ArrowUp') { isAccelerating = true; document.getElementById('btnAccel').classList.add('active'); }
+            if (e.key === 'ArrowDown') { isBraking = true; document.getElementById('btnBrake').classList.add('active'); }
+        });
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { steeringAngle = 0; document.getElementById('wheelIndicator').style.transform = `rotate(0deg)`; }
+            if (e.key === 'ArrowUp') { isAccelerating = false; document.getElementById('btnAccel').classList.remove('active'); }
+            if (e.key === 'ArrowDown') { isBraking = false; document.getElementById('btnBrake').classList.remove('active'); }
+        });
+
+        // Pedals Setup
+        function bindPedal(id, prop) {
+            const btn = document.getElementById(id);
+            btn.addEventListener('touchstart', (e) => { initAudio(); window[prop] = true; btn.classList.add('active'); e.preventDefault(); });
+            btn.addEventListener('touchend', (e) => { window[prop] = false; btn.classList.remove('active'); e.preventDefault(); });
+            btn.addEventListener('mousedown', () => { initAudio(); window[prop] = true; btn.classList.add('active'); });
+            btn.addEventListener('mouseup', () => { window[prop] = false; btn.classList.remove('active'); });
+            btn.addEventListener('mouseleave', () => { window[prop] = false; btn.classList.remove('active'); });
+        }
+        bindPedal('btnAccel', 'isAccelerating');
+        bindPedal('btnBrake', 'isBraking');
+
+        function setGear(g) {
+            initAudio();
+            car.gear = g;
+            document.getElementById('gearDisplay').innerText = g;
+            if (g === 'D') {
+                document.getElementById('gearD').className = "orbitron px-4 py-3 rounded-xl bg-cyan-600 text-white font-bold text-xs shadow-lg border border-cyan-400";
+                document.getElementById('gearR').className = "orbitron px-4 py-3 rounded-xl bg-slate-800 text-slate-400 font-bold text-xs shadow-lg border border-slate-700";
+            } else {
+                document.getElementById('gearR').className = "orbitron px-4 py-3 rounded-xl bg-rose-600 text-white font-bold text-xs shadow-lg border border-rose-400";
+                document.getElementById('gearD').className = "orbitron px-4 py-3 rounded-xl bg-slate-800 text-slate-400 font-bold text-xs shadow-lg border border-slate-700";
+            }
+        }
+
+        // UI Menu Navigation
+        function startMissionSelect() {
+            initAudio();
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('missionScreen').classList.remove('hidden');
+            renderMissions();
+        }
+
+        function backToStart() {
+            document.getElementById('missionScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+
+        function openGarage() {
+            initAudio();
+            document.getElementById('startScreen').classList.add('hidden');
+            document.getElementById('garageScreen').classList.remove('hidden');
+            renderGarage();
+        }
+
+        function closeGarage() {
+            document.getElementById('garageScreen').classList.add('hidden');
+            document.getElementById('startScreen').classList.remove('hidden');
+        }
+
+        function renderMissions() {
+            let html = '';
+            missions.forEach((m, idx) => {
+                html += `
+                    <div class="glass-panel p-3 rounded-xl border border-slate-800 flex flex-col justify-between items-start text-left">
+                        <div>
+                            <h3 class="orbitron font-bold text-xs text-cyan-400 mb-1">${m.title}</h3>
+                            <p class="text-[10px] text-slate-400 mb-2 truncate">${m.desc}</p>
+                        </div>
+                        <button onclick="loadMission(${idx})" class="orbitron w-full py-2 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold rounded-lg text-xs">O'YNASH</button>
+                    </div>
+                `;
+            });
+            document.getElementById('missionList').innerHTML = `<div class="grid grid-cols-2 sm:grid-cols-4 gap-2 max-h-[50vh] overflow-y-auto w-full p-2">${html}</div>`;
+        }
+
+        function renderGarage() {
+            let html = '';
+            cars.forEach((c, idx) => {
+                let isSelected = currentCar === idx;
+                html += `
+                    <div class="glass-panel p-4 rounded-xl border ${isSelected ? 'border-amber-400' : 'border-slate-800'} flex flex-col items-center">
+                        <div class="w-12 h-12 rounded-xl mb-2 flex items-center justify-center text-white text-xl shadow-md" style="background:${c.color}">🚗</div>
+                        <h3 class="orbitron font-bold text-xs text-white mb-1">${c.name}</h3>
+                        <p class="text-[10px] text-slate-400 mb-3">Tezlik: ${c.speed} | Burilish: ${c.turn}</p>
+                        ${c.unlocked ? 
+                            `<button onclick="selectCar(${idx})" class="orbitron w-full py-2 ${isSelected ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-cyan-400'} font-bold rounded-lg text-xs">${isSelected ? 'TANLANGAN' : 'TANLASH'}</button>` :
+                            `<button onclick="buyCar(${idx})" class="orbitron w-full py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold rounded-lg text-xs">SOTIB OLISH (🪙${c.price})</button>`
+                        }
+                    </div>
+                `;
+            });
+            document.getElementById('carList').innerHTML = html;
+        }
+
+        function selectCar(idx) {
+            currentCar = idx;
+            renderGarage();
+        }
+
+        function buyCar(idx) {
+            let c = cars[idx];
+            if (playerCoins >= c.price) {
+                playerCoins -= c.price;
+                c.unlocked = true;
+                currentCar = idx;
+                document.getElementById('coinDisplay').innerText = '🪙 ' + playerCoins;
+                renderGarage();
+                playSound('coin');
+            } else {
+                showMessage("Mablag' yetarli emas!", "Tangalarni yig'ish uchun missiyalarni bajaring.");
+            }
+        }
+
+        function loadMission(idx) {
+            currentMissionIdx = idx;
+            gameState = 'PLAYING';
+            document.getElementById('missionScreen').classList.add('hidden');
+            document.getElementById('completeScreen').classList.add('hidden');
+            document.getElementById('gameOverScreen').classList.add('hidden');
+
+            let selectedCarData = cars[currentCar];
+            car.maxSpeed = selectedCarData.speed;
+            car.speed = 0;
+            car.angle = 0;
+            car.gear = 'D';
+            setGear('D');
+
+            let lvl = missions[idx];
+            timeLeft = lvl.timeLimit;
+            document.getElementById('timeDisplay').innerText = timeLeft + 's';
+            if (timerInterval) clearInterval(timerInterval);
+            timerInterval = setInterval(() => {
+                if (gameState === 'PLAYING') {
+                    timeLeft--;
+                    document.getElementById('timeDisplay').innerText = timeLeft + 's';
+                    if (timeLeft <= 0) {
+                        clearInterval(timerInterval);
+                        failGame("Vaqt tugadi!");
+                    }
+                }
+            }, 1000);
+
+            obstacles = [];
+            coins = [];
+
+            // Har bir level uchun unikal yo'l va to'siqlar sxemasi
+            car.x = 80; 
+            car.y = canvas.height / 2;
+            
+            parkingZone = { 
+                x: canvas.width - 120 + ((idx % 3) * 10), 
+                y: 60 + ((idx * 25) % (canvas.height - 140)), 
+                width: 78, 
+                height: 48, 
+                angle: (idx % 2 === 0) ? 0 : 0.3 
+            };
+
+            // To'siqlar soni level oshgani sari ko'payadi
+            let numObstacles = 2 + Math.floor(idx / 15);
+            for (let o = 0; o < numObstacles; o++) {
+                obstacles.push({
+                    x: 180 + (o * 110) % (canvas.width - 300),
+                    y: 70 + ((o * 85 + idx * 15) % (canvas.height - 150)),
+                    width: 75 + (idx % 30),
+                    height: 40
+                });
+            }
+
+            // Tangalar
+            coins.push({ x: 220, y: canvas.height / 2 - 40, collected: false });
+            coins.push({ x: 400, y: canvas.height / 2 + 50, collected: false });
+        }
+
+        function restartCurrentMission() {
+            loadMission(currentMissionIdx);
+        }
+
+        function nextMissionOrMenu() {
+            if (currentMissionIdx < missions.length - 1) {
+                loadMission(currentMissionIdx + 1);
+            } else {
+                gameState = 'START';
+                document.getElementById('completeScreen').classList.add('hidden');
+                document.getElementById('startScreen').classList.remove('hidden');
+            }
+        }
+
+        function checkCollision(r1, r2) {
+            return (
+                r1.x - r1.width/2 < r2.x + r2.width &&
+                r1.x + r1.width/2 > r2.x &&
+                r1.y - r1.height/2 < r2.y + r2.height &&
+                r1.y + r1.height/2 > r2.y
+            );
+        }
+
+        // Game Loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Asphalt Background
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Road Divider Markings
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.lineWidth = 2;
+            ctx.setLineDash([16, 16]);
+            ctx.beginPath();
+            ctx.moveTo(0, canvas.height / 2);
+            ctx.lineTo(canvas.width, canvas.height / 2);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            if (gameState === 'PLAYING') {
+                let carData = cars[currentCar];
+
+                // Accelerate / Brake Physics
+                if (isAccelerating) {
+                    if (car.gear === 'D') {
+                        car.speed += car.accel;
+                        if (car.speed > car.maxSpeed) car.speed = car.maxSpeed;
+                    } else {
+                        car.speed -= car.accel;
+                        if (car.speed < -car.maxSpeed / 2) car.speed = -car.maxSpeed / 2;
+                    }
+                } else if (isBraking) {
+                    car.speed *= 0.90;
+                } else {
+                    car.speed *= (1 - car.friction);
+                }
+
+                // Turning Mechanics (Dr. Driving style: turning depends on speed and gear)
+                if (Math.abs(car.speed) > 0.05) {
+                    car.angle += steeringAngle * carData.turn * (car.speed > 0 ? 1 : -1) * (car.gear === 'D' ? 1 : -1);
+                }
+
+                car.x += Math.cos(car.angle) * car.speed;
+                car.y += Math.sin(car.angle) * car.speed;
+
+                document.getElementById('speedDisplay').innerText = Math.round(Math.abs(car.speed) * 25) + ' km/h';
+
+                // Screen Boundaries
+                if (car.x < 15 || car.x > canvas.width - 15 || car.y < 15 || car.y > canvas.height - 15) {
+                    playSound('crash');
+                    failGame("Devorga urilib ketdingiz!");
+                }
+
+                // Render Parking Zone
+                ctx.save();
+                ctx.translate(parkingZone.x + parkingZone.width / 2, parkingZone.y + parkingZone.height / 2);
+                ctx.rotate(parkingZone.angle);
+                ctx.strokeStyle = '#38bdf8';
+                ctx.lineWidth = 3;
+                ctx.setLineDash([6, 6]);
+                ctx.strokeRect(-parkingZone.width / 2, -parkingZone.height / 2, parkingZone.width, parkingZone.height);
+                ctx.fillStyle = 'rgba(56, 189, 248, 0.12)';
+                ctx.fillRect(-parkingZone.width / 2, -parkingZone.height / 2, parkingZone.width, parkingZone.height);
+                ctx.fillStyle = '#38bdf8';
+                ctx.font = 'bold 18px Orbitron';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('P', 0, 0);
+                ctx.restore();
+
+                // Render Coins
+                coins.forEach(coin => {
+                    if (!coin.collected) {
+                        ctx.beginPath();
+                        ctx.arc(coin.x, coin.y, 9, 0, Math.PI * 2);
+                        ctx.fillStyle = '#fbbf24';
+                        ctx.shadowBlur = 12;
+                        ctx.shadowColor = '#fbbf24';
+                        ctx.fill();
+                        ctx.shadowBlur = 0;
+
+                        let dist = Math.hypot(car.x - coin.x, car.y - coin.y);
+                        if (dist < 24) {
+                            coin.collected = true;
+                            playerCoins += 35;
+                            document.getElementById('coinDisplay').innerText = '🪙 ' + playerCoins;
+                            playSound('coin');
+                        }
+                    }
+                });
+
+                // Render Obstacles / Buildings
+                obstacles.forEach(obs => {
+                    ctx.fillStyle = '#334155';
+                    ctx.fillRect(obs.x, obs.y, obs.width, obs.height);
+                    ctx.strokeStyle = '#1e293b';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(obs.x, obs.y, obs.width, obs.height);
+
+                    if (checkCollision(car, obs)) {
+                        playSound('crash');
+                        failGame("To'siq yoki binoga urildingiz!");
+                    }
+                });
+
+                // Render Player Car
+                ctx.save();
+                ctx.translate(car.x, car.y);
+                ctx.rotate(car.angle);
+
+                ctx.shadowBlur = 12;
+                ctx.shadowColor = 'rgba(0,0,0,0.7)';
+                ctx.fillStyle = carData.color;
+                ctx.fillRect(-car.width / 2, -car.height / 2, car.width, car.height);
+                ctx.shadowBlur = 0;
+
+                // Windshield / Windows
+                ctx.fillStyle = '#090d16';
+                ctx.fillRect(car.width / 6, -car.height / 2 + 2, 6, car.height - 4);
+
+                // Headlights
+                ctx.fillStyle = '#fef08a';
+                ctx.fillRect(car.width / 2 - 2, -car.height / 2 + 2, 3, 3);
+                ctx.fillRect(car.width / 2 - 2, car.height / 2 - 5, 3, 3);
+
+                ctx.restore();
+
+                // Check Parking Success
+                let pMinX = parkingZone.x;
+                let pMaxX = parkingZone.x + parkingZone.width;
+                let pMinY = parkingZone.y;
+                let pMaxY = parkingZone.y + parkingZone.height;
+
+                if (
+                    car.x > pMinX + 8 && car.x < pMaxX - 8 &&
+                    car.y > pMinY + 8 && car.y < pMaxY - 8 &&
+                    Math.abs(car.speed) < 0.15
+                ) {
+                    completeMission();
+                }
+            }
+
+            requestAnimationFrame(gameLoop);
+        }
+
+        function failGame(reason) {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'GAMEOVER';
+            if (timerInterval) clearInterval(timerInterval);
+            document.getElementById('failReason').innerText = reason;
+            document.getElementById('gameOverScreen').classList.remove('hidden');
+        }
+
+        function completeMission() {
+            if (gameState !== 'PLAYING') return;
+            gameState = 'COMPLETE';
+            if (timerInterval) clearInterval(timerInterval);
+            let reward = missions[currentMissionIdx].reward;
+            playerCoins += reward;
+            document.getElementById('coinDisplay').innerText = '🪙 ' + playerCoins;
+            document.getElementById('rewardCoins').innerText = '🪙 +' + reward;
+            document.getElementById('completeScreen').classList.remove('hidden');
+        }
+
+        window.onload = function() {
+            requestAnimationFrame(gameLoop);
+        };
+    </script>
+</body>
+</html>

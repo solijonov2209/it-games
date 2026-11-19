@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Морской Бой — 1 vs 1</title>
+  <link rel="stylesheet" href="./main.css" />
+</head>
+<body>
+  <!-- Maktab daftari varag'i -->
+  <div class="notebook-sheet">
+    <div class="notebook-holes">
+      <span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <!-- Yuqori sarlavha va hisob -->
+    <header class="top-bar">
+      <div class="logo">
+        <span class="anchor-icon">⚓</span>
+        <div>
+          <h1>МОРСКОЙ БОЙ</h1>
+          <span class="mode-badge">1 vs 1 (Ikki o'yinchi)</span>
+        </div>
+      </div>
+
+      <div class="score-board">
+        <div class="player-score p1-badge">
+          <span>1-O'yinchi:</span> <b id="p1Score">0</b>
+        </div>
+        <div class="vs-text">VS</div>
+        <div class="player-score p2-badge">
+          <span>2-O'yinchi:</span> <b id="p2Score">0</b>
+        </div>
+        <button id="soundToggle" class="pen-btn" title="Ovoz">🔊</button>
+      </div>
+    </header>
+
+    <!-- Ruchkada yozilgan holat xabari -->
+    <div class="status-note" id="statusBanner">
+      1-O'yinchi: Kemalaringizni joylashtiring
+    </div>
+
+    <!-- Asosiy maydonlar -->
+    <main class="battlefield-area">
+      <!-- Chap maydon -->
+      <section class="board-box" id="leftBoardBox">
+        <div class="board-title">
+          <h2 id="leftBoardTitle">1-O'yinchi maydoni</h2>
+          <span class="fleet-counter" id="leftAlive">Kemalar: 10</span>
+        </div>
+        <div class="paper-grid-wrapper">
+          <div class="coords-letters" id="leftLetters"></div>
+          <div class="coords-body">
+            <div class="coords-numbers" id="leftNumbers"></div>
+            <div class="grid-cells" id="leftBoard"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Kemalar doki (Joylash vaqtida chiqadi) -->
+      <aside class="dock-box" id="setupPanel">
+        <h3>Flotni joylashtirish</h3>
+        <div class="ship-list" id="shipDock"></div>
+        <div class="dock-buttons">
+          <button id="rotateBtn" class="sketch-btn">🔄 Aylantirish (Gorizontal)</button>
+          <button id="autoPlaceBtn" class="sketch-btn">🎲 Avto-joylash</button>
+          <button id="clearBtn" class="sketch-btn danger">🗑️ Tozalash</button>
+          <button id="confirmSetupBtn" class="sketch-btn primary" disabled>✅ Tayyor (Keyingi)</button>
+        </div>
+        <p class="note-hint">Aylantirish uchun <b>R</b> tugmasini bosing. Kemalar bir-biriga tegmasligi shart.</p>
+      </aside>
+
+      <!-- O'ng maydon -->
+      <section class="board-box" id="rightBoardBox">
+        <div class="board-title">
+          <h2 id="rightBoardTitle">2-O'yinchi maydoni</h2>
+          <span class="fleet-counter" id="rightAlive">Kemalar: 10</span>
+        </div>
+        <div class="paper-grid-wrapper">
+          <div class="coords-letters" id="rightLetters"></div>
+          <div class="coords-body">
+            <div class="coords-numbers" id="rightNumbers"></div>
+            <div class="grid-cells" id="rightBoard"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Pastki boshqaruv -->
+    <footer class="footer-bar">
+      <button id="newGameBtn" class="sketch-btn">🔄 O'yinni qaytadan boshlash</button>
+    </footer>
+  </div>
+
+  <!-- 1 vs 1 Maxfiylik pardasi (Qurilmani uzatish oynasi) -->
+  <div class="curtain-overlay" id="passTurnOverlay">
+    <div class="curtain-card">
+      <div class="curtain-icon">🙈</div>
+      <h2 id="curtainTitle">Qurilmani 2-O'yinchiga bering</h2>
+      <p id="curtainDesc">Raqib kemalarini ko'rib qolmasligi uchun ekran yopildi.</p>
+      <button id="curtainReadyBtn" class="sketch-btn primary big-btn">Men tayyorman, davom etish ▶</button>
+    </div>
+  </div>
+
+  <!-- G'alaba modali -->
+  <div class="curtain-overlay" id="winModal">
+    <div class="curtain-card">
+      <div class="curtain-icon">🏆</div>
+      <h2 id="winnerTitle">1-O'YINCHI G'OLIB BO'LDI!</h2>
+      <p id="winnerDesc">Raqibning barcha kemalari yo'q qilindi!</p>
+      <div class="match-stats">
+        <div>1-O'yinchi aniqligi: <b id="p1Acc">0%</b></div>
+        <div>2-O'yinchi aniqligi: <b id="p2Acc">0%</b></div>
+      </div>
+      <button id="rematchBtn" class="sketch-btn primary big-btn">🔄 Revansh (Yana o'ynash)</button>
+    </div>
+  </div>
+
+  <script src="./main.js"></script>
+</body>
+</html>

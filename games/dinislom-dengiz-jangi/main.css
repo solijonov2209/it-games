@@ -1,0 +1,565 @@
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  user-select: none;
+}
+
+:root {
+  --desk-bg: #2c3e50;
+  --paper-color: #fbfbf8;
+  --grid-line: #a4c8eb;
+  --red-margin: #e57373;
+  --pen-blue: #15438c;
+  --pen-dark: #1c2833;
+  --ship-ink: #2563eb;
+  --ship-fill: rgba(37, 99, 235, 0.22);
+  --hit-red: #dc2626;
+}
+
+body {
+  font-family: 'Comic Sans MS', 'Segoe Print', 'Chalkboard SE', 'Segoe UI', sans-serif;
+  background-color: #d6e4f0;
+  /* Maktab partasi ustidagi katak daftar foni */
+  background-image:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.4), rgba(148, 179, 209, 0.5)),
+    repeating-linear-gradient(45deg, #c7d9ea 0px, #c7d9ea 2px, #d6e4f0 2px, #d6e4f0 12px);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  color: var(--pen-dark);
+}
+
+/* Haqiqiy daftar varag'i */
+.notebook-sheet {
+  width: 100%;
+  max-width: 1180px;
+  background-color: var(--paper-color);
+  /* Katak chiziqlar */
+  background-image:
+    linear-gradient(to right, transparent 54px, var(--red-margin) 54px, var(--red-margin) 56px, transparent 56px),
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 100% 100%, 24px 24px, 24px 24px;
+  background-position: 0 0, 12px 12px, 12px 12px;
+  border-radius: 6px 16px 16px 6px;
+  box-shadow:
+    -6px 0 0 #cbd5e1,
+    -12px 0 0 #94a3b8,
+    0 18px 40px rgba(15, 23, 42, 0.25);
+  padding: 20px 28px 24px 72px;
+  position: relative;
+  border: 1px solid #cbd5e1;
+}
+
+/* Daftar chetidagi teshiklar */
+.notebook-holes {
+  position: absolute;
+  left: 16px;
+  top: 40px;
+  bottom: 40px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+
+.notebook-holes span {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #cbd9e8;
+  box-shadow: inset 2px 2px 4px rgba(0, 0, 0, 0.25);
+  border: 1px solid #94a3b8;
+}
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 2px solid var(--pen-blue);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.anchor-icon {
+  font-size: 32px;
+  filter: drop-shadow(1px 2px 0 rgba(21, 67, 140, 0.2));
+}
+
+.logo h1 {
+  font-size: 25px;
+  color: var(--pen-blue);
+  letter-spacing: 1px;
+  line-height: 1.1;
+}
+
+.mode-badge {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: bold;
+  color: #b91c1c;
+  border: 1.5px dashed #b91c1c;
+  padding: 1px 8px;
+  border-radius: 12px;
+  background: rgba(254, 226, 226, 0.6);
+}
+
+.score-board {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.player-score {
+  padding: 6px 14px;
+  border: 2px solid var(--pen-blue);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  background: rgba(255, 255, 255, 0.85);
+  font-size: 15px;
+  color: var(--pen-blue);
+}
+
+.vs-text {
+  font-weight: 900;
+  color: #dc2626;
+  font-size: 16px;
+}
+
+.pen-btn {
+  width: 38px;
+  height: 38px;
+  border: 2px solid var(--pen-blue);
+  border-radius: 50%;
+  background: #fff;
+  cursor: pointer;
+  font-size: 18px;
+  transition: transform 0.15s;
+}
+
+.pen-btn:hover {
+  transform: scale(1.1);
+}
+
+.status-note {
+  margin: 14px auto;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: var(--pen-blue);
+  background: rgba(255, 255, 255, 0.85);
+  border: 2px dashed var(--pen-blue);
+  border-radius: 10px;
+  padding: 8px 18px;
+}
+
+.status-note.turn-p1 {
+  border-color: #1d4ed8;
+  color: #1e3a8a;
+  background: rgba(219, 234, 254, 0.85);
+}
+
+.status-note.turn-p2 {
+  border-color: #b91c1c;
+  color: #7f1d1d;
+  background: rgba(254, 226, 226, 0.85);
+}
+
+.battlefield-area {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 26px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.board-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transition: opacity 0.2s, transform 0.2s;
+}
+
+.board-box.inactive-board {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.board-box.active-target {
+  transform: translateY(-2px);
+}
+
+.board-title {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.board-title h2 {
+  font-size: 17px;
+  color: var(--pen-blue);
+}
+
+.fleet-counter {
+  font-size: 13px;
+  font-weight: bold;
+  background: rgba(255, 255, 255, 0.9);
+  border: 1.5px solid var(--pen-blue);
+  padding: 2px 10px;
+  border-radius: 12px;
+  color: var(--pen-blue);
+}
+
+.paper-grid-wrapper {
+  background: rgba(255, 255, 255, 0.78);
+  padding: 8px 12px 12px 8px;
+  border: 2.5px solid var(--pen-blue);
+  border-radius: 6px;
+  box-shadow: 4px 4px 0 rgba(21, 67, 140, 0.2);
+}
+
+.coords-letters {
+  display: grid;
+  grid-template-columns: repeat(10, 34px);
+  margin-left: 26px;
+  margin-bottom: 3px;
+}
+
+.coords-letters span {
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--pen-blue);
+}
+
+.coords-body {
+  display: flex;
+}
+
+.coords-numbers {
+  display: grid;
+  grid-template-rows: repeat(10, 34px);
+  width: 26px;
+  align-items: center;
+}
+
+.coords-numbers span {
+  text-align: center;
+  font-weight: bold;
+  font-size: 14px;
+  color: var(--pen-blue);
+}
+
+.grid-cells {
+  display: grid;
+  grid-template-columns: repeat(10, 34px);
+  grid-template-rows: repeat(10, 34px);
+  border: 2px solid var(--pen-blue);
+}
+
+.cell {
+  width: 34px;
+  height: 34px;
+  border: 1px solid #8ab8e6;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+/* Nishon olish effekti */
+.active-target .cell:not(.hit):not(.miss):hover {
+  background: rgba(37, 99, 235, 0.15);
+}
+
+.active-target .cell:not(.hit):not(.miss):hover::after {
+  content: "+";
+  font-size: 22px;
+  font-weight: bold;
+  color: var(--hit-red);
+}
+
+/* Ruchkada chizilgan kema ko'rinishi */
+.cell.ship {
+  background: var(--ship-fill);
+  border: 2px solid var(--ship-ink);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.5);
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    rgba(37, 99, 235, 0.25) 4px,
+    rgba(37, 99, 235, 0.25) 6px
+  );
+}
+
+/* Joylashtirishdagi taxminiy ko'rinish */
+.cell.preview-valid {
+  background: rgba(22, 163, 74, 0.35) !important;
+  border: 2px dashed #15803d;
+}
+
+.cell.preview-invalid {
+  background: rgba(220, 38, 38, 0.35) !important;
+  border: 2px dashed #b91c1c;
+}
+
+/* Ruchka nuqtasi (O'q tegmadi) */
+.cell.miss {
+  cursor: default;
+}
+
+.cell.miss::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  background: var(--pen-blue);
+  border-radius: 50%;
+  animation: popMark 0.18s ease-out;
+}
+
+/* Qizil ruchkada chizilgan X (O'q tegdi) */
+.cell.hit {
+  background: rgba(254, 202, 202, 0.45);
+  cursor: default;
+}
+
+.cell.hit::before,
+.cell.hit::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 3px;
+  background: var(--hit-red);
+  border-radius: 2px;
+  animation: popMark 0.18s ease-out;
+}
+
+.cell.hit::before {
+  transform: rotate(45deg);
+}
+
+.cell.hit::after {
+  transform: rotate(-45deg);
+}
+
+/* Cho'ktirilgan kema */
+.cell.sunk {
+  background: rgba(239, 68, 68, 0.35) !important;
+  border: 2px solid #991b1b !important;
+}
+
+/* Dok paneli */
+.dock-box {
+  background: rgba(255, 255, 255, 0.92);
+  border: 2.5px solid var(--pen-blue);
+  border-radius: 10px;
+  padding: 14px;
+  width: 265px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 4px 4px 0 rgba(21, 67, 140, 0.2);
+}
+
+.dock-box h3 {
+  font-size: 16px;
+  color: var(--pen-blue);
+  text-align: center;
+  border-bottom: 1.5px dashed #93c5fd;
+  padding-bottom: 6px;
+}
+
+.ship-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.dock-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border: 1.5px solid #93c5fd;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.dock-row.selected {
+  border: 2px solid var(--pen-blue);
+  background: #dbeafe;
+}
+
+.dock-row.depleted {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.sketch-ship {
+  display: flex;
+  gap: 2px;
+}
+
+.sketch-ship span {
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--ship-ink);
+  background: var(--ship-fill);
+}
+
+.dock-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+
+.sketch-btn {
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  padding: 9px 12px;
+  border: 2px solid var(--pen-blue);
+  border-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  background: #fff;
+  color: var(--pen-blue);
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.sketch-btn:hover:not(:disabled) {
+  background: #eff6ff;
+  transform: translateY(-1px);
+}
+
+.sketch-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sketch-btn.primary {
+  background: var(--pen-blue);
+  color: #fff;
+}
+
+.sketch-btn.primary:hover:not(:disabled) {
+  background: #1e3a8a;
+}
+
+.sketch-btn.danger {
+  border-color: #b91c1c;
+  color: #b91c1c;
+}
+
+.note-hint {
+  font-size: 12px;
+  color: #475569;
+  text-align: center;
+  line-height: 1.35;
+}
+
+.footer-bar {
+  display: flex;
+  justify-content: center;
+  margin-top: 18px;
+}
+
+/* Maxfiylik pardasi va Modal */
+.curtain-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.88);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 16px;
+}
+
+.curtain-overlay.show {
+  display: flex;
+}
+
+.curtain-card {
+  background-color: var(--paper-color);
+  background-image:
+    linear-gradient(var(--grid-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  background-size: 22px 22px;
+  border: 3px solid var(--pen-blue);
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 430px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);
+  animation: popMark 0.22s ease-out;
+}
+
+.curtain-icon {
+  font-size: 56px;
+  margin-bottom: 10px;
+}
+
+.curtain-card h2 {
+  font-size: 23px;
+  color: var(--pen-blue);
+  margin-bottom: 8px;
+}
+
+.curtain-card p {
+  font-size: 15px;
+  color: #334155;
+  margin-bottom: 20px;
+}
+
+.big-btn {
+  font-size: 16px;
+  padding: 12px 22px;
+  width: 100%;
+}
+
+.match-stats {
+  background: rgba(255, 255, 255, 0.85);
+  border: 1.5px dashed var(--pen-blue);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 14px;
+}
+
+@keyframes popMark {
+  0% { transform: scale(0.4); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@media (max-width: 860px) {
+  .notebook-sheet {
+    padding: 16px 14px 20px 14px;
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+  }
+  .notebook-holes { display: none; }
+  .coords-letters { grid-template-columns: repeat(10, 28px); }
+  .coords-numbers { grid-template-rows: repeat(10, 28px); }
+  .grid-cells { grid-template-columns: repeat(10, 28px); grid-template-rows: repeat(10, 28px); }
+  .cell { width: 28px; height: 28px; }
+}
